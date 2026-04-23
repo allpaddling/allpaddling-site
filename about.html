@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>About Mick Di Betta — All Paddling</title>
+<meta name="description" content="Meet Mick Di Betta — 1997 Molokai to Oahu Paddleboard Champion, Level 3 accredited surf coach, and founder of All Paddling. 40+ years of paddle-specific coaching." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<style>
+  /* About page specific */
+  .about-hero-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 3rem; align-items: center; }
+  .about-photo {
+    aspect-ratio: 4/5;
+    background: linear-gradient(135deg, #0891b2 0%, var(--brand-700) 100%);
+    border-radius: 24px;
+    box-shadow: 0 30px 60px -20px rgba(14,116,144,0.4);
+    display: grid; place-items: center;
+    overflow: hidden; position: relative;
+  }
+  .about-photo::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15), transparent 60%);
+  }
+  .about-photo-fallback {
+    position: relative; z-index: 1; color: white; text-align: center; padding: 2rem;
+  }
+  .about-photo-fallback svg { width: 110px; height: 110px; opacity: 0.55; margin-bottom: 1rem; }
+  .about-photo-fallback p { color: rgba(255,255,255,0.7); font-size: 0.88rem; margin: 0; }
+  @media (max-width: 880px) { .about-hero-grid { grid-template-columns: 1fr; gap: 2rem; } }
+
+  .bio-body { max-width: 760px; }
+  .bio-body p { font-size: 1.02rem; line-height: 1.75; color: var(--text-2); margin-bottom: 1.25rem; }
+  .bio-body p:first-child { font-size: 1.15rem; color: var(--text); font-weight: 500; }
+
+  .achievements {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 1rem; margin-top: 2rem;
+  }
+  .achievement {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .achievement-icon {
+    width: 42px; height: 42px; min-width: 42px; border-radius: 10px;
+    background: var(--brand-50); color: var(--brand-700);
+    display: grid; place-items: center;
+  }
+  .achievement-icon svg { width: 22px; height: 22px; }
+  .achievement-text strong { display: block; color: var(--text); font-size: 0.95rem; font-weight: 600; }
+  .achievement-text span { display: block; color: var(--text-3); font-size: 0.85rem; margin-top: 2px; }
+  @media (max-width: 640px) { .achievements { grid-template-columns: 1fr; } }
+
+  .philosophy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
+  .philosophy-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.75rem;
+  }
+  .philosophy-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+  .philosophy-card p { font-size: 0.93rem; color: var(--text-2); margin-bottom: 0; }
+  @media (max-width: 880px) { .philosophy-grid { grid-template-columns: 1fr; } }
+
+  .cta-banner {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    border-radius: var(--radius); padding: 3rem;
+    color: white; text-align: center;
+  }
+  .cta-banner h2 { color: white; margin-bottom: 0.75rem; }
+  .cta-banner p { color: rgba(255,255,255,0.88); max-width: 560px; margin: 0 auto 1.75rem; }
+  .cta-banner .btn { background: white; color: var(--brand-700); }
+  .cta-banner .btn:hover { background: #f1f5f9; }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="page-hero">
+  <div class="container about-hero-grid">
+    <div>
+      <span class="eyebrow">Meet the coach</span>
+      <h1>Mick Di Betta</h1>
+      <p class="lead">Paddler since age 15. World Champion. Coach to over a dozen Molokai to Oahu winners. The mind behind All Paddling's 5-zone training philosophy.</p>
+    </div>
+    <div class="about-photo">
+      <div class="about-photo-fallback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="5"/>
+          <path d="M20 21a8 8 0 0 0-16 0"/>
+        </svg>
+        <p>Coach photo placeholder</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="bio-body">
+      <p>A prone paddler from the age of 15, Mick has developed all his own training programs over four decades — refining them for paddling events from sprint racing to distance crossings like Catalina and Molokai to Oahu.</p>
+      <p>Drawing on proven scientific principles from Olympic kayaking programs and decades of race experience, Mick fine-tuned the training philosophy that won him the 1997 Molokai to Oahu Paddleboard Championship. Since then, he has coached more than twelve other Molokai to Oahu victories — across both male and female athletes, in both SUP and Prone disciplines.</p>
+      <p>His coaching philosophy has delivered results across a huge range of paddling disciplines and race distances: Australian and World Life Saving sprint racing, all SUP styles, and long-distance paddling events around the world.</p>
+      <p>With 40+ years of experience developing on-water training programs, Mick has also pioneered the Prone and SUP Strength Training Ergos — off-water training devices designed to deliver scientifically correct paddling motion. The ergos are a key complement to any well-rounded annual training plan, building perfect technique, muscle endurance, and anaerobic power when the water isn't accessible.</p>
+      <p>Mick is passionate about continuing to refine his programs so paddlers get maximum benefit and optimum performance. He also understands that every paddler is an individual — and even structured programs must be tailored to the person following them.</p>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">Professional Experience</div>
+    <h2 class="section-title">A career built on results.</h2>
+    <p class="section-sub">Four decades at the top of paddling — as athlete, coach, and innovator.</p>
+
+    <div class="achievements">
+      <div class="achievement">
+        <div class="achievement-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        </div>
+        <div class="achievement-text">
+          <strong>Inaugural World Champion</strong>
+          <span>1997 Molokai to Oahu Paddleboard</span>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div class="achievement-text">
+          <strong>Multiple Australian & World Champion</strong>
+          <span>Surf Life Saving</span>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+        </div>
+        <div class="achievement-text">
+          <strong>Level 3 Accredited Surf Coach</strong>
+          <span>Surf Life Saving Australia (AIS)</span>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="achievement-text">
+          <strong>Coached 12+ Molokai Champions</strong>
+          <span>Across SUP and Prone, male and female</span>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+        </div>
+        <div class="achievement-text">
+          <strong>21 Years, Top-10 Molokai Finisher</strong>
+          <span>Consistent top-10 since the inaugural win</span>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <div class="achievement-text">
+          <strong>Inventor, Prone & SUP Training Ergos</strong>
+          <span>Off-water paddle-specific training devices</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="section-eyebrow">Coaching Philosophy</div>
+    <h2 class="section-title">Three principles that drive every program.</h2>
+
+    <div class="philosophy-grid">
+      <div class="philosophy-card">
+        <h3>Science over guesswork</h3>
+        <p>Training is grounded in physiology — the five training zones target specific adaptations, and progression is measured, not assumed.</p>
+      </div>
+      <div class="philosophy-card">
+        <h3>The individual matters</h3>
+        <p>Generic programs take you only so far. Every athlete brings different strengths, schedules, and goals — and good coaching honours that.</p>
+      </div>
+      <div class="philosophy-card">
+        <h3>Paddle-specific, always</h3>
+        <p>Paddling isn't running or cycling. The plans are built around the sport's actual energy systems and muscular demands.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="cta-banner">
+      <h2>Ready to start training with intention?</h2>
+      <p>Pick a monthly plan that matches your season — or book a Custom Season Race Plan for a build tailored to your major goal race.</p>
+      <a href="plans.html" class="btn">Explore Training Plans</a>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

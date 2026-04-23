@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Custom Season Race Plan — All Paddling</title>
+<meta name="description" content="A bespoke season of training built around your goal race. Interval sessions, race-specific distance, taper and peaking weeks, and a progressive strength program — $140 AUD/month." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<style>
+  .product-grid {
+    display: grid; grid-template-columns: 1.1fr 1fr;
+    gap: 3rem; align-items: start;
+  }
+  .product-visual {
+    aspect-ratio: 1/1;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2 70%, #06b6d4);
+    border-radius: 24px;
+    box-shadow: 0 30px 60px -20px rgba(14,116,144,0.5);
+    display: grid; place-items: center;
+    position: relative; overflow: hidden;
+    color: white;
+  }
+  .product-visual::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.2), transparent 40%);
+  }
+  .product-visual .logo-pulse { position: relative; z-index: 1; text-align: center; }
+  .product-visual .logo-pulse svg { width: 180px; height: 180px; opacity: 0.9; }
+  .product-visual .logo-pulse .label {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    font-size: 0.88rem; margin-top: 1rem; opacity: 0.9;
+  }
+
+  .product-meta { margin-bottom: 1.5rem; }
+  .product-meta .eyebrow {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-700); background: var(--brand-100);
+    padding: 0.4rem 0.85rem; border-radius: 999px;
+  }
+  .product-meta .eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--brand-700); }
+
+  .product-details h1 { font-size: clamp(1.8rem, 3.5vw, 2.5rem); margin-bottom: 1rem; }
+  .product-price {
+    display: flex; align-items: baseline; gap: 0.5rem;
+    padding: 1.25rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+  .product-price .amount { font-family: 'Space Grotesk', sans-serif; font-size: 2.6rem; font-weight: 700; color: var(--text); line-height: 1; }
+  .product-price .period { color: var(--text-3); font-size: 1rem; }
+  .product-price .tax-note { margin-left: auto; font-size: 0.82rem; color: var(--text-3); }
+
+  .purchase-box {
+    background: var(--surface); border: 2px solid var(--brand-700);
+    border-radius: var(--radius); padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .purchase-box h3 { font-size: 1.05rem; margin-bottom: 0.75rem; }
+  .purchase-box .subscription-tag {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.78rem; font-weight: 600;
+    background: var(--brand-50); color: var(--brand-700);
+    padding: 0.25rem 0.65rem; border-radius: 999px; margin-bottom: 0.75rem;
+  }
+  .btn-full { width: 100%; justify-content: center; }
+  .purchase-note { font-size: 0.82rem; color: var(--text-3); margin-top: 1rem; margin-bottom: 0; }
+
+  @media (max-width: 880px) { .product-grid { grid-template-columns: 1fr; gap: 2rem; } }
+
+  .includes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem; }
+  .include-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+  }
+  .include-item h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+  .include-item p { font-size: 0.93rem; margin-bottom: 0; }
+  .include-item-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--brand-50); color: var(--brand-700);
+    display: grid; place-items: center; margin-bottom: 1rem;
+  }
+  .include-item-icon svg { width: 20px; height: 20px; }
+  @media (max-width: 640px) { .includes-grid { grid-template-columns: 1fr; } }
+
+  .timeline {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+    margin-top: 2rem;
+  }
+  .timeline-step {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+    position: relative;
+  }
+  .timeline-step .step-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem; font-weight: 700; color: var(--brand-100);
+    line-height: 1; margin-bottom: 0.5rem;
+  }
+  .timeline-step h3 { font-size: 1rem; margin-bottom: 0.4rem; }
+  .timeline-step p { font-size: 0.9rem; margin-bottom: 0; }
+  @media (max-width: 880px) { .timeline { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .timeline { grid-template-columns: 1fr; } }
+
+  .faq-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .faq-item summary {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600; font-size: 1.02rem;
+    cursor: pointer; list-style: none;
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--text);
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: '+'; font-size: 1.5rem; color: var(--brand-700);
+    transition: transform .2s;
+  }
+  .faq-item[open] summary::after { content: '−'; }
+  .faq-item p { margin: 1rem 0 0; color: var(--text-2); font-size: 0.95rem; }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="page-hero">
+  <div class="container product-grid">
+    <div class="product-visual">
+      <div class="logo-pulse">
+        <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M172 54a36 36 0 0 0-51 0l-21 21-21-21a36 36 0 1 0-51 51l72 72 72-72a36 36 0 0 0 0-51z" fill="currentColor" fill-opacity="0.15"/>
+          <polyline points="20,110 55,110 72,78 100,145 122,92 145,110 180,110" stroke-width="4.5"/>
+        </svg>
+        <div class="label">Paddle Specific Training</div>
+      </div>
+    </div>
+    <div class="product-details">
+      <div class="product-meta">
+        <span class="eyebrow">Premium Plan</span>
+      </div>
+      <h1>Custom Season Race Plan</h1>
+      <p style="font-size: 1.1rem; color: var(--text-2);">The same structured workout framework used by the most successful paddlers in the world — programmed around your season, your training time, and your major goal race.</p>
+
+      <div class="product-price">
+        <span class="amount">$140</span>
+        <span class="period">AUD / month</span>
+        <span class="tax-note">4-month minimum</span>
+      </div>
+
+      <div class="purchase-box">
+        <span class="subscription-tag">Monthly Subscription</span>
+        <h3>Subscribe now — cancel after 4 months</h3>
+        <p style="font-size: 0.9rem; margin-bottom: 1rem;">Billed monthly at $140 AUD. Skip, reschedule, or cancel anytime after the 4-month minimum.</p>
+        <button class="btn btn-primary btn-full" onclick="alert('Checkout coming soon — this will connect to the new member signup flow.');">
+          Subscribe &amp; Start
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+        </button>
+        <p class="purchase-note">By subscribing, you authorise recurring monthly charges until cancelled.</p>
+      </div>
+
+      <div style="font-size: 0.9rem; color: var(--text-3);">
+        Questions before you start? <a href="contact.html">Get in touch</a>.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">What's included</div>
+    <h2 class="section-title">Everything you need to peak on race day.</h2>
+    <p class="section-sub">Custom doesn't mean improvised — it means programmed for you. Here's what every subscriber gets.</p>
+
+    <div class="includes-grid">
+      <div class="include-item">
+        <div class="include-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <h3>Weekly programming</h3>
+        <p>2–3 interval sessions plus one race-specific distance session, progressive week over week across the full season.</p>
+      </div>
+      <div class="include-item">
+        <div class="include-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        </div>
+        <h3>5-zone pace targets</h3>
+        <p>Every session prescribes targets in TZ1–TZ5. Built-in pace calculator turns your threshold into exact ranges.</p>
+      </div>
+      <div class="include-item">
+        <div class="include-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+        <h3>Taper &amp; peaking weeks</h3>
+        <p>Race-specific taper and peaking blocks are programmed into your plan so you arrive on race day sharp, not flat.</p>
+      </div>
+      <div class="include-item">
+        <div class="include-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11l-1 11h-9l-1-11z"/><path d="M9 6.5V4a3 3 0 0 1 6 0v2.5"/></svg>
+        </div>
+        <h3>Progressive strength program</h3>
+        <p>An easy-to-follow dryland strength program that builds at the same pace as your on-water work.</p>
+      </div>
+      <div class="include-item">
+        <div class="include-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </div>
+        <h3>One-on-one consultation</h3>
+        <p>Plan designed in conversation with you — weekly training time, current ability, season goals, and target races.</p>
+      </div>
+      <div class="include-item">
+        <div class="include-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+        </div>
+        <h3>Adjustments as you progress</h3>
+        <p>Plans are designed to evolve with your fitness. We adjust loads and zones as your threshold improves.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-title">From signup to race day.</h2>
+
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="step-num">01</div>
+        <h3>Subscribe</h3>
+        <p>Start your $140/mo subscription. Minimum 4 months.</p>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">02</div>
+        <h3>Consult</h3>
+        <p>Share your weekly time, current threshold, and your goal race date.</p>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">03</div>
+        <h3>Train</h3>
+        <p>Follow weekly interval + distance sessions with 5-zone pace targets.</p>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">04</div>
+        <h3>Peak</h3>
+        <p>Taper into your major race. Arrive sharp and ready.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container" style="max-width: 860px;">
+    <div class="section-eyebrow">Common Questions</div>
+    <h2 class="section-title">Good to know.</h2>
+    <p class="section-sub">A few common questions before you subscribe.</p>
+
+    <details class="faq-item" open>
+      <summary>Who is this plan for?</summary>
+      <p>Paddlers with a competitive background who've set a major goal race. You should be comfortable paddling for 60+ minutes before you start. If you're newer, consider starting with a Progressive Monthly Plan and moving up later.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Why a 4-month minimum?</summary>
+      <p>The plan is designed to build over a full training block — base, build, taper, peak. Shorter periods don't give the adaptations time to compound. You can cancel after the 4-month minimum.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How do I find my threshold pace?</summary>
+      <p>The fastest way is a 3-minute test — paddle as hard as you can sustain for three continuous minutes, and use the resulting pace as your threshold. Our <a href="pace-calculator.html">pace calculator</a> converts that into zone targets.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What disciplines does this cover?</summary>
+      <p>All four: Prone paddleboard, SUP, Outrigger Canoe, and Surf Ski. The structure is the same — the specific sessions are tailored to your discipline.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What if I miss sessions or need to adjust?</summary>
+      <p>Life happens. The plans are resilient to missed sessions and can be adjusted as you go. The whole point of consultation is that it's yours, not generic.</p>
+    </details>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

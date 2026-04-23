@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ergos — Prone &amp; SUP Training Ergos — All Paddling</title>
+<meta name="description" content="The Prone and SUP Training Ergos deliver scientifically correct paddling motion off the water — building perfect technique, muscle endurance, and anaerobic power." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<style>
+  .product-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;
+  }
+  .ergo-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow); display: flex; flex-direction: column;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .ergo-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .ergo-visual {
+    aspect-ratio: 4/3;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2 80%);
+    display: grid; place-items: center;
+    position: relative; overflow: hidden;
+    color: white;
+  }
+  .ergo-visual::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 25% 30%, rgba(255,255,255,0.2), transparent 50%);
+  }
+  .ergo-visual svg { width: 140px; height: 140px; opacity: 0.85; position: relative; z-index: 1; }
+  .ergo-card-body { padding: 1.75rem; display: flex; flex-direction: column; flex-grow: 1; }
+  .ergo-card-body h3 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+  .ergo-card-body .price {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.5rem; font-weight: 700; color: var(--text);
+    margin: 0.5rem 0 1rem;
+  }
+  .ergo-card-body .price span { font-size: 0.85rem; color: var(--text-3); font-weight: 500; margin-left: 0.25rem; }
+  .ergo-card-body p { flex-grow: 1; font-size: 0.95rem; }
+  .ergo-card-body .btn { margin-top: 1rem; }
+  @media (max-width: 720px) { .product-grid { grid-template-columns: 1fr; } }
+
+  .benefits-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+  }
+  .benefit-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.75rem;
+  }
+  .benefit-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--brand-50); color: var(--brand-700);
+    display: grid; place-items: center; margin-bottom: 1rem;
+  }
+  .benefit-icon svg { width: 22px; height: 22px; }
+  .benefit-card h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+  .benefit-card p { font-size: 0.93rem; margin-bottom: 0; }
+  @media (max-width: 880px) { .benefits-grid { grid-template-columns: 1fr; } }
+
+  .cta-row {
+    display: flex; gap: 0.75rem; flex-wrap: wrap;
+    justify-content: center; margin-top: 2rem;
+  }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Off-Water Training</span>
+    <h1>Train with paddle-specific motion — on land.</h1>
+    <p class="lead">The Prone and SUP Training Ergos deliver a scientifically correct paddling stroke when the water isn't available. Build perfect technique, muscular endurance, and anaerobic power that transfers directly to race-day speed.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="section-eyebrow">The Ergos</div>
+    <h2 class="section-title">Two devices. Both built for paddlers.</h2>
+    <p class="section-sub">Whether you're on a prone board or a SUP, the matching ergo replicates your sport's exact motion — so strength built in the gym translates directly to speed on the water.</p>
+
+    <div class="product-grid">
+      <div class="ergo-card">
+        <div class="ergo-visual">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-6 10-6 10 6 10 6-3 6-10 6-10-6-10-6z"/>
+            <circle cx="12" cy="12" r="2.5"/>
+          </svg>
+        </div>
+        <div class="ergo-card-body">
+          <h3>Prone Training Ergo</h3>
+          <p>Mimics the prone paddleboard stroke with full-range resistance. Engages the exact shoulder, lat, and core muscles used in prone racing.</p>
+          <div class="price">$150 <span>AUD</span></div>
+          <button class="btn btn-primary" onclick="alert('Checkout coming soon — this will connect to the new member signup flow.');">
+            Add to cart
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="ergo-card">
+        <div class="ergo-visual">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20"/>
+            <path d="M6 8l12 0"/>
+            <circle cx="12" cy="12" r="2.5"/>
+          </svg>
+        </div>
+        <div class="ergo-card-body">
+          <h3>SUP Training Ergo</h3>
+          <p>Replicates the standing paddle stroke with authentic catch, pull, and recovery resistance. Build race-specific strength through the full stroke cycle.</p>
+          <div class="price">$150 <span>AUD</span></div>
+          <button class="btn btn-primary" onclick="alert('Checkout coming soon — this will connect to the new member signup flow.');">
+            Add to cart
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">Why train off-water</div>
+    <h2 class="section-title">Sport-specific. Indoors. Progressive.</h2>
+    <p class="section-sub">A complement — not a replacement — to well-designed on-water training.</p>
+
+    <div class="benefits-grid">
+      <div class="benefit-card">
+        <div class="benefit-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+        </div>
+        <h3>Perfect paddling motion</h3>
+        <p>Groove the exact stroke mechanics of your sport, rep after rep, without the variability of open water.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <h3>Muscle endurance + power</h3>
+        <p>Train the full energy system spectrum — from aerobic endurance to anaerobic peak power — without weather or surface conditions getting in the way.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <h3>Train any time</h3>
+        <p>Rough surf, storms, dark mornings — the ergo is always available. Fit quality training into any schedule.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container" style="max-width: 780px; text-align: center;">
+    <div class="section-eyebrow" style="text-align: center;">Designed by a coach</div>
+    <h2 class="section-title" style="text-align: center;">Built around four decades of paddling.</h2>
+    <p style="font-size: 1.05rem; max-width: 620px; margin: 0 auto 1.5rem;">Mick Di Betta developed the Prone and SUP Training Ergos after 40+ years on the water. Each device is engineered to meet every requirement of a well-rounded annual training program — so your off-water sessions build race-specific capacity, not just general fitness.</p>
+    <div class="cta-row">
+      <a href="about.html" class="btn btn-secondary">About the designer</a>
+      <a href="contact.html" class="btn btn-primary">Ask a question</a>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

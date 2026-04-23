@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contact — All Paddling</title>
+<meta name="description" content="Questions about training plans, ergos, or the Custom Season Race Plan? Get in touch — or call 0404 556 880." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<style>
+  .contact-grid {
+    display: grid; grid-template-columns: 1fr 1.3fr; gap: 3rem;
+    align-items: start;
+  }
+  @media (max-width: 880px) { .contact-grid { grid-template-columns: 1fr; gap: 2rem; } }
+
+  .contact-details {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .contact-item {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: 1rem 0; border-bottom: 1px solid var(--border);
+  }
+  .contact-item:last-child { border-bottom: none; }
+  .contact-item-icon {
+    width: 42px; height: 42px; min-width: 42px; border-radius: 10px;
+    background: var(--brand-50); color: var(--brand-700);
+    display: grid; place-items: center;
+  }
+  .contact-item-icon svg { width: 20px; height: 20px; }
+  .contact-item-text .label {
+    font-size: 0.78rem; font-weight: 600;
+    color: var(--text-3); letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 0.3rem;
+  }
+  .contact-item-text .value { font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 600; color: var(--text); }
+  .contact-item-text .value a { color: var(--text); border: none; }
+  .contact-item-text .value a:hover { color: var(--brand-700); border: none; }
+  .contact-item-text .desc { font-size: 0.88rem; color: var(--text-3); margin-top: 0.25rem; }
+
+  .contact-form-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2.25rem;
+    box-shadow: var(--shadow);
+  }
+  .contact-form-card h2 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .contact-form-card > p { color: var(--text-3); margin-bottom: 1.75rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 520px) { .form-row { grid-template-columns: 1fr; } }
+  .form-success {
+    display: none;
+    background: var(--brand-50); border: 1px solid var(--brand-100);
+    color: var(--brand-700); padding: 1rem 1.25rem;
+    border-radius: var(--radius-sm); font-size: 0.95rem;
+    margin-top: 1rem;
+  }
+  .form-success.show { display: block; }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Get in touch</span>
+    <h1>We'd love to hear from you.</h1>
+    <p class="lead">Questions about which plan fits you, about the Custom Season Race Plan, or about the Ergos? Send a message or call directly — we'll get back to you quickly.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="contact-grid">
+
+      <!-- Contact details -->
+      <div class="contact-details">
+        <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Direct contact</h2>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div class="contact-item-text">
+            <div class="label">Phone</div>
+            <div class="value"><a href="tel:+61404556880">0404 556 880</a></div>
+            <div class="desc">Australian Eastern time. Try a message first outside of normal hours.</div>
+          </div>
+        </div>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="contact-item-text">
+            <div class="label">Email</div>
+            <div class="value"><a href="mailto:dibetta1@gmail.com">dibetta1@gmail.com</a></div>
+            <div class="desc">Usually a reply within 24 hours.</div>
+          </div>
+        </div>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+          </div>
+          <div class="contact-item-text">
+            <div class="label">Response time</div>
+            <div class="value">Within 24 hours</div>
+            <div class="desc">Typically same-day for current members.</div>
+          </div>
+        </div>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <div class="contact-item-text">
+            <div class="label">Based in</div>
+            <div class="value">Australia</div>
+            <div class="desc">Coaching clients worldwide, online.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact form -->
+      <div class="contact-form-card">
+        <h2>Send a message</h2>
+        <p>Tell us about your paddling background and what you're looking for. We'll recommend the best plan.</p>
+
+        <form id="contact-form" onsubmit="handleContactSubmit(event)">
+          <div class="form-row">
+            <div class="form-field">
+              <label for="c-name">Name</label>
+              <input type="text" id="c-name" name="name" placeholder="Your name" required />
+            </div>
+            <div class="form-field">
+              <label for="c-phone">Phone (optional)</label>
+              <input type="tel" id="c-phone" name="phone" placeholder="0400 000 000" />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="c-email">Email</label>
+            <input type="email" id="c-email" name="email" placeholder="you@email.com" required />
+          </div>
+
+          <div class="form-field">
+            <label for="c-interest">What are you interested in?</label>
+            <select id="c-interest" name="interest">
+              <option value="">Select an option…</option>
+              <option>Progressive Monthly Plan</option>
+              <option>Custom Season Race Plan</option>
+              <option>Prone or SUP Training Ergo</option>
+              <option>General training question</option>
+              <option>Something else</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="c-message">Message</label>
+            <textarea id="c-message" name="message" placeholder="Tell us about your paddling, goals, or questions…" required></textarea>
+            <p class="form-hint">What disciplines do you paddle? Any specific race goals? Current weekly training time?</p>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+            Send message
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg>
+          </button>
+
+          <div class="form-success" id="form-success">
+            Thanks! Your message has been sent. We'll be in touch within 24 hours.
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+function handleContactSubmit(e) {
+  e.preventDefault();
+  // TODO: wire up real form handler (Formspree, Basin, or connector to email)
+  const success = document.getElementById('form-success');
+  success.classList.add('show');
+  success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  e.target.reset();
+}
+</script>
+
+<div id="site-footer"></div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

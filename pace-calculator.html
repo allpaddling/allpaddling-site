@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pace Calculator — All Paddling</title>
+<meta name="description" content="Enter your threshold pace and get exact zone target ranges for all 5 training zones. Works in metric and imperial, for every paddling discipline." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<style>
+  .calc-shell {
+    display: grid; grid-template-columns: 1fr 1.2fr; gap: 2.5rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .calc-shell { grid-template-columns: 1fr; } }
+
+  .calc-input-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem;
+    box-shadow: var(--shadow); position: sticky; top: 80px;
+  }
+  @media (max-width: 900px) { .calc-input-card { position: static; } }
+
+  .unit-toggle {
+    display: inline-flex; background: var(--surface-2);
+    border-radius: 10px; padding: 4px; margin-bottom: 1.5rem;
+  }
+  .unit-toggle button {
+    background: transparent; border: none; cursor: pointer;
+    font-family: inherit; font-size: 0.88rem; font-weight: 600;
+    padding: 0.5rem 1rem; border-radius: 7px;
+    color: var(--text-3); transition: all .15s;
+  }
+  .unit-toggle button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+  .time-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+  .time-input-field {
+    text-align: center;
+  }
+  .time-input-field label {
+    display: block; font-size: 0.78rem; font-weight: 600;
+    color: var(--text-3); letter-spacing: 0.04em;
+    text-transform: uppercase; margin-bottom: 0.35rem;
+  }
+  .time-input-field input {
+    width: 100%; padding: 0.75rem; text-align: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.6rem; font-weight: 700;
+    border: 1px solid var(--border-strong); border-radius: 10px;
+    color: var(--text); background: white;
+  }
+  .time-input-field input:focus {
+    outline: none; border-color: var(--brand-700);
+    box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.12);
+  }
+  .threshold-summary {
+    background: var(--brand-50); border: 1px solid var(--brand-100);
+    border-radius: var(--radius); padding: 1.25rem;
+    margin-top: 1.5rem; text-align: center;
+  }
+  .threshold-summary .label {
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--brand-700); margin-bottom: 0.35rem;
+  }
+  .threshold-summary .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem; font-weight: 700; color: var(--text);
+    line-height: 1;
+  }
+  .threshold-summary .value span { font-size: 0.9rem; color: var(--text-3); font-weight: 500; margin-left: 0.4rem; }
+
+  .calc-reset {
+    width: 100%; background: transparent; border: 1px solid var(--border-strong);
+    padding: 0.65rem; border-radius: 8px; cursor: pointer;
+    font-family: inherit; font-size: 0.88rem; font-weight: 500;
+    color: var(--text-2); margin-top: 1rem; transition: all .15s;
+  }
+  .calc-reset:hover { background: var(--surface-2); color: var(--text); }
+
+  /* Zones display */
+  .zones-list { display: grid; gap: 0.65rem; }
+  .zone-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--brand);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.25rem;
+    display: grid; grid-template-columns: 76px 1fr auto; gap: 1rem;
+    align-items: center;
+  }
+  .zone-row.tz1 { border-left-color: var(--tz1); background: var(--tz1-bg); }
+  .zone-row.tz2 { border-left-color: var(--tz2); background: var(--tz2-bg); }
+  .zone-row.tz3 { border-left-color: var(--tz3); background: var(--tz3-bg); }
+  .zone-row.tz4 { border-left-color: var(--tz4); background: var(--tz4-bg); }
+  .zone-row.tz5 { border-left-color: var(--tz5); background: var(--tz5-bg); }
+
+  .zone-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.1rem; font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .zone-row.tz1 .zone-label { color: var(--tz1); }
+  .zone-row.tz2 .zone-label { color: var(--tz2); }
+  .zone-row.tz3 .zone-label { color: var(--tz3); }
+  .zone-row.tz4 .zone-label { color: var(--tz4); }
+  .zone-row.tz5 .zone-label { color: var(--tz5); }
+
+  .zone-desc { min-width: 0; }
+  .zone-desc .name { font-weight: 600; font-size: 0.95rem; color: var(--text); margin-bottom: 0.15rem; }
+  .zone-desc .purpose { font-size: 0.82rem; color: var(--text-3); }
+  .zone-pace {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.1rem; font-weight: 600; color: var(--text);
+    white-space: nowrap;
+  }
+  .zone-pace .per { font-size: 0.75rem; color: var(--text-3); font-weight: 500; margin-left: 0.2rem; }
+
+  @media (max-width: 520px) {
+    .zone-row { grid-template-columns: 60px 1fr; }
+    .zone-pace { grid-column: 2; text-align: left; }
+  }
+
+  .info-cards {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+  }
+  .info-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+  }
+  .info-card h3 { font-size: 1.02rem; margin-bottom: 0.5rem; }
+  .info-card p { font-size: 0.9rem; margin-bottom: 0; }
+  .info-card .icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--brand-50); color: var(--brand-700);
+    display: grid; place-items: center; margin-bottom: 0.75rem;
+  }
+  .info-card .icon svg { width: 20px; height: 20px; }
+  @media (max-width: 880px) { .info-cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Free Interactive Tool</span>
+    <h1>Pace Calculator</h1>
+    <p class="lead">Enter your threshold pace and we'll return exact target ranges for all five training zones. Update the input to see the numbers recalculate live.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="calc-shell">
+
+      <!-- ============ INPUT COLUMN ============ -->
+      <div class="calc-input-card">
+        <div class="section-eyebrow" style="margin-bottom: 1rem;">Your Threshold Pace</div>
+
+        <div class="unit-toggle" role="tablist" aria-label="Units">
+          <button id="unit-metric" class="active" role="tab" aria-selected="true">Metric (per km)</button>
+          <button id="unit-imperial" role="tab" aria-selected="false">Imperial (per mile)</button>
+        </div>
+
+        <div class="time-inputs">
+          <div class="time-input-field">
+            <label for="t-hours">Hours</label>
+            <input type="number" id="t-hours" min="0" max="9" step="1" value="0" inputmode="numeric" />
+          </div>
+          <div class="time-input-field">
+            <label for="t-minutes">Minutes</label>
+            <input type="number" id="t-minutes" min="0" max="59" step="1" value="5" inputmode="numeric" />
+          </div>
+          <div class="time-input-field">
+            <label for="t-seconds">Seconds</label>
+            <input type="number" id="t-seconds" min="0" max="59" step="1" value="30" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="threshold-summary">
+          <div class="label">Threshold Pace</div>
+          <div class="value"><span id="threshold-display">5:30</span><span id="threshold-unit">/ km</span></div>
+        </div>
+
+        <button class="calc-reset" id="reset-btn">Reset to 5:30 / km</button>
+
+        <p style="font-size: 0.85rem; color: var(--text-3); margin-top: 1.25rem; margin-bottom: 0;">
+          Don't know your threshold? A 3-minute all-out test is the fastest way to find it — paddle as hard as you can hold for three minutes and use that pace as your threshold.
+        </p>
+      </div>
+
+      <!-- ============ ZONES COLUMN ============ -->
+      <div>
+        <div class="section-eyebrow">Your Training Zones</div>
+        <h2 class="section-title" style="font-size: 1.4rem;">5-zone pace targets</h2>
+        <p style="color: var(--text-3); font-size: 0.95rem; margin-bottom: 1.5rem;">Target ranges update live as you change your threshold.</p>
+
+        <div class="zones-list" id="zones-list">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">How to use it</div>
+    <h2 class="section-title">Getting the most out of your zones.</h2>
+    <p class="section-sub">The calculator is a tool — what makes it powerful is applying it consistently.</p>
+
+    <div class="info-cards">
+      <div class="info-card">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+        </div>
+        <h3>Find your threshold</h3>
+        <p>Run a 3-minute all-out test. The average pace you hold is your functional threshold — plug that in above.</p>
+      </div>
+      <div class="info-card">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+        </div>
+        <h3>Train in the right zone</h3>
+        <p>Use the displayed ranges to target each session. TZ2 for long aerobic work, TZ3–TZ4 for intervals, TZ5 for peak efforts.</p>
+      </div>
+      <div class="info-card">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        </div>
+        <h3>Retest every 6 weeks</h3>
+        <p>As fitness improves your threshold shifts. Retest every 6 weeks and update the calculator so your zones stay accurate.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ============ Pace calculator logic ============ */
+
+const ZONES = [
+  { key: 'tz1', label: 'TZ1', name: 'Recovery',   purpose: 'Easy aerobic · active recovery',     lo: 0.00, hi: 0.77 },
+  { key: 'tz2', label: 'TZ2', name: 'Endurance',  purpose: 'Aerobic base · long distance',       lo: 0.88, hi: 0.94 },
+  { key: 'tz3', label: 'TZ3', name: 'Threshold',  purpose: 'Tempo · lactate threshold',          lo: 1.00, hi: 1.04 },
+  { key: 'tz4', label: 'TZ4', name: 'VO₂max',      purpose: 'Hard intervals · aerobic power',     lo: 1.04, hi: 1.11 },
+  { key: 'tz5', label: 'TZ5', name: 'Sprint',     purpose: 'Max effort · anaerobic capacity',    lo: 1.11, hi: 999 },
+];
+
+let state = {
+  hours: 0, minutes: 5, seconds: 30,
+  unit: 'metric'  // 'metric' = per km, 'imperial' = per mile
+};
+
+function formatSeconds(s) {
+  if (!isFinite(s) || s <= 0) return '—';
+  const total = Math.round(s);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+function thresholdSeconds() {
+  return Number(state.hours) * 3600 + Number(state.minutes) * 60 + Number(state.seconds);
+}
+
+/*
+   Pace math: a higher %FTP = FASTER pace = lower time.
+   For a zone [lo, hi] of FTP:
+     - fastest time  = FTP_seconds / hi
+     - slowest time  = FTP_seconds / lo
+   Display the range "slowest – fastest" (bigger number first).
+*/
+function zonePaceRange(zone, ftpSec) {
+  if (ftpSec <= 0) return { label: '—' };
+
+  if (zone.key === 'tz1') {
+    // slower than 77% → pace slower than ftp/0.77
+    return { label: `slower than ${formatSeconds(ftpSec / zone.hi)}` };
+  }
+  if (zone.key === 'tz5') {
+    // faster than 111% → pace faster than ftp/1.11
+    return { label: `faster than ${formatSeconds(ftpSec / zone.lo)}` };
+  }
+  const slow = ftpSec / zone.lo;
+  const fast = ftpSec / zone.hi;
+  return { label: `${formatSeconds(slow)} – ${formatSeconds(fast)}` };
+}
+
+function renderZones() {
+  const ftp = thresholdSeconds();
+  const unitStr = state.unit === 'metric' ? '/ km' : '/ mile';
+
+  const html = ZONES.map(z => {
+    const range = zonePaceRange(z, ftp);
+    return `
+      <div class="zone-row ${z.key}">
+        <div class="zone-label">${z.label}</div>
+        <div class="zone-desc">
+          <div class="name">${z.name}</div>
+          <div class="purpose">${z.purpose}</div>
+        </div>
+        <div class="zone-pace">${range.label}<span class="per"> ${unitStr}</span></div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('zones-list').innerHTML = html;
+
+  // Threshold summary
+  document.getElementById('threshold-display').textContent = formatSeconds(ftp);
+  document.getElementById('threshold-unit').textContent = ' ' + unitStr;
+}
+
+function attachInput(id, key) {
+  document.getElementById(id).addEventListener('input', (e) => {
+    const v = e.target.value.trim();
+    state[key] = v === '' ? 0 : Math.max(0, Number(v));
+    renderZones();
+  });
+}
+
+attachInput('t-hours', 'hours');
+attachInput('t-minutes', 'minutes');
+attachInput('t-seconds', 'seconds');
+
+function setUnit(u) {
+  state.unit = u;
+  document.getElementById('unit-metric').classList.toggle('active', u === 'metric');
+  document.getElementById('unit-imperial').classList.toggle('active', u === 'imperial');
+  document.getElementById('unit-metric').setAttribute('aria-selected', u === 'metric');
+  document.getElementById('unit-imperial').setAttribute('aria-selected', u === 'imperial');
+  document.getElementById('reset-btn').textContent = u === 'metric' ? 'Reset to 5:30 / km' : 'Reset to 8:51 / mile';
+  renderZones();
+}
+document.getElementById('unit-metric').addEventListener('click', () => setUnit('metric'));
+document.getElementById('unit-imperial').addEventListener('click', () => setUnit('imperial'));
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  if (state.unit === 'metric') {
+    state.hours = 0; state.minutes = 5; state.seconds = 30;
+  } else {
+    state.hours = 0; state.minutes = 8; state.seconds = 51;  // ~= 5:30/km
+  }
+  document.getElementById('t-hours').value = state.hours;
+  document.getElementById('t-minutes').value = state.minutes;
+  document.getElementById('t-seconds').value = state.seconds;
+  renderZones();
+});
+
+renderZones();
+</script>
+
+<div id="site-footer"></div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

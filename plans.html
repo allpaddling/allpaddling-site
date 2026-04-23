@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Training Plans — All Paddling</title>
+<meta name="description" content="Progressive Monthly Plans for Prone, SUP, Outrigger Canoe, and Surf Ski — $80 AUD/month. Structured, paddle-specific training with 5-zone pace targets and a built-in pace calculator." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<style>
+  .plan-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;
+  }
+  .plan-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem;
+    box-shadow: var(--shadow); position: relative;
+    display: flex; flex-direction: column;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .plan-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .plan-card.featured { border: 2px solid var(--brand-700); }
+  .plan-badge {
+    position: absolute; top: -10px; right: 1.5rem;
+    background: var(--brand-700); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem; border-radius: 999px;
+  }
+  .discipline-tag {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em;
+    padding: 0.35rem 0.75rem; border-radius: 999px;
+    margin-bottom: 1rem;
+  }
+  .plan-card h3 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .plan-card .plan-tagline { color: var(--text-3); font-size: 0.92rem; margin-bottom: 1.5rem; }
+  .plan-price { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 1.5rem; }
+  .plan-price .amount { font-family: 'Space Grotesk', sans-serif; font-size: 2.4rem; font-weight: 700; color: var(--text); line-height: 1; }
+  .plan-price .period { color: var(--text-3); font-size: 0.92rem; }
+  .plan-features { list-style: none; padding: 0; margin: 0 0 1.75rem; flex-grow: 1; }
+  .plan-features li {
+    position: relative; padding-left: 1.6rem; padding-bottom: 0.65rem;
+    font-size: 0.93rem; color: var(--text-2);
+  }
+  .plan-features li::before {
+    content: ''; position: absolute; left: 0; top: 0.4rem;
+    width: 16px; height: 16px; border-radius: 50%; background: var(--brand-50);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path fill='none' stroke='%230e7490' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2.5 6.5l2.5 2.5 4.5-5'/></svg>");
+    background-repeat: no-repeat; background-position: center;
+  }
+  @media (max-width: 720px) { .plan-grid { grid-template-columns: 1fr; } }
+
+  .comparison-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2.5rem;
+  }
+  .comparison-table {
+    width: 100%; border-collapse: collapse; font-size: 0.94rem;
+  }
+  .comparison-table th, .comparison-table td {
+    padding: 1rem 1.25rem; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .comparison-table th {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600;
+    font-size: 0.92rem; color: var(--text);
+    border-bottom: 2px solid var(--border-strong);
+  }
+  .comparison-table th:nth-child(2), .comparison-table th:nth-child(3),
+  .comparison-table td:nth-child(2), .comparison-table td:nth-child(3) {
+    text-align: center;
+  }
+  .comparison-table tr:last-child td { border-bottom: none; }
+  .comparison-table .check { color: var(--brand-700); font-weight: 600; }
+  .comparison-table .dash { color: var(--text-3); }
+  @media (max-width: 680px) {
+    .comparison-table th:nth-child(1), .comparison-table td:nth-child(1) { min-width: 160px; }
+    .comparison-section { padding: 1.5rem; overflow-x: auto; }
+  }
+
+  .zone-preview { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; margin-top: 1.5rem; }
+  .zone-chip {
+    padding: 0.85rem 0.5rem; border-radius: 8px; text-align: center;
+    border: 1px solid var(--border);
+  }
+  .zone-chip strong { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; }
+  .zone-chip span { font-size: 0.75rem; color: var(--text-3); }
+  .zone-1 { background: var(--tz1-bg); border-color: #cbd5e1; }
+  .zone-1 strong { color: var(--tz1); }
+  .zone-2 { background: var(--tz2-bg); border-color: #a5f3fc; }
+  .zone-2 strong { color: var(--tz2); }
+  .zone-3 { background: var(--tz3-bg); border-color: #67e8f9; }
+  .zone-3 strong { color: var(--tz3); }
+  .zone-4 { background: var(--tz4-bg); border-color: #fed7aa; }
+  .zone-4 strong { color: var(--tz4); }
+  .zone-5 { background: var(--tz5-bg); border-color: #fecaca; }
+  .zone-5 strong { color: var(--tz5); }
+  @media (max-width: 640px) { .zone-preview { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Training Plans</span>
+    <h1>Progressive plans for every paddler.</h1>
+    <p class="lead">Monthly subscription training plans — versatile to your fitness level, progressively structured to build speed and endurance, and paddle-specific to every stroke you'll make.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="section-eyebrow">How the plans work</div>
+    <h2 class="section-title">Interval training that actually progresses.</h2>
+    <p class="section-sub">Training that progressively increases volume and intensity through interval sessions each week is the most accurate method of gaining percentage improvements consistently. Every session targets a specific energy system, so your body builds the speed and stamina required to paddle faster for longer.</p>
+
+    <div class="zone-preview">
+      <div class="zone-chip zone-1"><strong>TZ1</strong><span>Recovery</span></div>
+      <div class="zone-chip zone-2"><strong>TZ2</strong><span>Endurance</span></div>
+      <div class="zone-chip zone-3"><strong>TZ3</strong><span>Threshold</span></div>
+      <div class="zone-chip zone-4"><strong>TZ4</strong><span>VO₂max</span></div>
+      <div class="zone-chip zone-5"><strong>TZ5</strong><span>Sprint</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">Plan Options</div>
+    <h2 class="section-title">Pick your plan.</h2>
+    <p class="section-sub">Self-guided Progressive Monthly plans for any discipline, or a Custom Season Race Plan built around your goal race.</p>
+
+    <div class="plan-grid">
+      <div class="plan-card">
+        <span class="discipline-tag">Prone</span>
+        <h3>Prone Paddle Board Plan</h3>
+        <p class="plan-tagline">Progressive monthly training for prone paddlers.</p>
+        <div class="plan-price"><span class="amount">$80</span><span class="period">AUD / month</span></div>
+        <ul class="plan-features">
+          <li>Weekly intervals + distance sessions</li>
+          <li>Progressive weekly load</li>
+          <li>Pace calculator for all 5 zones</li>
+          <li>Cancel anytime</li>
+        </ul>
+        <a href="custom-plan.html#subscribe-prone" class="btn btn-primary">Start training</a>
+      </div>
+
+      <div class="plan-card">
+        <span class="discipline-tag">SUP</span>
+        <h3>Stand Up Paddle Board Plan</h3>
+        <p class="plan-tagline">Progressive monthly training for SUP paddlers.</p>
+        <div class="plan-price"><span class="amount">$80</span><span class="period">AUD / month</span></div>
+        <ul class="plan-features">
+          <li>Weekly intervals + distance sessions</li>
+          <li>Progressive weekly load</li>
+          <li>Pace calculator for all 5 zones</li>
+          <li>Cancel anytime</li>
+        </ul>
+        <a href="custom-plan.html#subscribe-sup" class="btn btn-primary">Start training</a>
+      </div>
+
+      <div class="plan-card">
+        <span class="discipline-tag">OC</span>
+        <h3>Outrigger Canoe Plan</h3>
+        <p class="plan-tagline">Progressive monthly training for OC paddlers.</p>
+        <div class="plan-price"><span class="amount">$80</span><span class="period">AUD / month</span></div>
+        <ul class="plan-features">
+          <li>Weekly intervals + distance sessions</li>
+          <li>Progressive weekly load</li>
+          <li>Pace calculator for all 5 zones</li>
+          <li>Cancel anytime</li>
+        </ul>
+        <a href="custom-plan.html#subscribe-oc" class="btn btn-primary">Start training</a>
+      </div>
+
+      <div class="plan-card">
+        <span class="discipline-tag">Surf Ski</span>
+        <h3>Surf Ski Plan</h3>
+        <p class="plan-tagline">Progressive monthly training for surf ski paddlers.</p>
+        <div class="plan-price"><span class="amount">$80</span><span class="period">AUD / month</span></div>
+        <ul class="plan-features">
+          <li>Weekly intervals + distance sessions</li>
+          <li>Progressive weekly load</li>
+          <li>Pace calculator for all 5 zones</li>
+          <li>Cancel anytime</li>
+        </ul>
+        <a href="custom-plan.html#subscribe-ski" class="btn btn-primary">Start training</a>
+      </div>
+    </div>
+
+    <div style="margin-top: 2rem; display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
+      <div class="plan-card featured">
+        <span class="plan-badge">Premium</span>
+        <span class="discipline-tag">Any Discipline</span>
+        <h3>Custom Season Race Plan</h3>
+        <p class="plan-tagline">A full season build tailored to your goal race — with taper, peaking, and strength.</p>
+        <div class="plan-price"><span class="amount">$140</span><span class="period">AUD / month · min 4 months</span></div>
+        <ul class="plan-features">
+          <li>2–3 interval sessions + 1 race-specific distance session per week</li>
+          <li>Designed in consultation with you — weekly training time, ability, season goals</li>
+          <li>Taper and peaking weeks programmed before major goal races</li>
+          <li>Easy-to-follow progressive strength program included</li>
+          <li>Built-in pace calculator and zone-tracking</li>
+          <li>Minimum 4-month subscription</li>
+        </ul>
+        <a href="custom-plan.html" class="btn btn-primary">Learn more about Custom Plan</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="section-eyebrow">What's included</div>
+    <h2 class="section-title">Progressive vs Custom — at a glance.</h2>
+    <p class="section-sub">Both plans are built on the same 5-zone methodology. Custom adds consultation and race-specific periodisation.</p>
+
+    <div class="comparison-section">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Progressive ($80/mo)</th>
+            <th>Custom ($140/mo)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Weekly structured sessions</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td>Progressive volume & intensity</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td>5-zone pace calculator</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td>Interval + distance sessions</td><td class="check">2/week</td><td class="check">3–4/week</td></tr>
+          <tr><td>Discipline-specific (Prone, SUP, OC, Ski)</td><td class="check">Choose one</td><td class="check">Any</td></tr>
+          <tr><td>Designed around your goal race date</td><td class="dash">—</td><td class="check">✓</td></tr>
+          <tr><td>Taper &amp; peaking weeks</td><td class="dash">—</td><td class="check">✓</td></tr>
+          <tr><td>Progressive strength program</td><td class="dash">—</td><td class="check">✓</td></tr>
+          <tr><td>One-on-one consultation</td><td class="dash">—</td><td class="check">✓</td></tr>
+          <tr><td>Minimum commitment</td><td>Month-to-month</td><td>4 months</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">Before you start</div>
+    <h2 class="section-title">A few things to know.</h2>
+    <p class="section-sub">So you get the most out of your first month.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;">
+      <div class="card">
+        <h3 style="margin-bottom: 0.75rem;">Can I comfortably paddle for 60 minutes?</h3>
+        <p style="margin-bottom: 0;">A baseline of one-hour paddle fitness is recommended before starting any of our plans. If you're not there yet, build base distance first.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom: 0.75rem;">Do I know my threshold pace?</h3>
+        <p style="margin-bottom: 0;">Our <a href="pace-calculator.html">free pace calculator</a> turns your threshold pace into zone targets. If you don't know your threshold yet, the 3-minute test is the fastest way to find it.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom: 0.75rem;">How do I choose which plan?</h3>
+        <p style="margin-bottom: 0;">If you have a target race, pick Custom. If you want structured progression without a specific goal race, pick a Progressive Monthly plan in your discipline.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom: 0.75rem;">Can I cancel anytime?</h3>
+        <p style="margin-bottom: 0;">Progressive Monthly plans are month-to-month with no lock-in. Custom Season Race Plan requires a 4-month minimum so the programming has time to work.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
