@@ -138,6 +138,163 @@
   }
   .info-card .icon svg { width: 20px; height: 20px; }
   @media (max-width: 880px) { .info-cards { grid-template-columns: 1fr; } }
+
+  /* ============ Program preview (April · Week 1) ============ */
+  .program-header-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 1.5rem;
+  }
+  .program-meta .pm-label {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 0.15rem;
+  }
+  .program-meta .pm-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem; font-weight: 700; color: var(--text);
+  }
+  .show-paces-toggle {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.9rem; color: var(--text-2); font-weight: 500;
+    cursor: pointer; user-select: none;
+  }
+  .show-paces-toggle input { width: 16px; height: 16px; cursor: pointer; }
+
+  .sessions-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+  }
+  @media (max-width: 880px) { .sessions-grid { grid-template-columns: 1fr; } }
+
+  .session-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+    display: flex; flex-direction: column;
+  }
+  .session-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;
+  }
+  .session-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+    background: var(--brand-50); color: var(--brand-700);
+    padding: 0.3rem 0.65rem; border-radius: 6px;
+    white-space: nowrap;
+  }
+  .session-focus { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: flex-end; }
+  .focus-tag {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.25rem 0.55rem; border-radius: 5px;
+    white-space: nowrap;
+  }
+  .focus-tag.f-aer-th  { background: var(--tz2-bg); color: var(--tz2); }
+  .focus-tag.f-ana-th  { background: var(--tz3-bg); color: var(--tz3); }
+  .focus-tag.f-aer-cap { background: var(--tz4-bg); color: var(--tz4); }
+  .focus-tag.f-ana-cap { background: var(--tz5-bg); color: var(--tz5); }
+
+  .session-intervals { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; }
+  .interval {
+    display: grid; grid-template-columns: 48px 1fr auto; gap: 0.75rem;
+    align-items: center; padding: 0.55rem 0.75rem;
+    border-radius: 8px; border-left: 4px solid var(--border-strong);
+    background: var(--surface-2);
+    font-size: 0.92rem;
+  }
+  .interval[data-zone="1"] { background: var(--tz1-bg); border-left-color: var(--tz1); }
+  .interval[data-zone="2"] { background: var(--tz2-bg); border-left-color: var(--tz2); }
+  .interval[data-zone="3"] { background: var(--tz3-bg); border-left-color: var(--tz3); }
+  .interval[data-zone="4"] { background: var(--tz4-bg); border-left-color: var(--tz4); }
+  .interval[data-zone="5"] { background: var(--tz5-bg); border-left-color: var(--tz5); }
+
+  .interval-zone {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 700;
+  }
+  .interval[data-zone="1"] .interval-zone { color: var(--tz1); }
+  .interval[data-zone="2"] .interval-zone { color: var(--tz2); }
+  .interval[data-zone="3"] .interval-zone { color: var(--tz3); }
+  .interval[data-zone="4"] .interval-zone { color: var(--tz4); }
+  .interval[data-zone="5"] .interval-zone { color: var(--tz5); }
+
+  .interval-desc { color: var(--text); font-weight: 500; }
+  .interval-pace {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; font-weight: 600; color: var(--text-2);
+    white-space: nowrap;
+  }
+  body:not(.show-paces) .interval-pace { display: none; }
+
+  .session-repeat {
+    margin-top: auto;
+    padding: 0.55rem 0.75rem; border-radius: 8px;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.85rem; font-weight: 600; text-align: center;
+  }
+  .session-repeat.steady { background: var(--surface-2); color: var(--text-2); }
+
+  .program-cta {
+    margin-top: 2rem;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2 70%, #06b6d4);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+  }
+  .program-cta::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.15), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(6,182,212,0.35), transparent 55%);
+  }
+  .program-cta-inner {
+    position: relative; z-index: 1;
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 2.5rem;
+    align-items: center;
+    padding: 2.25rem 2.5rem;
+  }
+  .program-cta .pc-eyebrow {
+    display: inline-block;
+    font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.12);
+    padding: 0.35rem 0.75rem; border-radius: 999px; margin-bottom: 1rem;
+  }
+  .program-cta h3 {
+    color: white; font-size: clamp(1.4rem, 2.4vw, 1.75rem);
+    margin-bottom: 0.6rem; line-height: 1.25;
+  }
+  .program-cta p {
+    color: rgba(255,255,255,0.92);
+    font-size: 0.98rem; line-height: 1.55;
+    margin-bottom: 0;
+  }
+  .pc-actions {
+    display: flex; flex-direction: column; gap: 0.65rem;
+    align-items: stretch;
+  }
+  .pc-actions .btn { justify-content: center; }
+  .pc-actions .btn-primary {
+    background: white; color: var(--brand-700); border-color: white;
+  }
+  .pc-actions .btn-primary:hover {
+    background: #f8fafc; color: var(--brand-700);
+  }
+  .pc-actions .btn-secondary {
+    background: transparent; color: white;
+    border-color: rgba(255,255,255,0.45);
+  }
+  .pc-actions .btn-secondary:hover {
+    background: rgba(255,255,255,0.12); color: white;
+    border-color: rgba(255,255,255,0.7);
+  }
+  .pc-price {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.82rem; text-align: center;
+    margin: 0.25rem 0 0;
+  }
+  @media (max-width: 720px) {
+    .program-cta-inner { grid-template-columns: 1fr; gap: 1.5rem; padding: 1.75rem; }
+  }
 </style>
 </head>
 <body>
@@ -203,6 +360,51 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="section-eyebrow">See it in action</div>
+    <h2 class="section-title">Your paces, applied to a real training week.</h2>
+    <p class="section-sub">This is Week 1 of Program 1 — four sessions built around all five training zones. Every pace below updates live as you change your threshold above.</p>
+
+    <div class="program-header-row">
+      <div class="program-meta">
+        <div class="pm-label">Program</div>
+        <div class="pm-value">Program 1</div>
+      </div>
+      <div class="program-meta">
+        <div class="pm-label">Week</div>
+        <div class="pm-value">Week 1 of 4</div>
+      </div>
+      <label class="show-paces-toggle">
+        <input type="checkbox" id="show-paces-toggle" checked />
+        <span>Show my paces on intervals</span>
+      </label>
+    </div>
+
+    <div class="sessions-grid" id="sessions-grid">
+      <!-- Rendered by JS -->
+    </div>
+
+    <div class="program-cta">
+      <div class="program-cta-inner">
+        <div class="pc-text">
+          <span class="pc-eyebrow">That was one week</span>
+          <h3>Train like this, every week of the season.</h3>
+          <p>All three 4-week programs are built around your threshold pace — progressing week on week so you peak for race day. Strength work and personalised support included.</p>
+        </div>
+        <div class="pc-actions">
+          <a href="plans.html" class="btn btn-primary">
+            Start training
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+          </a>
+          <a href="custom-plan.html" class="btn btn-secondary">See the full program</a>
+          <p class="pc-price">Plans from $80 / 4 weeks · cancel anytime</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -314,6 +516,126 @@ function renderZones() {
   // Threshold summary
   document.getElementById('threshold-display').textContent = formatSeconds(ftp);
   document.getElementById('threshold-unit').textContent = ' ' + unitStr;
+
+  // Re-render the program sessions so their paces update too
+  renderSessions();
+}
+
+/* ============ Program preview: April · Week 1 ============ */
+
+const APRIL_WEEK_1 = {
+  label: 'Week 1',
+  date: '30 Mar',
+  sessions: [
+    {
+      focus: ['AEROBIC THRESHOLD', 'AEROBIC CAPACITY'],
+      warmup: [{z:1, d:'2 min'}],
+      set: [
+        {z:4, d:'20 sec'},
+        {z:2, d:'60 sec'},
+        {z:4, d:'20 sec'},
+        {z:2, d:'3 min'},
+        {z:4, d:'20 sec'}
+      ],
+      repeat: 8
+    },
+    {
+      focus: ['ANAEROBIC THRESHOLD', 'AEROBIC THRESHOLD'],
+      warmup: [{z:1, d:'2 min'}],
+      set: [
+        {z:3, d:'1 min'},
+        {z:2, d:'1 min'},
+        {z:3, d:'2 min'},
+        {z:2, d:'2 min'},
+        {z:3, d:'2 min'}
+      ],
+      repeat: 6
+    },
+    {
+      focus: ['AEROBIC THRESHOLD'],
+      warmup: [{z:1, d:'2 min'}],
+      set: [
+        {z:2, d:'2 min'},
+        {z:1, d:'1 min'},
+        {z:2, d:'4 min'}
+      ],
+      repeat: 6
+    },
+    {
+      focus: ['AEROBIC THRESHOLD'],
+      longSteady: {z:2, d:'60 minutes'}
+    }
+  ]
+};
+
+function focusClass(f) {
+  const s = f.toUpperCase();
+  if (s.includes('AEROBIC CAPACITY'))   return 'f-aer-cap';
+  if (s.includes('ANAEROBIC THRESHOLD')) return 'f-ana-th';
+  if (s.includes('ANAEROBIC CAPACITY'))  return 'f-ana-cap';
+  return 'f-aer-th';
+}
+
+function intervalHtml(iv) {
+  const zone = ZONES[iv.z - 1];
+  const ftp = thresholdSeconds();
+  const range = zonePaceRange(zone, ftp);
+  const unitStr = state.unit === 'metric' ? '/ km' : '/ mile';
+  return `
+    <div class="interval" data-zone="${iv.z}">
+      <div class="interval-zone">TZ ${iv.z}</div>
+      <div class="interval-desc">${iv.d}</div>
+      <div class="interval-pace">${range.label} ${unitStr}</div>
+    </div>
+  `;
+}
+
+function renderSessions() {
+  const el = document.getElementById('sessions-grid');
+  if (!el) return;
+
+  el.innerHTML = APRIL_WEEK_1.sessions.map((s, i) => {
+    const focus = s.focus.map(f => `<span class="focus-tag ${focusClass(f)}">${f}</span>`).join('');
+
+    let body = '';
+    if (s.longSteady) {
+      body = `
+        <div class="session-intervals">
+          ${intervalHtml({z: s.longSteady.z, d: s.longSteady.d})}
+        </div>
+        <div class="session-repeat steady">Single steady effort</div>
+      `;
+    } else {
+      const warm = (s.warmup || []).map(intervalHtml).join('');
+      const setBlock = (s.set || []).map(intervalHtml).join('');
+      body = `
+        <div class="session-intervals">
+          ${warm}
+          ${setBlock}
+        </div>
+        <div class="session-repeat">↻ Repeat all ${s.repeat} times</div>
+      `;
+    }
+
+    return `
+      <div class="session-card">
+        <div class="session-head">
+          <div class="session-num">Session ${i + 1}</div>
+          <div class="session-focus">${focus}</div>
+        </div>
+        ${body}
+      </div>
+    `;
+  }).join('');
+}
+
+// Show-paces toggle
+const showPacesToggle = document.getElementById('show-paces-toggle');
+if (showPacesToggle) {
+  document.body.classList.toggle('show-paces', showPacesToggle.checked);
+  showPacesToggle.addEventListener('change', (e) => {
+    document.body.classList.toggle('show-paces', e.target.checked);
+  });
 }
 
 function attachInput(id, key) {
