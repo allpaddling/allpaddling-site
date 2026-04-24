@@ -1,108 +1,267 @@
 /* ============================================================
-   admin.js — shared helpers for the Coach Admin area
-   Handles auth gate + localStorage data model for the 4
-   Progressive plans + Custom plan.
+   admin.js — shared helpers for the Coach Admin area.
 
-   Prototype note: everything lives in localStorage. Swap the
-   data layer for a real backend (Supabase / CMS) in Phase 2.
+   Phase A — backend wiring:
+   - Auth: Supabase magic-link sign-in (email OTP), gated by the
+     `coaches` allowlist table.
+   - Progressive plans (prone, sup, oc, ski): persisted to the
+     `progressive_plans` Supabase table. Cached in memory after
+     first load so synchronous getters still work.
+   - Custom plans: still on localStorage (Phase C will migrate).
+
+   Loads AFTER supabase-config.js, so `sb` (the client) and
+   `PROGRAM_1` (from program-data.js) are already in scope.
    ============================================================ */
-
-/* ---------- Allowed admin emails (prototype) ---------- */
-/* Change this list to grant access. Case-insensitive compare.   */
-const ADMIN_EMAILS = [
-  'mick@allpaddling.com',
-  'jakedibetta@gmail.com',
-];
-
-const ADMIN_AUTH_KEY = 'admin_auth_email';
-const ADMIN_DATA_KEY = 'admin_programs_v1';
-
-function isAdminEmail (email) {
-  if (!email) return false;
-  return ADMIN_EMAILS.map(e => e.toLowerCase()).includes(email.toLowerCase());
-}
-function getAdminAuth ()  { return localStorage.getItem(ADMIN_AUTH_KEY); }
-function setAdminAuth (e) { localStorage.setItem(ADMIN_AUTH_KEY, e); }
-function clearAdminAuth () { localStorage.removeItem(ADMIN_AUTH_KEY); }
-function adminIsAuthed () {
-  const e = getAdminAuth();
-  return e && isAdminEmail(e);
-}
 
 /* ---------- Plan key registry ---------- */
 const PLAN_META = {
-  prone:  { title: 'Prone Paddle Board Plan',    tier: 'Progressive', cadence: '4 weeks' },
-  sup:    { title: 'Stand Up Paddle Board Plan', tier: 'Progressive', cadence: '4 weeks' },
-  oc:     { title: 'Outrigger Canoe Plan',        tier: 'Progressive', cadence: '4 weeks' },
-  ski:    { title: 'Surf Ski Plan',               tier: 'Progressive', cadence: '4 weeks' },
+  prone:  { title: 'Prone Paddle Board Plan',     tier: 'Progressive', cadence: '4 weeks'  },
+  sup:    { title: 'Stand Up Paddle Board Plan',  tier: 'Progressive', cadence: '4 weeks'  },
+  oc:     { title: 'Outrigger Canoe Plan',        tier: 'Progressive', cadence: '4 weeks'  },
+  ski:    { title: 'Surf Ski Plan',               tier: 'Progressive', cadence: '4 weeks'  },
   custom: { title: 'Custom Season Race Plan',     tier: 'Custom',      cadence: '16 weeks' },
 };
+const PROGRESSIVE_KEYS = ['prone', 'sup', 'oc', 'ski'];
 function isValidPlanKey (k) { return Object.prototype.hasOwnProperty.call(PLAN_META, k); }
 
-/* ---------- Data load / save ---------- */
-/* Shape:
-   {
-     prone:  { meta: {...}, programs: [<week>, ...], lastEdited: ISO|null },
-     sup:    { ... },
-     oc:     { ... },
-     ski:    { ... },
-     custom: { meta: {...}, programs: [...], lastEdited: ISO|null }
-   }
-*/
+/* ---------- localStorage keys (Custom plan only now) ---------- */
+const LEGACY_DATA_KEY  = 'admin_programs_v1';   // old unified store
+const CUSTOM_DATA_KEY  = 'admin_custom_v1';     // new Custom-only store
 
-function loadAdminData () {
-  try {
-    const raw = localStorage.getItem(ADMIN_DATA_KEY);
-    if (raw) return migrate(JSON.parse(raw));
-  } catch (err) {
-    console.warn('admin.js — could not parse saved data, falling back to defaults', err);
+/* ============================================================
+   Auth — Supabase magic link
+   ============================================================ */
+
+async function sendMagicLink (email) {
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo },
+  });
+  if (error) throw error;
+}
+
+async function getCurrentSession () {
+  const { data, error } = await sb.auth.getSession();
+  if (error) { console.warn('admin.js — getSession error', error); return null; }
+  return data.session || null;
+}
+
+async function getAdminEmail () {
+  const session = await getCurrentSession();
+  return session && session.user ? session.user.email : null;
+}
+
+/* Is the signed-in user actually a coach?
+   We hit the `coaches` table — RLS lets coaches see the list,
+   so this returns a row only if they're allowed. */
+async function isCurrentUserCoach () {
+  const email = await getAdminEmail();
+  if (!email) return false;
+  const { data, error } = await sb
+    .from('coaches')
+    .select('email')
+    .eq('email', email)
+    .maybeSingle();
+  if (error) { console.warn('admin.js — coach lookup error', error); return false; }
+  return !!data;
+}
+
+async function adminIsAuthed () {
+  return await isCurrentUserCoach();
+}
+
+async function signOut () {
+  await sb.auth.signOut();
+}
+
+/* ============================================================
+   Progressive plans — Supabase-backed with in-memory cache
+   ============================================================ */
+
+let __cache = {
+  prone: null, sup: null, oc: null, ski: null,
+  custom: null,
+};
+let __progressiveLoaded = false;
+
+function rowToPlan (row, planKey) {
+  if (!row) {
+    return defaultProgressivePlan(planKey);
   }
-  return defaultAdminData();
+  return {
+    meta: row.meta && Object.keys(row.meta).length ? row.meta : defaultProgressiveMeta(planKey),
+    programs: Array.isArray(row.programs) ? row.programs : [],
+    lastEdited: row.last_edited || null,
+  };
 }
 
-function saveAdminData (data) {
-  localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(data));
+async function loadProgressivePlans () {
+  const { data, error } = await sb
+    .from('progressive_plans')
+    .select('*');
+  if (error) {
+    console.error('admin.js — failed to load progressive_plans', error);
+    PROGRESSIVE_KEYS.forEach(k => { __cache[k] = defaultProgressivePlan(k); });
+    __progressiveLoaded = true;
+    return;
+  }
+  PROGRESSIVE_KEYS.forEach(k => {
+    const row = data.find(r => r.key === k);
+    __cache[k] = rowToPlan(row, k);
+  });
+  __progressiveLoaded = true;
 }
 
-function savePlan (planKey, planData) {
-  const all = loadAdminData();
+/* Synchronous read after loadProgressivePlans() has resolved. */
+function getProgressivePlan (planKey) {
+  if (!__progressiveLoaded) {
+    console.warn('admin.js — getProgressivePlan called before load');
+  }
+  return __cache[planKey] || defaultProgressivePlan(planKey);
+}
+
+/* Write-through: update cache + persist to Supabase. */
+async function saveProgressivePlan (planKey, planData) {
+  if (!isValidPlanKey(planKey) || planKey === 'custom') {
+    throw new Error('saveProgressivePlan called with invalid key: ' + planKey);
+  }
   planData.lastEdited = new Date().toISOString();
-  all[planKey] = planData;
-  saveAdminData(all);
-}
+  __cache[planKey] = planData;
 
-function resetPlan (planKey) {
-  const all = loadAdminData();
-  all[planKey] = defaultPlan(planKey);
-  saveAdminData(all);
-}
+  const { error } = await sb
+    .from('progressive_plans')
+    .update({
+      meta: planData.meta,
+      programs: planData.programs,
+      last_edited: planData.lastEdited,
+    })
+    .eq('key', planKey);
 
-/* ---------- Defaults ---------- */
-function defaultAdminData () {
-  const data = {};
-  Object.keys(PLAN_META).forEach(k => { data[k] = defaultPlan(k); });
-  return data;
-}
-
-function defaultPlan (planKey) {
-  // Custom is special — it's a collection of per-member plans, not a single plan.
-  if (planKey === 'custom') {
-    return { members: [], plans: {} };
+  if (error) {
+    console.error('admin.js — saveProgressivePlan failed', error);
+    throw error;
   }
+}
+
+async function resetProgressivePlan (planKey) {
+  const fresh = defaultProgressivePlan(planKey);
+  await saveProgressivePlan(planKey, fresh);
+  return fresh;
+}
+
+function defaultProgressiveMeta (planKey) {
   const source = (typeof PROGRAM_1 !== 'undefined') ? PROGRAM_1 : null;
   return {
-    meta: {
-      name: (source && source.name) || 'Program 1',
-      subtitle: (source && source.subtitle) || 'Aerobic base · intro intensity',
-      tier: 'Progressive',
-      cadence: '4 weeks',
-    },
+    name: (source && source.name) || 'Program 1',
+    subtitle: (source && source.subtitle) || 'Aerobic base · intro intensity',
+    tier: 'Progressive',
+    cadence: '4 weeks',
+  };
+}
+
+function defaultProgressivePlan (planKey) {
+  const source = (typeof PROGRAM_1 !== 'undefined') ? PROGRAM_1 : null;
+  return {
+    meta: defaultProgressiveMeta(planKey),
     programs: source ? clone(source.weeks) : [],
     lastEdited: null,
   };
 }
 
-/* Shape of a single member's Custom plan (separate from the member record). */
+/* ============================================================
+   Compatibility shims — older callers used loadAdminData()
+   ============================================================ */
+
+/* Returns the same flat shape the prototype used so the rest of
+   the admin pages can keep their existing calls. Progressive
+   plans come from the cache; Custom comes from localStorage. */
+function loadAdminData () {
+  return {
+    prone:  __cache.prone  || defaultProgressivePlan('prone'),
+    sup:    __cache.sup    || defaultProgressivePlan('sup'),
+    oc:     __cache.oc     || defaultProgressivePlan('oc'),
+    ski:    __cache.ski    || defaultProgressivePlan('ski'),
+    custom: loadCustomBlob(),
+  };
+}
+
+/* Older async-aware callers: kept for backwards compat. */
+async function savePlan (planKey, planData) {
+  if (planKey === 'custom') {
+    throw new Error('Use saveCustomPlan(memberId, plan) for custom plans');
+  }
+  await saveProgressivePlan(planKey, planData);
+}
+
+async function resetPlan (planKey) {
+  return await resetProgressivePlan(planKey);
+}
+
+/* ============================================================
+   Custom plans (per-member) — localStorage for now
+   ============================================================ */
+
+function loadCustomBlob () {
+  // Migration: if new key is missing but legacy exists, lift the
+  // .custom subtree across so we don't lose the prototype's data.
+  if (!localStorage.getItem(CUSTOM_DATA_KEY)) {
+    const legacy = localStorage.getItem(LEGACY_DATA_KEY);
+    if (legacy) {
+      try {
+        const parsed = JSON.parse(legacy);
+        if (parsed && parsed.custom) {
+          localStorage.setItem(CUSTOM_DATA_KEY, JSON.stringify(parsed.custom));
+        }
+      } catch (e) {
+        console.warn('admin.js — could not migrate legacy custom blob', e);
+      }
+    }
+  }
+
+  let blob = null;
+  try {
+    const raw = localStorage.getItem(CUSTOM_DATA_KEY);
+    if (raw) blob = JSON.parse(raw);
+  } catch (e) {
+    console.warn('admin.js — custom blob parse failed', e);
+  }
+  if (!blob || typeof blob !== 'object') {
+    blob = { members: [], plans: {} };
+  }
+
+  // Legacy upgrade: the very first prototype shape had
+  // { meta, programs, lastEdited } at the top level.
+  if (blob.meta && blob.programs && !blob.members) {
+    const legacyId = makeMemberId();
+    blob = {
+      members: [Object.assign(defaultCustomMember(), {
+        id: legacyId,
+        name: 'Legacy plan',
+        notes: 'Imported from the previous single-plan editor.',
+      })],
+      plans: {
+        [legacyId]: {
+          meta: blob.meta,
+          programs: blob.programs,
+          lastEdited: blob.lastEdited || null,
+        },
+      },
+    };
+    saveCustomBlob(blob);
+  }
+
+  if (!Array.isArray(blob.members)) blob.members = [];
+  if (!blob.plans || typeof blob.plans !== 'object') blob.plans = {};
+  __cache.custom = blob;
+  return blob;
+}
+
+function saveCustomBlob (blob) {
+  __cache.custom = blob;
+  localStorage.setItem(CUSTOM_DATA_KEY, JSON.stringify(blob));
+}
+
 function defaultCustomPlan () {
   const source = (typeof PROGRAM_1 !== 'undefined') ? PROGRAM_1 : null;
   return {
@@ -133,113 +292,63 @@ function makeMemberId () {
   return 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
 }
 
-function clone (obj) { return JSON.parse(JSON.stringify(obj)); }
-
-function migrate (data) {
-  // Ensure every plan key exists (future-proofing if we add plans later).
-  Object.keys(PLAN_META).forEach(k => {
-    if (k === 'custom') {
-      if (!data[k]) data[k] = defaultPlan(k);
-
-      // Legacy shape: custom was a single { meta, programs, lastEdited }.
-      // Upgrade it into { members, plans } so we don't lose any edits.
-      if (data[k].meta && data[k].programs && !data[k].members) {
-        const legacyId = makeMemberId();
-        data[k] = {
-          members: [Object.assign(defaultCustomMember(), {
-            id: legacyId,
-            name: 'Legacy plan',
-            notes: 'Imported from the previous single-plan editor.',
-          })],
-          plans: {
-            [legacyId]: {
-              meta: data[k].meta,
-              programs: data[k].programs,
-              lastEdited: data[k].lastEdited || null,
-            },
-          },
-        };
-      }
-
-      if (!Array.isArray(data[k].members)) data[k].members = [];
-      if (!data[k].plans || typeof data[k].plans !== 'object') data[k].plans = {};
-      return;
-    }
-    if (!data[k]) data[k] = defaultPlan(k);
-    if (!data[k].meta) data[k].meta = defaultPlan(k).meta;
-    if (!Array.isArray(data[k].programs)) data[k].programs = defaultPlan(k).programs;
-  });
-  return data;
-}
-
-/* ---------- Custom-plan member helpers ----------
-   Custom plans are per-member, not a shared template, so the admin UI
-   needs to pick a member before opening the editor.
-*/
-function getCustomMembers () {
-  const all = loadAdminData();
-  return (all.custom && all.custom.members) || [];
-}
-
-function getCustomMember (id) {
-  return getCustomMembers().find(m => m.id === id) || null;
-}
+function getCustomMembers ()   { return loadCustomBlob().members; }
+function getCustomMember (id)  { return getCustomMembers().find(m => m.id === id) || null; }
 
 function addCustomMember (partial) {
-  const all = loadAdminData();
-  if (!all.custom) all.custom = { members: [], plans: {} };
+  const blob = loadCustomBlob();
   const member = Object.assign(defaultCustomMember(), partial || {}, {
     id: makeMemberId(),
     createdAt: new Date().toISOString(),
   });
-  all.custom.members.push(member);
-  all.custom.plans[member.id] = defaultCustomPlan();
-  saveAdminData(all);
+  blob.members.push(member);
+  blob.plans[member.id] = defaultCustomPlan();
+  saveCustomBlob(blob);
   return member;
 }
 
 function updateCustomMember (id, patch) {
-  const all = loadAdminData();
-  const idx = all.custom.members.findIndex(m => m.id === id);
+  const blob = loadCustomBlob();
+  const idx = blob.members.findIndex(m => m.id === id);
   if (idx === -1) return null;
-  all.custom.members[idx] = Object.assign({}, all.custom.members[idx], patch || {});
-  saveAdminData(all);
-  return all.custom.members[idx];
+  blob.members[idx] = Object.assign({}, blob.members[idx], patch || {});
+  saveCustomBlob(blob);
+  return blob.members[idx];
 }
 
 function removeCustomMember (id) {
-  const all = loadAdminData();
-  all.custom.members = all.custom.members.filter(m => m.id !== id);
-  if (all.custom.plans) delete all.custom.plans[id];
-  saveAdminData(all);
+  const blob = loadCustomBlob();
+  blob.members = blob.members.filter(m => m.id !== id);
+  if (blob.plans) delete blob.plans[id];
+  saveCustomBlob(blob);
 }
 
 function getCustomPlan (memberId) {
-  const all = loadAdminData();
-  return (all.custom && all.custom.plans && all.custom.plans[memberId]) || null;
+  const blob = loadCustomBlob();
+  return (blob.plans && blob.plans[memberId]) || null;
 }
 
 function saveCustomPlan (memberId, plan) {
-  const all = loadAdminData();
-  if (!all.custom) all.custom = { members: [], plans: {} };
-  if (!all.custom.plans) all.custom.plans = {};
+  const blob = loadCustomBlob();
+  if (!blob.plans) blob.plans = {};
   plan.lastEdited = new Date().toISOString();
-  all.custom.plans[memberId] = plan;
-  saveAdminData(all);
+  blob.plans[memberId] = plan;
+  saveCustomBlob(blob);
 }
 
 function resetCustomPlan (memberId) {
-  const all = loadAdminData();
-  if (!all.custom || !all.custom.plans) return;
-  all.custom.plans[memberId] = defaultCustomPlan();
-  saveAdminData(all);
+  const blob = loadCustomBlob();
+  if (!blob.plans) return;
+  blob.plans[memberId] = defaultCustomPlan();
+  saveCustomBlob(blob);
 }
 
-/* ---------- Small shared helpers used by editor ----------
-   Focus values are stored uppercase to match program-data.js
-   (e.g. 'AEROBIC THRESHOLD') — focusClass() in program-data.js
-   pattern-matches on those strings.
-*/
+/* ============================================================
+   Small shared helpers
+   ============================================================ */
+
+function clone (obj) { return JSON.parse(JSON.stringify(obj)); }
+
 const FOCUS_OPTIONS = [
   { value: 'AEROBIC THRESHOLD',   label: 'Aerobic threshold'   },
   { value: 'ANAEROBIC THRESHOLD', label: 'Anaerobic threshold' },
@@ -250,6 +359,7 @@ function focusLabel (f) {
   const opt = FOCUS_OPTIONS.find(o => o.value === f);
   return opt ? opt.label : f;
 }
+
 const ZONE_OPTIONS = [
   { value: 1, label: 'TZ1 · Warmup/Recovery'     },
   { value: 2, label: 'TZ2 · Aerobic threshold'   },
