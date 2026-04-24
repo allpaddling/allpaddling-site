@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Edit Program — All Paddling Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* ====== Sticky save bar ====== */
+  .save-bar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+    margin: -1.5rem -1.5rem 1.5rem;
+    box-shadow: 0 1px 0 var(--border);
+  }
+  @media (max-width: 760px) { .save-bar { margin: -1rem -1rem 1rem; padding: 0.6rem 1rem; } }
+
+  .save-bar .save-state {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-size: 0.88rem; color: var(--text-2);
+  }
+  .save-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #10b981;
+  }
+  .save-dot.dirty { background: #f59e0b; }
+  .save-bar .save-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  /* ====== Editor form ====== */
+  .editor-section { margin-bottom: 1.25rem; }
+  .editor-section h2 { margin-bottom: 0.25rem; }
+  .editor-section .card-sub { margin-bottom: 1rem; }
+
+  .form-row {
+    display: grid; grid-template-columns: 180px 1fr;
+    gap: 1rem; align-items: start;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .form-row:last-child { border-bottom: 0; }
+  .form-row label {
+    font-weight: 600; font-size: 0.88rem; color: var(--text-2);
+    padding-top: 0.5rem;
+  }
+  .form-row .hint {
+    font-size: 0.8rem; color: var(--text-3); font-weight: 400;
+    margin-top: 0.2rem; display: block;
+  }
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; gap: 0.3rem; }
+    .form-row label { padding-top: 0; }
+  }
+
+  .text-input, .textarea-input, .select-input {
+    width: 100%; box-sizing: border-box;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    background: var(--surface);
+  }
+  .textarea-input { min-height: 72px; resize: vertical; line-height: 1.5; }
+  .text-input:focus, .textarea-input:focus, .select-input:focus {
+    outline: none; border-color: var(--brand-700);
+    box-shadow: 0 0 0 3px var(--brand-50);
+  }
+
+  /* ====== Week tabs ====== */
+  .admin-week-tabs {
+    display: flex; gap: 0.35rem; overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.25rem; padding-bottom: 0.5rem;
+  }
+  .admin-week-tab {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600; font-size: 0.92rem;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text-2);
+    cursor: pointer; white-space: nowrap;
+  }
+  .admin-week-tab.active {
+    background: var(--brand-700); color: white;
+    border-color: var(--brand-700);
+  }
+  .admin-week-tab:hover:not(.active) { background: var(--surface-2); }
+
+  /* ====== Session editor card ====== */
+  .session-editor {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem 1.4rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .session-editor-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 0.75rem; flex-wrap: wrap;
+    padding-bottom: 0.85rem; margin-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .session-editor-head h3 {
+    font-size: 1.05rem; margin: 0;
+    display: flex; align-items: center; gap: 0.55rem;
+  }
+  .session-editor-head .session-num-chip {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    background: var(--brand-50); color: var(--brand-700);
+    padding: 0.3rem 0.6rem; border-radius: 6px;
+  }
+
+  /* Focus chips (multi-select checkboxes) */
+  .focus-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .focus-chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.82rem; font-weight: 600;
+    padding: 0.35rem 0.7rem; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    cursor: pointer; user-select: none;
+  }
+  .focus-chip input { margin: 0; }
+  .focus-chip.checked {
+    background: var(--brand-50); border-color: var(--brand-100); color: var(--brand-700);
+  }
+
+  /* Interval rows */
+  .interval-list {
+    display: flex; flex-direction: column; gap: 0.45rem;
+    margin-top: 0.5rem;
+  }
+  .interval-row {
+    display: grid; grid-template-columns: 180px 1fr 36px;
+    gap: 0.6rem; align-items: center;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border-left: 4px solid var(--border-strong);
+  }
+  .interval-row[data-zone="1"] { background: var(--tz1-bg); border-left-color: var(--tz1); }
+  .interval-row[data-zone="2"] { background: var(--tz2-bg); border-left-color: var(--tz2); }
+  .interval-row[data-zone="3"] { background: var(--tz3-bg); border-left-color: var(--tz3); }
+  .interval-row[data-zone="4"] { background: var(--tz4-bg); border-left-color: var(--tz4); }
+  .interval-row[data-zone="5"] { background: var(--tz5-bg); border-left-color: var(--tz5); }
+  .interval-row select, .interval-row input {
+    padding: 0.4rem 0.55rem; font-size: 0.88rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: white;
+    font-family: inherit;
+  }
+  .interval-row .remove-btn {
+    background: transparent; border: 0; color: var(--text-3);
+    cursor: pointer; padding: 0.35rem; border-radius: 6px;
+    font-size: 1.2rem; line-height: 1;
+  }
+  .interval-row .remove-btn:hover { color: #b91c1c; background: rgba(185,28,28,0.08); }
+  @media (max-width: 640px) {
+    .interval-row { grid-template-columns: 140px 1fr 32px; gap: 0.4rem; }
+  }
+
+  .add-interval-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.88rem; font-weight: 600;
+    color: var(--brand-700); background: transparent;
+    border: 1px dashed var(--brand-100);
+    padding: 0.5rem 0.9rem; border-radius: 8px; cursor: pointer;
+    margin-top: 0.5rem;
+  }
+  .add-interval-btn:hover { background: var(--brand-50); }
+
+  /* Set type + repeat controls */
+  .set-controls {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    margin: 0.85rem 0 0.35rem;
+  }
+  @media (max-width: 500px) { .set-controls { grid-template-columns: 1fr; } }
+
+  .subsection-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-3); margin: 1rem 0 0.4rem;
+  }
+
+  /* Danger zone */
+  .danger-zone {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .danger-zone h3 { color: #9a3412; margin: 0 0 0.25rem; font-size: 1rem; }
+  .danger-zone p { color: #7c2d12; font-size: 0.88rem; margin: 0 0 0.75rem; }
+  .btn-danger {
+    background: white; color: #b91c1c; border: 1px solid #fecaca;
+  }
+  .btn-danger:hover { background: #fef2f2; border-color: #fca5a5; }
+
+  /* Claude mini-panel in editor */
+  .claude-mini {
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .claude-mini h3 { margin: 0 0 0.3rem; display: flex; align-items: center; gap: 0.5rem; }
+  .claude-mini .soon-tag {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em;
+    background: var(--surface-2); color: var(--text-3);
+    padding: 0.22rem 0.5rem; border-radius: 999px;
+  }
+  .claude-mini .sub { color: var(--text-3); font-size: 0.88rem; margin: 0 0 0.85rem; }
+  .claude-mini textarea {
+    width: 100%; box-sizing: border-box;
+    min-height: 80px; padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif; font-size: 0.92rem; line-height: 1.5;
+    background: var(--surface-2); resize: vertical;
+  }
+  .claude-mini textarea:focus { outline: none; border-color: var(--brand-700); background: var(--surface); }
+  .claude-mini .row {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 0.75rem; flex-wrap: wrap; margin-top: 0.85rem;
+  }
+  .claude-mini .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+  /* Gate styles (reused) */
+  .gate-wrap {
+    min-height: 100vh;
+    display: grid; place-items: center;
+    padding: 2rem 1rem;
+    background: var(--surface-2);
+  }
+  .gate-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2.25rem 2.5rem;
+    max-width: 420px; width: 100%; box-shadow: var(--shadow-lg);
+  }
+  .gate-card h1 { font-size: 1.3rem; margin: 0 0 0.4rem; }
+  .gate-card p { color: var(--text-3); font-size: 0.93rem; margin: 0 0 1.5rem; }
+
+  .admin-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem; border-radius: 5px;
+    margin-left: 0.35rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- Unauthenticated — bounce back to admin.html to log in -->
+<div id="gate-fallback" class="gate-wrap" style="display:none;">
+  <div class="gate-card">
+    <h1>Please sign in</h1>
+    <p>You need to sign in to the Coach Admin area to edit programs.</p>
+    <a href="admin.html" class="btn btn-primary" style="width:100%; justify-content:center;">Go to sign-in →</a>
+  </div>
+</div>
+
+<!-- Editor shell -->
+<div class="app-shell" id="admin-shell" style="display:none;">
+  <aside class="app-sidebar" aria-label="Admin navigation">
+    <div class="app-sidebar-brand">
+      <span class="brand-mark-sm" aria-hidden="true">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 18c3-4 7-4 10 0s7 4 10 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6 22c2.5-3 6-3 8 0s5.5 3 8 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+        </svg>
+      </span>
+      <span class="brand-text">All Paddling<span class="admin-badge">ADMIN</span><small>Coach dashboard</small></span>
+    </div>
+    <nav class="app-sidebar-nav">
+      <a href="admin.html" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span>Programs</span>
+      </a>
+      <a href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Member preview</span>
+      </a>
+    </nav>
+    <div class="app-sidebar-footer">
+      <div class="app-member-chip">
+        <div class="app-member-avatar" id="admin-avatar">CO</div>
+        <div class="app-member-meta">
+          <div class="name" id="admin-name">Coach</div>
+          <div class="plan" id="admin-email">—</div>
+        </div>
+      </div>
+      <a href="#" id="signout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign out</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="app-main">
+    <!-- Sticky save bar -->
+    <div class="save-bar">
+      <div class="save-state">
+        <span class="save-dot" id="save-dot"></span>
+        <span id="save-msg">All changes saved.</span>
+      </div>
+      <div class="save-actions">
+        <a href="admin.html" class="btn btn-ghost">← Back to programs</a>
+        <button class="btn btn-ghost" id="preview-btn">Preview as member →</button>
+      </div>
+    </div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb"><a href="admin.html">Programs</a> / <span id="crumb-plan">—</span></div>
+      <h1 id="page-title">—</h1>
+      <p class="lead" id="page-sub">—</p>
+    </div>
+
+    <!-- Program meta -->
+    <div class="app-card editor-section">
+      <h2>Program details</h2>
+      <p class="card-sub">Top-level fields shown to members in the header of their current program.</p>
+
+      <div class="form-row">
+        <label for="meta-name">Program name
+          <span class="hint">e.g. "Program 1" — shown in the member header.</span>
+        </label>
+        <input type="text" id="meta-name" class="text-input" />
+      </div>
+      <div class="form-row">
+        <label for="meta-subtitle">Subtitle
+          <span class="hint">One-line theme — e.g. "Aerobic base · intro intensity".</span>
+        </label>
+        <input type="text" id="meta-subtitle" class="text-input" />
+      </div>
+    </div>
+
+    <!-- Weeks -->
+    <div class="app-card editor-section">
+      <h2>Weeks</h2>
+      <p class="card-sub">Select a week to edit its sessions. Changes save automatically to this browser.</p>
+
+      <div class="admin-week-tabs" id="week-tabs" role="tablist"></div>
+
+      <div id="week-editor"></div>
+    </div>
+
+    <!-- Claude assist -->
+    <div class="app-card claude-mini">
+      <h3>Claude Assist <span class="soon-tag">COMING SOON</span></h3>
+      <p class="sub">Describe a change in plain English. Phase 2 will send this to Claude, have it propose an edit to this program, and show you a diff before saving.</p>
+      <textarea id="claude-mini-prompt" placeholder="e.g. 'Drop the VO2 intervals in Week 3 to 5 reps.' or 'Swap Session 3 for a longer distance paddle.'"></textarea>
+      <div class="row">
+        <span style="font-size: 0.82rem; color: var(--text-3);">Phase 2 — needs backend + Claude API wiring</span>
+        <button class="btn btn-primary" disabled>Apply to this program →</button>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="danger-zone">
+      <h3>Reset this program</h3>
+      <p>Discards all edits on this browser and restores the default program. Cannot be undone.</p>
+      <button class="btn btn-danger" id="reset-btn">Reset to default</button>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/program-data.js"></script>
+<script src="../assets/admin.js"></script>
+<script>
+/* ============================================================
+   admin-edit.html — program editor logic
+   ============================================================ */
+(function () {
+  /* ---- Auth ---- */
+  if (!adminIsAuthed()) {
+    document.getElementById('gate-fallback').style.display = '';
+    document.getElementById('admin-shell').style.display = 'none';
+    return;
+  }
+  document.getElementById('admin-shell').style.display = '';
+
+  /* ---- Route: ?plan=<key> ---- */
+  const params = new URLSearchParams(location.search);
+  const planKey = params.get('plan');
+  if (!planKey || !isValidPlanKey(planKey)) {
+    alert('Unknown plan. Redirecting to programs list.');
+    location.href = 'admin.html';
+    return;
+  }
+
+  /* ---- Load data ---- */
+  let plan = loadAdminData()[planKey];
+  let activeWeek = 0;
+
+  /* ---- Sidebar user ---- */
+  const email = getAdminAuth();
+  const niceName = (email || 'Coach').split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  document.getElementById('admin-email').textContent = email || '';
+  document.getElementById('admin-name').textContent = niceName;
+  const avatarEl = document.getElementById('admin-avatar');
+  if (avatarEl) {
+    const initials = niceName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+    avatarEl.textContent = initials || 'CO';
+  }
+  document.getElementById('signout-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    clearAdminAuth();
+    location.href = 'admin.html';
+  });
+
+  /* ---- Header ---- */
+  const meta = PLAN_META[planKey];
+  document.getElementById('crumb-plan').textContent = meta.title;
+  document.getElementById('page-title').textContent = meta.title;
+  document.getElementById('page-sub').textContent =
+    meta.tier + ' plan · ' + meta.cadence + ' · editing the program template all subscribers see.';
+
+  /* ---- Program meta inputs ---- */
+  const metaName = document.getElementById('meta-name');
+  const metaSub  = document.getElementById('meta-subtitle');
+  metaName.value = plan.meta.name || '';
+  metaSub.value  = plan.meta.subtitle || '';
+  metaName.addEventListener('input', () => { plan.meta.name = metaName.value; markDirty(); debouncedSave(); });
+  metaSub .addEventListener('input', () => { plan.meta.subtitle = metaSub.value; markDirty(); debouncedSave(); });
+
+  /* ---- Weeks ---- */
+  renderWeekTabs();
+  renderWeekEditor();
+
+  /* ---- Reset ---- */
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    if (!confirm('Reset this program to defaults? All edits on this browser will be lost.')) return;
+    resetPlan(planKey);
+    plan = loadAdminData()[planKey];
+    metaName.value = plan.meta.name || '';
+    metaSub.value  = plan.meta.subtitle || '';
+    activeWeek = 0;
+    renderWeekTabs();
+    renderWeekEditor();
+    flashSaved('Reset to defaults.');
+  });
+
+  /* ---- Preview as member ---- */
+  document.getElementById('preview-btn').addEventListener('click', () => {
+    alert('Member preview: once the backend is wired, this will open the member program view with your edits baked in.');
+  });
+
+  /* ---- Claude mini-prompt persistence ---- */
+  const claudeTa = document.getElementById('claude-mini-prompt');
+  const draftKey = 'admin_claude_draft_' + planKey;
+  claudeTa.value = localStorage.getItem(draftKey) || '';
+  claudeTa.addEventListener('input', () => localStorage.setItem(draftKey, claudeTa.value));
+
+  /* ============================================================
+     Rendering
+     ============================================================ */
+  function renderWeekTabs () {
+    const tabs = plan.programs.map((w, i) => {
+      const cls = i === activeWeek ? ' active' : '';
+      return `<button class="admin-week-tab${cls}" data-week="${i}">${escapeHtml(w.label || 'Week ' + (i+1))}</button>`;
+    }).join('');
+    const el = document.getElementById('week-tabs');
+    el.innerHTML = tabs + `<button class="admin-week-tab" id="add-week" title="Add a week">+ Add week</button>`;
+    el.querySelectorAll('button[data-week]').forEach(btn => {
+      btn.addEventListener('click', () => { activeWeek = Number(btn.dataset.week); renderWeekTabs(); renderWeekEditor(); });
+    });
+    document.getElementById('add-week').addEventListener('click', () => {
+      plan.programs.push({ label: 'Week ' + (plan.programs.length + 1), startDate: '', note: '', sessions: [] });
+      activeWeek = plan.programs.length - 1;
+      markDirty(); debouncedSave();
+      renderWeekTabs(); renderWeekEditor();
+    });
+  }
+
+  function renderWeekEditor () {
+    const w = plan.programs[activeWeek];
+    if (!w) { document.getElementById('week-editor').innerHTML = '<p style="color:var(--text-3);">No weeks yet — click "+ Add week" to start.</p>'; return; }
+
+    const sessionHtml = w.sessions.map((s, i) => renderSessionEditor(s, i)).join('');
+    document.getElementById('week-editor').innerHTML = `
+      <div class="form-row">
+        <label for="w-label">Label</label>
+        <input type="text" id="w-label" class="text-input" value="${escapeAttr(w.label || '')}" />
+      </div>
+      <div class="form-row">
+        <label for="w-start">Start date
+          <span class="hint">Free text — e.g. "30 Mar".</span>
+        </label>
+        <input type="text" id="w-start" class="text-input" value="${escapeAttr(w.startDate || '')}" />
+      </div>
+      <div class="form-row">
+        <label for="w-note">Coaching note
+          <span class="hint">Shown above the week's sessions.</span>
+        </label>
+        <textarea id="w-note" class="textarea-input">${escapeHtml(w.note || '')}</textarea>
+      </div>
+
+      <div class="subsection-label">Sessions</div>
+      ${sessionHtml || '<p style="color:var(--text-3); margin:0.5rem 0 0.75rem;">No sessions in this week yet.</p>'}
+
+      <div style="display:flex; gap:0.5rem; flex-wrap: wrap; margin-top: 0.85rem;">
+        <button class="btn btn-ghost" id="add-session-btn">+ Add session</button>
+        <button class="btn btn-danger" id="remove-week-btn">Remove this week</button>
+      </div>
+    `;
+
+    // Bind week fields
+    document.getElementById('w-label').addEventListener('input', e => { w.label = e.target.value; markDirty(); debouncedSave(); renderWeekTabsLabelsOnly(); });
+    document.getElementById('w-start').addEventListener('input', e => { w.startDate = e.target.value; markDirty(); debouncedSave(); });
+    document.getElementById('w-note' ).addEventListener('input', e => { w.note = e.target.value; markDirty(); debouncedSave(); });
+
+    // Add session
+    document.getElementById('add-session-btn').addEventListener('click', () => {
+      w.sessions.push({
+        focus: ['AEROBIC THRESHOLD'],
+        warmup: [{ z: 1, d: '2 min' }],
+        set: [{ z: 3, d: '1 min' }, { z: 2, d: '1 min' }],
+        repeat: 4,
+      });
+      markDirty(); debouncedSave(); renderWeekEditor();
+    });
+
+    // Remove week
+    document.getElementById('remove-week-btn').addEventListener('click', () => {
+      if (!confirm('Remove this week? Sessions inside will be deleted.')) return;
+      plan.programs.splice(activeWeek, 1);
+      activeWeek = Math.max(0, activeWeek - 1);
+      markDirty(); debouncedSave(); renderWeekTabs(); renderWeekEditor();
+    });
+
+    // Bind every session's fields
+    w.sessions.forEach((s, i) => bindSessionEditor(s, i));
+  }
+
+  function renderWeekTabsLabelsOnly () {
+    // Light re-render so week label edits reflect immediately on the tab.
+    document.querySelectorAll('.admin-week-tab[data-week]').forEach(btn => {
+      const idx = Number(btn.dataset.week);
+      const label = (plan.programs[idx] && plan.programs[idx].label) || ('Week ' + (idx+1));
+      btn.textContent = label;
+    });
+  }
+
+  /* ---- Session editor ---- */
+  function renderSessionEditor (s, i) {
+    const isLong = !!s.longSteady;
+    const focusHtml = FOCUS_OPTIONS.map(o => {
+      const checked = (s.focus || []).includes(o.value);
+      return `
+        <label class="focus-chip ${checked ? 'checked' : ''}" data-session="${i}">
+          <input type="checkbox" data-focus="${o.value}" ${checked ? 'checked' : ''} />
+          ${escapeHtml(o.label)}
+        </label>
+      `;
+    }).join('');
+
+    const setTypeOptions = `
+      <option value="intervals" ${!isLong ? 'selected' : ''}>Interval set (repeats)</option>
+      <option value="longSteady" ${isLong ? 'selected' : ''}>Long steady effort</option>
+    `;
+
+    let setBody = '';
+    if (isLong) {
+      setBody = `
+        <div class="subsection-label">Long steady effort</div>
+        <div class="interval-row" data-zone="${s.longSteady.z || 2}">
+          <select class="select-input js-ls-zone" data-session="${i}">${zoneOptionsHtml(s.longSteady.z || 2)}</select>
+          <input type="text" class="text-input js-ls-dur" data-session="${i}" value="${escapeAttr(s.longSteady.d || '')}" placeholder="60 minutes" />
+          <span></span>
+        </div>
+        <p style="color: var(--text-3); font-size: 0.82rem; margin: 0.4rem 0 0;">Single continuous effort in this zone — no repeats.</p>
+      `;
+    } else {
+      const warmHtml = (s.warmup || []).map((iv, idx) => intervalRowHtml(iv, idx, 'warmup', i)).join('');
+      const setHtml  = (s.set    || []).map((iv, idx) => intervalRowHtml(iv, idx, 'set', i)).join('');
+      setBody = `
+        <div class="subsection-label">Warm-up</div>
+        <div class="interval-list" data-list="warmup" data-session="${i}">${warmHtml}</div>
+        <button class="add-interval-btn js-add-interval" data-list="warmup" data-session="${i}">+ Add warm-up interval</button>
+
+        <div class="subsection-label">Main set (one cycle)</div>
+        <div class="interval-list" data-list="set" data-session="${i}">${setHtml}</div>
+        <button class="add-interval-btn js-add-interval" data-list="set" data-session="${i}">+ Add set interval</button>
+
+        <div class="set-controls">
+          <div>
+            <div class="subsection-label" style="margin-top:0;">Repeat the main set</div>
+            <input type="number" class="text-input js-repeat" data-session="${i}" min="1" max="30" value="${Number(s.repeat || 1)}" />
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="session-editor" data-session="${i}">
+        <div class="session-editor-head">
+          <h3><span class="session-num-chip">Session ${i + 1}</span></h3>
+          <button class="btn btn-danger js-remove-session" data-session="${i}" style="padding: 0.4rem 0.85rem; font-size: 0.85rem;">Remove session</button>
+        </div>
+
+        <div class="form-row">
+          <label>Focus
+            <span class="hint">Energy systems this session targets. Shown as tags on the session card.</span>
+          </label>
+          <div class="focus-chips" data-session="${i}">${focusHtml}</div>
+        </div>
+
+        <div class="form-row">
+          <label for="set-type-${i}">Set type</label>
+          <select id="set-type-${i}" class="select-input js-set-type" data-session="${i}">${setTypeOptions}</select>
+        </div>
+
+        ${setBody}
+      </div>
+    `;
+  }
+
+  function intervalRowHtml (iv, idx, listName, sessionIdx) {
+    return `
+      <div class="interval-row" data-zone="${iv.z || 1}" data-list="${listName}" data-idx="${idx}" data-session="${sessionIdx}">
+        <select class="select-input js-iv-zone">${zoneOptionsHtml(iv.z || 1)}</select>
+        <input type="text" class="text-input js-iv-dur" value="${escapeAttr(iv.d || '')}" placeholder="e.g. 30 sec" />
+        <button class="remove-btn js-iv-remove" title="Remove interval">×</button>
+      </div>
+    `;
+  }
+
+  function zoneOptionsHtml (selected) {
+    return ZONE_OPTIONS.map(o => `<option value="${o.value}" ${o.value === Number(selected) ? 'selected' : ''}>${o.label}</option>`).join('');
+  }
+
+  /* ---- Bind session editor DOM ---- */
+  function bindSessionEditor (s, sessionIdx) {
+    const root = document.querySelector(`.session-editor[data-session="${sessionIdx}"]`);
+    if (!root) return;
+
+    // Focus chips
+    root.querySelectorAll('.focus-chip input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const val = cb.dataset.focus;
+        s.focus = s.focus || [];
+        if (cb.checked && !s.focus.includes(val)) s.focus.push(val);
+        if (!cb.checked) s.focus = s.focus.filter(f => f !== val);
+        cb.parentElement.classList.toggle('checked', cb.checked);
+        markDirty(); debouncedSave();
+      });
+    });
+
+    // Set type toggle
+    const setType = root.querySelector('.js-set-type');
+    setType.addEventListener('change', () => {
+      if (setType.value === 'longSteady') {
+        delete s.warmup; delete s.set; delete s.repeat;
+        s.longSteady = s.longSteady || { z: 2, d: '60 minutes' };
+      } else {
+        delete s.longSteady;
+        s.warmup = s.warmup || [{ z: 1, d: '2 min' }];
+        s.set = s.set || [{ z: 3, d: '1 min' }, { z: 2, d: '1 min' }];
+        s.repeat = s.repeat || 4;
+      }
+      markDirty(); debouncedSave(); renderWeekEditor();
+    });
+
+    // Remove session
+    root.querySelector('.js-remove-session').addEventListener('click', () => {
+      if (!confirm('Remove this session?')) return;
+      plan.programs[activeWeek].sessions.splice(sessionIdx, 1);
+      markDirty(); debouncedSave(); renderWeekEditor();
+    });
+
+    // Interval lists
+    if (s.longSteady) {
+      root.querySelector('.js-ls-zone').addEventListener('change', e => {
+        s.longSteady.z = Number(e.target.value);
+        markDirty(); debouncedSave(); renderWeekEditor();
+      });
+      root.querySelector('.js-ls-dur').addEventListener('input', e => {
+        s.longSteady.d = e.target.value;
+        markDirty(); debouncedSave();
+      });
+    } else {
+      // Bind interval rows (warmup + set)
+      root.querySelectorAll('.interval-row[data-list]').forEach(row => {
+        const listName = row.dataset.list;
+        const idx = Number(row.dataset.idx);
+        const iv = s[listName][idx];
+        if (!iv) return;
+        row.querySelector('.js-iv-zone').addEventListener('change', e => {
+          iv.z = Number(e.target.value);
+          row.setAttribute('data-zone', iv.z);
+          markDirty(); debouncedSave();
+        });
+        row.querySelector('.js-iv-dur').addEventListener('input', e => { iv.d = e.target.value; markDirty(); debouncedSave(); });
+        row.querySelector('.js-iv-remove').addEventListener('click', () => {
+          s[listName].splice(idx, 1);
+          markDirty(); debouncedSave(); renderWeekEditor();
+        });
+      });
+
+      // Add interval buttons
+      root.querySelectorAll('.js-add-interval').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const listName = btn.dataset.list;
+          s[listName] = s[listName] || [];
+          s[listName].push({ z: 2, d: '1 min' });
+          markDirty(); debouncedSave(); renderWeekEditor();
+        });
+      });
+
+      // Repeat
+      root.querySelector('.js-repeat').addEventListener('input', e => {
+        s.repeat = Math.max(1, Number(e.target.value) || 1);
+        markDirty(); debouncedSave();
+      });
+    }
+  }
+
+  /* ============================================================
+     Save plumbing
+     ============================================================ */
+  let saveTimer = null;
+  function debouncedSave () {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      savePlan(planKey, plan);
+      flashSaved();
+    }, 350);
+  }
+  function markDirty () {
+    document.getElementById('save-dot').classList.add('dirty');
+    document.getElementById('save-msg').textContent = 'Saving…';
+  }
+  function flashSaved (msg) {
+    document.getElementById('save-dot').classList.remove('dirty');
+    document.getElementById('save-msg').textContent = msg || 'All changes saved.';
+  }
+
+  /* ---- HTML escape helpers ---- */
+  function escapeHtml (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function escapeAttr (s) { return escapeHtml(s); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Coach Admin — All Paddling</title>
+<meta name="description" content="Program editor for All Paddling coaches. Edit the 4 Progressive discipline plans and the Custom Season Race Plan." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* ========= Admin-specific layout ========= */
+  .admin-banner {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1.1rem;
+    font-size: 0.92rem;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .admin-banner svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .admin-banner strong { font-weight: 700; }
+
+  .admin-header-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;
+  }
+
+  /* Program picker cards */
+  .program-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 700px) { .program-grid { grid-template-columns: 1fr; } }
+
+  .program-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.6rem 1.4rem;
+    box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; gap: 0.4rem;
+    text-decoration: none; color: inherit;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .program-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+    border-color: var(--brand-100);
+  }
+  .program-tile .tile-eyebrow {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--brand-700); margin-bottom: 0.2rem;
+  }
+  .program-tile h3 {
+    font-size: 1.15rem; margin: 0 0 0.3rem;
+  }
+  .program-tile .tile-sub {
+    color: var(--text-3); font-size: 0.9rem; margin: 0 0 0.9rem;
+  }
+  .program-tile .tile-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 0.85rem; margin-top: auto;
+    border-top: 1px solid var(--border);
+    font-size: 0.82rem; color: var(--text-3);
+  }
+  .program-tile .tile-meta .edit-arrow {
+    color: var(--brand-700); font-weight: 600;
+  }
+
+  .program-tile.custom {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2 70%, #06b6d4);
+    color: white; border-color: transparent;
+  }
+  .program-tile.custom:hover { border-color: transparent; }
+  .program-tile.custom .tile-eyebrow { color: rgba(255,255,255,0.85); }
+  .program-tile.custom h3 { color: white; }
+  .program-tile.custom .tile-sub { color: rgba(255,255,255,0.9); }
+  .program-tile.custom .tile-meta {
+    border-top-color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.85);
+  }
+  .program-tile.custom .tile-meta .edit-arrow { color: white; }
+
+  /* Claude assist */
+  .claude-panel {
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+  }
+  .claude-panel h2 {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin: 0 0 0.3rem;
+  }
+  .claude-panel h2 .soon-tag {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
+    background: var(--surface-2); color: var(--text-3);
+    padding: 0.25rem 0.55rem; border-radius: 999px;
+  }
+  .claude-panel .sub { color: var(--text-3); margin: 0 0 1.25rem; }
+  .claude-panel textarea {
+    width: 100%; box-sizing: border-box;
+    min-height: 110px; padding: 0.9rem 1rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif; font-size: 0.95rem; line-height: 1.5;
+    resize: vertical; background: var(--surface-2);
+    color: var(--text);
+  }
+  .claude-panel textarea:focus {
+    outline: none; border-color: var(--brand-700);
+    background: var(--surface);
+  }
+  .claude-panel .claude-controls {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem; flex-wrap: wrap; margin-top: 1rem;
+  }
+  .claude-panel .btn[disabled] {
+    opacity: 0.55; cursor: not-allowed;
+  }
+  .claude-panel .example-prompts {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    margin-top: 0.85rem;
+  }
+  .example-chip {
+    font-size: 0.82rem; padding: 0.3rem 0.7rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 999px; color: var(--text-2); cursor: pointer;
+  }
+  .example-chip:hover { background: var(--brand-50); color: var(--brand-700); border-color: var(--brand-100); }
+
+  /* ========= Login gate ========= */
+  .gate-wrap {
+    min-height: 100vh;
+    display: grid; place-items: center;
+    padding: 2rem 1rem;
+    background: var(--surface-2);
+  }
+  .gate-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.25rem 2.5rem;
+    max-width: 420px; width: 100%;
+    box-shadow: var(--shadow-lg);
+  }
+  .gate-card .gate-eyebrow {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-700); margin-bottom: 0.4rem;
+  }
+  .gate-card h1 { font-size: 1.4rem; margin: 0 0 0.4rem; }
+  .gate-card p { color: var(--text-3); font-size: 0.93rem; margin: 0 0 1.5rem; }
+  .gate-card label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.4rem; }
+  .gate-card input {
+    width: 100%; box-sizing: border-box;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif; font-size: 1rem;
+  }
+  .gate-card input:focus { outline: none; border-color: var(--brand-700); }
+  .gate-card .gate-error {
+    color: #b91c1c; font-size: 0.88rem;
+    margin-top: 0.6rem; display: none;
+  }
+  .gate-card .gate-error.visible { display: block; }
+  .gate-card .btn { margin-top: 1.25rem; width: 100%; justify-content: center; }
+  .gate-card .gate-note {
+    font-size: 0.82rem; color: var(--text-3); margin-top: 1rem;
+    text-align: center;
+  }
+
+  /* Admin sidebar tweaks */
+  .admin-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem; border-radius: 5px;
+    margin-left: 0.35rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- Login gate — shown until authenticated -->
+<div id="login-gate" class="gate-wrap" style="display:none;">
+  <form class="gate-card" id="gate-form">
+    <div class="gate-eyebrow">Coach Admin</div>
+    <h1>Sign in to continue</h1>
+    <p>This area is for coaches managing program content. Enter your email to continue.</p>
+    <label for="gate-email">Email</label>
+    <input type="email" id="gate-email" autocomplete="email" placeholder="you@allpaddling.com" required />
+    <div class="gate-error" id="gate-error">Email not recognised. Check the address or contact support.</div>
+    <button type="submit" class="btn btn-primary">Sign in →</button>
+    <p class="gate-note"><a href="../login.html">Member sign-in instead</a></p>
+  </form>
+</div>
+
+<!-- Admin app shell — shown after authentication -->
+<div class="app-shell" id="admin-shell" style="display:none;">
+  <aside class="app-sidebar" aria-label="Admin navigation">
+    <div class="app-sidebar-brand">
+      <span class="brand-mark-sm" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" fill="currentColor" stroke="none"/>
+          <polyline points="3,13 8,13 10,9 14,17 16,13 21,13" stroke="white" stroke-width="1.8" fill="none"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        All Paddling<span class="admin-badge">ADMIN</span>
+        <small>Coach dashboard</small>
+      </span>
+    </div>
+    <nav class="app-sidebar-nav">
+      <a href="admin.html" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span>Programs</span>
+      </a>
+      <a href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Member preview</span>
+      </a>
+    </nav>
+    <div class="app-sidebar-footer">
+      <div class="app-member-chip">
+        <div class="app-member-avatar" id="admin-avatar">CO</div>
+        <div class="app-member-meta">
+          <div class="name" id="admin-name">Coach</div>
+          <div class="plan" id="admin-email">—</div>
+        </div>
+      </div>
+      <a href="#" id="signout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign out</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="app-main">
+    <div class="app-page-header">
+      <div class="admin-header-row">
+        <div>
+          <h1 style="margin-bottom:0.15rem;">Program Editor</h1>
+          <p class="lead" style="margin:0;">Edit the programs paying subscribers see. Pick a plan to open the editor.</p>
+        </div>
+      </div>
+
+      <div class="admin-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <strong>Preview mode —</strong> edits save to this browser only. Once the backend is wired up, changes will publish to all subscribers automatically.
+        </div>
+      </div>
+    </div>
+
+    <!-- Progressive 4-Week Plans -->
+    <div class="app-card">
+      <h2>Progressive 4-Week Plans</h2>
+      <p class="card-sub">Self-guided plans at $80 / 4 weeks. Four disciplines, each with its own 4-week program block.</p>
+
+      <div class="program-grid">
+        <a class="program-tile" href="admin-edit.html?plan=prone">
+          <div class="tile-eyebrow">Prone</div>
+          <h3>Prone Paddle Board Plan</h3>
+          <p class="tile-sub">4-week progressive block — threshold + aerobic base.</p>
+          <div class="tile-meta">
+            <span id="meta-prone">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+        <a class="program-tile" href="admin-edit.html?plan=sup">
+          <div class="tile-eyebrow">SUP</div>
+          <h3>Stand Up Paddle Board Plan</h3>
+          <p class="tile-sub">4-week progressive block — stroke efficiency + engine.</p>
+          <div class="tile-meta">
+            <span id="meta-sup">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+        <a class="program-tile" href="admin-edit.html?plan=oc">
+          <div class="tile-eyebrow">OC</div>
+          <h3>Outrigger Canoe Plan</h3>
+          <p class="tile-sub">4-week progressive block — rhythm, sides, power.</p>
+          <div class="tile-meta">
+            <span id="meta-oc">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+        <a class="program-tile" href="admin-edit.html?plan=ski">
+          <div class="tile-eyebrow">Surf Ski</div>
+          <h3>Surf Ski Plan</h3>
+          <p class="tile-sub">4-week progressive block — rotation, catch, top end.</p>
+          <div class="tile-meta">
+            <span id="meta-ski">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Custom Plan -->
+    <div class="app-card">
+      <h2>Custom Season Race Plan</h2>
+      <p class="card-sub">The premium $140 / 4-week plan. Bespoke programming, taper, peaking, and strength.</p>
+
+      <div class="program-grid" style="grid-template-columns: 1fr;">
+        <a class="program-tile custom" href="admin-edit.html?plan=custom">
+          <div class="tile-eyebrow">Premium · 16-week block</div>
+          <h3>Custom Season Race Plan template</h3>
+          <p class="tile-sub">Edit the master 16-week structure — base → build → taper → peak.</p>
+          <div class="tile-meta">
+            <span id="meta-custom">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Claude assist panel (disabled prototype) -->
+    <div class="app-card claude-panel">
+      <h2>Claude Assist <span class="soon-tag">COMING SOON</span></h2>
+      <p class="sub">Describe the change in plain English and Claude will update the program for you. Wiring this up needs a backend — for now, try the regular editor. Your prompt text will save locally so you can come back to it.</p>
+
+      <textarea id="claude-prompt" placeholder="Try: 'Make Week 3 of the Prone plan easier — drop the VO2 intervals to 4 reps instead of 6.'&#10;Or: 'Add a recovery week to the Custom Plan after week 8.'"></textarea>
+
+      <div class="example-prompts">
+        <button type="button" class="example-chip" data-example="Make Week 3 of the Prone plan easier — drop the VO2 intervals to 4 reps instead of 6.">Make Week 3 easier</button>
+        <button type="button" class="example-chip" data-example="Add a recovery session to Week 2 of the SUP plan.">Add recovery session</button>
+        <button type="button" class="example-chip" data-example="Swap the distance session in Week 4 for another threshold block.">Swap distance → threshold</button>
+      </div>
+
+      <div class="claude-controls">
+        <span style="font-size: 0.82rem; color: var(--text-3);">
+          Phase 2 — needs backend + Claude API wiring
+        </span>
+        <button class="btn btn-primary" disabled>Apply with Claude →</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/program-data.js"></script>
+<script src="../assets/admin.js"></script>
+<script>
+(function () {
+  /* ====== Auth gate ====== */
+  if (!adminIsAuthed()) {
+    document.getElementById('login-gate').style.display = '';
+    document.getElementById('admin-shell').style.display = 'none';
+  } else {
+    renderAdmin();
+  }
+
+  /* ====== Gate form ====== */
+  document.getElementById('gate-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const email = document.getElementById('gate-email').value.trim().toLowerCase();
+    const err = document.getElementById('gate-error');
+    if (!isAdminEmail(email)) {
+      err.classList.add('visible');
+      return;
+    }
+    err.classList.remove('visible');
+    setAdminAuth(email);
+    document.getElementById('login-gate').style.display = 'none';
+    document.getElementById('admin-shell').style.display = '';
+    renderAdmin();
+  });
+
+  /* ====== Render admin landing ====== */
+  function renderAdmin () {
+    const email = getAdminAuth();
+    const niceName = nameFromEmail(email);
+    document.getElementById('admin-email').textContent = email || '';
+    document.getElementById('admin-name').textContent = niceName;
+    const avatarEl = document.getElementById('admin-avatar');
+    if (avatarEl) {
+      const initials = niceName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+      avatarEl.textContent = initials || 'CO';
+    }
+
+    // Last-edited stamps per program
+    const data = loadAdminData();
+    ['prone', 'sup', 'oc', 'ski', 'custom'].forEach(key => {
+      const el = document.getElementById('meta-' + key);
+      if (!el) return;
+      const last = data[key] && data[key].lastEdited;
+      el.textContent = last ? ('Edited ' + relativeTime(new Date(last))) : 'Never edited';
+    });
+
+    // Sign out
+    document.getElementById('signout-btn').addEventListener('click', function (e) {
+      e.preventDefault();
+      clearAdminAuth();
+      location.reload();
+    });
+
+    // Claude textarea persistence
+    const ta = document.getElementById('claude-prompt');
+    ta.value = localStorage.getItem('admin_claude_draft') || '';
+    ta.addEventListener('input', () => localStorage.setItem('admin_claude_draft', ta.value));
+    document.querySelectorAll('.example-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        ta.value = btn.dataset.example;
+        localStorage.setItem('admin_claude_draft', ta.value);
+        ta.focus();
+      });
+    });
+  }
+
+  function nameFromEmail (email) {
+    if (!email) return 'Coach';
+    const name = email.split('@')[0].replace(/[._-]+/g, ' ');
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+
+  function relativeTime (d) {
+    const ms = Date.now() - d.getTime();
+    const mins = Math.round(ms / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + ' hr ago';
+    const days = Math.round(hrs / 24);
+    if (days < 30) return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+    return d.toLocaleDateString('en-AU', { day:'numeric', month:'short' });
+  }
+})();
+</script>
+</body>
+</html>
