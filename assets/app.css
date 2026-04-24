@@ -1,0 +1,448 @@
+/* ============================================================
+   ALL PADDLING APP — member area shell
+   Loaded AFTER style.css. Provides the sidebar + content-shell
+   layout used by every page under /app/.
+   ============================================================ */
+
+body.app-body {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+/* ---- Shell ---- */
+.app-shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: 100vh;
+}
+
+/* ---- Sidebar ---- */
+.app-sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.app-sidebar-brand {
+  display: flex; align-items: center; gap: 0.65rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.brand-mark-sm {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+  color: white; border-radius: 8px;
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.brand-mark-sm svg { width: 18px; height: 18px; }
+.app-sidebar-brand .brand-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700; font-size: 1rem;
+  color: var(--text); line-height: 1.15;
+}
+.app-sidebar-brand .brand-text small {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem; font-weight: 500;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+.app-sidebar-nav {
+  padding: 1.25rem 0.75rem;
+  flex: 1;
+  display: flex; flex-direction: column; gap: 0.15rem;
+}
+.app-sidebar-nav a,
+.app-sidebar-footer a {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.62rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.92rem; font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none; border: none;
+  transition: background .15s, color .15s;
+}
+.app-sidebar-nav a:hover,
+.app-sidebar-footer a:hover {
+  background: var(--surface-2); color: var(--text);
+  border: none;
+}
+.app-sidebar-nav a.active {
+  background: var(--brand-50);
+  color: var(--brand-700); font-weight: 600;
+}
+.app-sidebar-nav svg,
+.app-sidebar-footer svg {
+  width: 18px; height: 18px; flex-shrink: 0;
+}
+
+.app-sidebar-footer {
+  padding: 0.75rem 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 0.15rem;
+}
+.app-member-chip {
+  display: flex; align-items: center; gap: 0.65rem;
+  padding: 0.6rem 0.9rem; margin-bottom: 0.5rem;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+.app-member-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+  color: white; display: grid; place-items: center;
+  font-weight: 700; font-size: 0.82rem;
+  flex-shrink: 0;
+}
+.app-member-meta { min-width: 0; }
+.app-member-meta .name {
+  font-weight: 600; font-size: 0.88rem; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-member-meta .plan {
+  font-size: 0.76rem; color: var(--text-3);
+}
+
+/* ---- Main content area ---- */
+.app-main {
+  padding: 2.25rem 2.5rem 3rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.app-page-header {
+  margin-bottom: 2rem;
+}
+.breadcrumb {
+  font-size: 0.8rem; color: var(--text-3); font-weight: 500;
+  letter-spacing: 0.02em; margin-bottom: 0.5rem;
+}
+.breadcrumb a { color: var(--text-3); border: none; }
+.breadcrumb a:hover { color: var(--brand-700); border: none; }
+.app-page-header h1 {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  margin-bottom: 0.5rem;
+}
+.app-page-header p.lead {
+  color: var(--text-2); font-size: 1rem;
+  margin-bottom: 0;
+}
+
+.app-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  box-shadow: var(--shadow);
+}
+
+.app-placeholder-note {
+  background: #fef3c7; border: 1px solid #fde68a;
+  color: #92400e; padding: 0.8rem 1.1rem;
+  border-radius: var(--radius-sm); font-size: 0.88rem;
+  margin-bottom: 1.5rem;
+}
+.app-placeholder-note strong { font-weight: 700; }
+.app-placeholder-note ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+.app-placeholder-note li { margin-bottom: 0.25rem; }
+
+/* ---- Mobile: sidebar becomes a drawer ---- */
+.app-mobile-header { display: none; }
+.app-menu-toggle {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; width: 40px; height: 40px;
+  cursor: pointer; display: none;
+  align-items: center; justify-content: center;
+  color: var(--text);
+}
+.app-menu-toggle:hover { background: var(--surface-2); }
+
+@media (max-width: 880px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .app-sidebar {
+    position: fixed; top: 0; left: 0;
+    width: 280px; z-index: 100;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    box-shadow: none;
+  }
+  .app-sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+  .app-mobile-header {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.7rem 1rem;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+    margin: -2.25rem -1rem 1.5rem;
+  }
+  .app-menu-toggle { display: flex; }
+  .app-main { padding: 1.25rem 1rem 3rem; }
+}
+
+/* ---- Scrim behind open drawer ---- */
+.app-scrim {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 90;
+  display: none;
+}
+.app-scrim.visible { display: block; }
+
+/* ---- Card sections + field groups ---- */
+.app-card + .app-card { margin-top: 1.5rem; }
+.app-card h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.35rem;
+}
+.app-card .card-sub {
+  color: var(--text-3); font-size: 0.92rem;
+  margin: 0 0 1.25rem;
+}
+.app-card .card-divider {
+  border: 0; border-top: 1px solid var(--border);
+  margin: 1.25rem 0;
+}
+
+.field-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+}
+.field-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 560px) {
+  .field-row   { grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+  .field-row-2 { grid-template-columns: 1fr; }
+}
+.app-card .form-field { margin-bottom: 1rem; }
+.app-card .form-field:last-child { margin-bottom: 0; }
+.app-card label {
+  display: block;
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 0.35rem;
+}
+.app-card input[type="number"],
+.app-card input[type="text"],
+.app-card input[type="email"],
+.app-card select,
+.app-card textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-family: inherit; font-size: 0.95rem;
+  color: var(--text);
+  transition: border-color .15s, box-shadow .15s;
+}
+.app-card input:focus,
+.app-card select:focus,
+.app-card textarea:focus {
+  outline: none;
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 3px var(--brand-50);
+}
+
+/* ---- Segmented toggle (metric / imperial, etc.) ---- */
+.segmented {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.segmented button {
+  appearance: none; border: 0;
+  background: transparent;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  font: inherit; font-size: 0.88rem; font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.segmented button.active {
+  background: var(--surface);
+  color: var(--brand-700);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+/* ---- Key/value rows (account info) ---- */
+.kv-row {
+  display: grid; grid-template-columns: 180px 1fr;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.kv-row:last-child { border-bottom: 0; }
+.kv-row .kv-label {
+  font-size: 0.85rem; font-weight: 600; color: var(--text-3);
+  letter-spacing: 0.02em;
+}
+.kv-row .kv-value { color: var(--text); font-weight: 500; }
+@media (max-width: 560px) {
+  .kv-row { grid-template-columns: 1fr; gap: 0.2rem; padding: 0.75rem 0; }
+}
+
+/* ---- Inline threshold summary (used on settings + dashboard) ---- */
+.threshold-chip {
+  display: inline-flex; align-items: baseline; gap: 0.4rem;
+  background: var(--brand-50);
+  color: var(--brand-700);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600; font-size: 0.9rem;
+}
+.threshold-chip small { font-size: 0.75rem; font-weight: 500; color: var(--brand-700); opacity: 0.8; }
+
+/* ---- Save row ---- */
+.save-row {
+  display: flex; gap: 0.75rem; align-items: center;
+  margin-top: 1rem;
+}
+.save-row .hint {
+  color: var(--text-3); font-size: 0.85rem;
+}
+
+/* ---- Week tabs + program header ---- */
+.program-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.program-header .program-meta-stack {
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.program-header .program-progress {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+}
+.program-progress .bar {
+  width: 140px; height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.program-progress .bar span {
+  display: block; height: 100%;
+  background: var(--brand-600);
+  border-radius: 999px;
+  transition: width .25s;
+}
+
+.week-tabs {
+  display: flex; gap: 0.4rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.week-tab {
+  appearance: none; border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font: inherit; font-size: 0.9rem; font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.week-tab:hover { border-color: var(--brand-600); color: var(--text); }
+.week-tab.active {
+  background: var(--brand-50);
+  border-color: var(--brand-100);
+  color: var(--brand-700);
+}
+.week-tab .count {
+  font-size: 0.72rem; font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+.week-tab.active .count {
+  background: var(--brand-100);
+  color: var(--brand-700);
+}
+
+.week-note {
+  color: var(--text-2); font-size: 0.92rem;
+  margin: 0 0 1rem;
+}
+
+/* ---- Session card (member area) ---- */
+.session-card-link {
+  display: block;
+  text-decoration: none; color: inherit;
+  border: 1px solid var(--border);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.session-card-link:hover {
+  border-color: var(--brand-600);
+  box-shadow: 0 6px 20px -12px rgba(14,116,144,0.25);
+  color: inherit;
+}
+.session-card.completed {
+  background: var(--surface);
+  border-style: dashed;
+}
+.session-card.completed .session-num {
+  color: var(--brand-700);
+}
+.session-card .session-check {
+  display: inline-grid; place-items: center;
+  width: 18px; height: 18px;
+  background: var(--brand-600);
+  color: white;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+.session-card .session-check svg { width: 12px; height: 12px; }
+
+/* ---- Show-paces toggle row ---- */
+.app-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.app-toolbar .left, .app-toolbar .right {
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.paces-toggle {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.9rem; color: var(--text-2); font-weight: 500;
+  cursor: pointer;
+}
+body:not(.show-paces) .interval-pace { display: none; }
+
+/* ---- Toast ---- */
+.app-toast {
+  position: fixed;
+  left: 50%; bottom: 1.5rem;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: white;
+  padding: 0.7rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.9rem; font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s, transform .18s;
+  z-index: 2000;
+}
+.app-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

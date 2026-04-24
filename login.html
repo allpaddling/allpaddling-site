@@ -115,10 +115,10 @@
     <p>Sign in to access your training plan, session history, and the pace calculator.</p>
 
     <div class="placeholder-note">
-      <strong>Preview:</strong> Real login coming soon once Memberstack is wired up.
+      <strong>Preview:</strong> Enter anything and click Sign in to see the member area. Real auth lands once Memberstack is wired up.
     </div>
 
-    <form class="login-form" onsubmit="event.preventDefault(); alert('Login wiring coming soon — this will be powered by Memberstack.');">
+    <form class="login-form" onsubmit="event.preventDefault(); window.location.href = 'app/dashboard.html';">
       <div class="form-field">
         <label for="l-email">Email</label>
         <input type="email" id="l-email" placeholder="you@email.com" required />

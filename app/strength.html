@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Strength — All Paddling</title>
+<meta name="description" content="Your off-water strength program — included with the Custom Season Race Plan." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  .phase-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+    background: var(--brand-50);
+    border: 1px solid var(--brand-100);
+    border-radius: var(--radius-sm);
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.25rem;
+  }
+  .phase-banner .phase {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; color: var(--brand-700);
+  }
+  .phase-banner small { color: var(--brand-700); font-weight: 500; opacity: 0.8; }
+
+  .lift-row {
+    display: grid; grid-template-columns: 1fr 120px 90px;
+    gap: 1rem; padding: 0.85rem 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .lift-row:last-child { border-bottom: 0; }
+  .lift-row .lift-name { font-weight: 600; color: var(--text); }
+  .lift-row .lift-cue  { color: var(--text-3); font-size: 0.85rem; margin-top: 0.15rem; }
+  .lift-row .lift-sets { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--text-2); font-size: 0.95rem; }
+  .lift-row .lift-tempo { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; color: var(--text-3); font-weight: 500; text-align: right; }
+  @media (max-width: 560px) {
+    .lift-row { grid-template-columns: 1fr auto; gap: 0.4rem; }
+    .lift-row .lift-tempo { grid-column: 1 / -1; text-align: left; }
+  }
+
+  .upgrade-card {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2 70%, #06b6d4);
+    color: white;
+    border-radius: var(--radius);
+    padding: 2.25rem 2.5rem;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    position: relative; overflow: hidden;
+  }
+  .upgrade-card::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15), transparent 45%),
+      radial-gradient(circle at 80% 80%, rgba(6,182,212,0.3), transparent 55%);
+  }
+  .upgrade-card > * { position: relative; z-index: 1; }
+  .upgrade-card h2 { color: white; margin-bottom: 0.5rem; }
+  .upgrade-card p { color: rgba(255,255,255,0.9); max-width: 520px; margin: 0 auto 1.5rem; }
+  .upgrade-card .btn { background: white; color: var(--brand-700); border-color: white; }
+  .upgrade-card .btn:hover { background: #f1f5f9; color: var(--brand-700); }
+  .upgrade-list {
+    list-style: none; padding: 0; margin: 1.5rem 0;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;
+    max-width: 560px; margin-left: auto; margin-right: auto;
+  }
+  .upgrade-list li {
+    display: flex; align-items: center; gap: 0.6rem;
+    text-align: left;
+    color: rgba(255,255,255,0.95);
+    font-size: 0.92rem;
+  }
+  .upgrade-list li svg { width: 18px; height: 18px; color: rgba(255,255,255,0.9); flex-shrink: 0; }
+  @media (max-width: 560px) { .upgrade-list { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+
+  <main class="app-main">
+    <div id="app-mobile-header"></div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb"><a href="dashboard.html">Dashboard</a> / Strength</div>
+      <h1>Strength Program</h1>
+      <p class="lead" id="lead-copy">Off-water work that complements your paddling block.</p>
+    </div>
+
+    <!-- Custom plan content -->
+    <div id="custom-content" style="display:none;">
+      <div class="phase-banner">
+        <div>
+          <div class="phase">Phase 1 · Foundation</div>
+          <small>Aligned with Program 1 — 4 weeks, 2 sessions / week.</small>
+        </div>
+        <div class="threshold-chip">45–60 min per session</div>
+      </div>
+
+      <div class="app-card">
+        <h2>Session A · Posterior chain + pull</h2>
+        <p class="card-sub">Lower-body strength and the pulling pattern that dominates paddling.</p>
+
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Trap-bar deadlift</div>
+            <div class="lift-cue">Brace, neutral spine, drive through the heels.</div>
+          </div>
+          <div class="lift-sets">4 × 5</div>
+          <div class="lift-tempo">3-1-X</div>
+        </div>
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Single-arm dumbbell row</div>
+            <div class="lift-cue">Hip hinge, drive elbow back, don't shrug.</div>
+          </div>
+          <div class="lift-sets">3 × 8 / side</div>
+          <div class="lift-tempo">2-1-2</div>
+        </div>
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Bulgarian split squat</div>
+            <div class="lift-cue">Front-foot load, slow eccentric.</div>
+          </div>
+          <div class="lift-sets">3 × 8 / side</div>
+          <div class="lift-tempo">3-1-1</div>
+        </div>
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Pallof press</div>
+            <div class="lift-cue">Anti-rotation — paddle-specific trunk work.</div>
+          </div>
+          <div class="lift-sets">3 × 10 / side</div>
+          <div class="lift-tempo">Hold 2s</div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <h2>Session B · Push + shoulder stability</h2>
+        <p class="card-sub">Balance to the pulling work — keeps the shoulder healthy through high volume on the water.</p>
+
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Landmine press</div>
+            <div class="lift-cue">Shoulder-friendly overhead alternative.</div>
+          </div>
+          <div class="lift-sets">4 × 6 / side</div>
+          <div class="lift-tempo">2-0-1</div>
+        </div>
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Ring / TRX row</div>
+            <div class="lift-cue">Scapular retraction first, then elbow.</div>
+          </div>
+          <div class="lift-sets">3 × 10</div>
+          <div class="lift-tempo">2-1-2</div>
+        </div>
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Half-kneeling cable chop</div>
+            <div class="lift-cue">Rotate from the core, arms guide only.</div>
+          </div>
+          <div class="lift-sets">3 × 8 / side</div>
+          <div class="lift-tempo">2-1-2</div>
+        </div>
+        <div class="lift-row">
+          <div>
+            <div class="lift-name">Prone Y / T / W</div>
+            <div class="lift-cue">Rotator cuff &amp; mid-trap endurance.</div>
+          </div>
+          <div class="lift-sets">3 × 10 each</div>
+          <div class="lift-tempo">Controlled</div>
+        </div>
+      </div>
+
+      <div class="app-placeholder-note">
+        <strong>Coming soon:</strong> video demos for each lift, phase 2 + 3 progressions, and mark-complete tracking.
+      </div>
+    </div>
+
+    <!-- Progressive plan content (upgrade prompt) -->
+    <div id="upgrade-content" style="display:none;">
+      <div class="upgrade-card">
+        <h2>Strength work is part of the Custom Season Race Plan.</h2>
+        <p>A 4-week strength block aligned to your paddling program — posterior chain, pulling patterns, and shoulder stability. Included free with Custom Plan members.</p>
+        <ul class="upgrade-list">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> 2 strength sessions per week</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> Paddle-specific movements</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> Phase progression across 16 weeks</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> Custom-tailored to your goal race</li>
+        </ul>
+        <a href="../custom-plan.html" class="btn">Upgrade to Custom Plan →</a>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const member = getMember();
+  if (member.plan === 'Custom') {
+    document.getElementById('custom-content').style.display = '';
+  } else {
+    document.getElementById('upgrade-content').style.display = '';
+  }
+})();
+</script>
+</body>
+</html>

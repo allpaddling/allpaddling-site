@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session — All Paddling</title>
+<meta name="description" content="A single training session — warm-up, intervals, paces, coach's notes." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* Interval + focus tag styles (shared with program.html — duplicated locally to keep scope tight) */
+  .focus-tag {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.25rem 0.55rem; border-radius: 5px;
+    white-space: nowrap; display: inline-block;
+  }
+  .focus-tag.f-aer-th  { background: var(--tz2-bg); color: var(--tz2); }
+  .focus-tag.f-ana-th  { background: var(--tz3-bg); color: var(--tz3); }
+  .focus-tag.f-aer-cap { background: var(--tz4-bg); color: var(--tz4); }
+  .focus-tag.f-ana-cap { background: var(--tz5-bg); color: var(--tz5); }
+
+  .interval-block { display: grid; gap: 0.4rem; }
+  .interval {
+    display: grid; grid-template-columns: 56px 1fr auto; gap: 0.85rem;
+    align-items: center; padding: 0.7rem 1rem;
+    border-radius: 8px; border-left: 4px solid var(--border-strong);
+    background: var(--surface-2);
+    font-size: 0.95rem;
+  }
+  .interval[data-zone="1"] { background: var(--tz1-bg); border-left-color: var(--tz1); }
+  .interval[data-zone="2"] { background: var(--tz2-bg); border-left-color: var(--tz2); }
+  .interval[data-zone="3"] { background: var(--tz3-bg); border-left-color: var(--tz3); }
+  .interval[data-zone="4"] { background: var(--tz4-bg); border-left-color: var(--tz4); }
+  .interval[data-zone="5"] { background: var(--tz5-bg); border-left-color: var(--tz5); }
+  .interval-zone { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.88rem; }
+  .interval[data-zone="1"] .interval-zone { color: var(--tz1); }
+  .interval[data-zone="2"] .interval-zone { color: var(--tz2); }
+  .interval[data-zone="3"] .interval-zone { color: var(--tz3); }
+  .interval[data-zone="4"] .interval-zone { color: var(--tz4); }
+  .interval[data-zone="5"] .interval-zone { color: var(--tz5); }
+  .interval-desc { color: var(--text); font-weight: 500; }
+  .interval-pace { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+
+  .block-label {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin: 1.25rem 0 0.6rem;
+  }
+  .block-label:first-child { margin-top: 0; }
+  .block-label .repeat-chip {
+    background: var(--brand-50); color: var(--brand-700);
+    padding: 0.15rem 0.55rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+  }
+
+  .session-hero-focus { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
+
+  /* Mark-complete button */
+  .complete-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .complete-btn {
+    padding: 0.7rem 1.2rem; border-radius: 8px;
+    font-weight: 600; font-size: 0.95rem;
+    border: 1px solid var(--brand-600);
+    background: var(--brand-600);
+    color: white;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .complete-btn:hover { background: var(--brand-700); border-color: var(--brand-700); }
+  .complete-btn.is-complete {
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--brand-700);
+  }
+  .complete-btn svg { width: 16px; height: 16px; }
+
+  /* Prev/next nav */
+  .session-nav {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+  .session-nav a {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.25rem;
+    display: flex; flex-direction: column;
+    text-decoration: none; color: inherit;
+    transition: border-color .15s;
+  }
+  .session-nav a:hover { border-color: var(--brand-600); color: inherit; }
+  .session-nav a.disabled { opacity: 0.45; pointer-events: none; }
+  .session-nav .dir { font-size: 0.78rem; color: var(--text-3); font-weight: 600; letter-spacing: 0.04em; }
+  .session-nav .title { font-weight: 600; margin-top: 0.2rem; }
+  .session-nav .next { text-align: right; }
+
+  /* RPE slider */
+  .rpe-row { display: flex; align-items: center; gap: 0.75rem; }
+  .rpe-row input[type="range"] { flex: 1; }
+  .rpe-row .rpe-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 1.1rem;
+    color: var(--brand-700);
+    width: 2.5ch; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+
+  <main class="app-main">
+    <div id="app-mobile-header"></div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb" id="breadcrumb"><a href="dashboard.html">Dashboard</a> / <a href="program.html">Program</a> / …</div>
+      <div class="session-hero-focus" id="hero-focus"></div>
+      <h1 id="session-title">Session</h1>
+      <p class="lead" id="session-summary"></p>
+    </div>
+
+    <div class="app-toolbar">
+      <div class="left">
+        <span class="threshold-chip">
+          Threshold
+          <span id="tc-value">—</span>
+          <small id="tc-unit">/ km</small>
+        </span>
+        <a href="settings.html" style="font-size:0.88rem;">Update →</a>
+      </div>
+      <div class="right">
+        <label class="paces-toggle">
+          <input type="checkbox" id="show-paces-toggle" checked />
+          <span>Show my paces</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ==================== The session ==================== -->
+    <div class="app-card">
+      <h2>The session</h2>
+      <p class="card-sub" id="session-structure"></p>
+      <div id="session-body"></div>
+    </div>
+
+    <!-- ==================== Coach's notes ==================== -->
+    <div class="app-card">
+      <h2>Why this session?</h2>
+      <p id="coach-notes" style="color:var(--text-2); line-height:1.65; margin:0;"></p>
+    </div>
+
+    <!-- ==================== Log ==================== -->
+    <div class="app-card">
+      <h2>Log this session</h2>
+      <p class="card-sub">Mark it done, capture how hard it felt, add a note for next time.</p>
+
+      <div class="complete-row" style="margin-bottom:1.25rem;">
+        <button type="button" class="complete-btn" id="complete-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
+          <span id="complete-btn-label">Mark complete</span>
+        </button>
+        <span class="hint" id="completed-at"></span>
+      </div>
+
+      <div class="form-field">
+        <label for="rpe">Perceived effort (RPE 1–10)</label>
+        <div class="rpe-row">
+          <input type="range" id="rpe" min="1" max="10" step="1" value="7" />
+          <span class="rpe-value" id="rpe-value">7</span>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="session-note">Note</label>
+        <textarea id="session-note" rows="3" placeholder="How did it feel? Conditions? Tech cues for next time?"></textarea>
+      </div>
+    </div>
+
+    <!-- ==================== Prev / Next ==================== -->
+    <nav class="session-nav" aria-label="Session navigation">
+      <a id="prev-link" class="disabled" href="#">
+        <span class="dir">← Previous</span>
+        <span class="title" id="prev-title">—</span>
+      </a>
+      <a id="next-link" class="next disabled" href="#">
+        <span class="dir">Next →</span>
+        <span class="title" id="next-title">—</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="../assets/program-data.js"></script>
+<script src="../assets/app.js"></script>
+<script>
+/* ============ Session detail logic ============ */
+
+(function () {
+  const params = new URLSearchParams(location.search);
+  const programNum = Math.max(1, Number(params.get('p')) || 1);
+  const weekNum    = Math.max(1, Number(params.get('w')) || 1);
+  const sessionNum = Math.max(1, Number(params.get('s')) || 1);
+
+  const program = getProgram(programNum);
+  const week    = getWeek(programNum, weekNum);
+  const session = getSession(programNum, weekNum, sessionNum);
+
+  if (!program || !week || !session) {
+    document.getElementById('session-title').textContent = 'Session not found';
+    document.getElementById('session-summary').textContent =
+      'We couldn\'t find that session. It may not have been built yet.';
+    document.getElementById('session-body').innerHTML = '';
+    return;
+  }
+
+  const state = loadMemberState();
+  const key   = sessionKey(programNum, weekNum, sessionNum);
+
+  /* ---- Header ---- */
+  document.getElementById('breadcrumb').innerHTML = `
+    <a href="dashboard.html">Dashboard</a> /
+    <a href="program.html">${program.name}</a> /
+    ${week.label} · Session ${sessionNum}
+  `;
+  document.getElementById('hero-focus').innerHTML = session.focus
+    .map(f => `<span class="focus-tag ${focusClass(f)}">${f}</span>`)
+    .join('');
+  document.getElementById('session-title').textContent = sessionTitle(session);
+
+  const structure = session.longSteady
+    ? `${week.label} · Session ${sessionNum} · Single steady effort.`
+    : `${week.label} · Session ${sessionNum} · ${session.repeat} × set.`;
+  document.getElementById('session-structure').textContent = structure;
+
+  // Short summary line under H1
+  const summaryParts = [];
+  if (session.longSteady) {
+    summaryParts.push(`${session.longSteady.d} at TZ${session.longSteady.z}`);
+  } else {
+    const reps = session.repeat;
+    const setPreview = session.set.map(iv => `${iv.d} TZ${iv.z}`).join(' / ');
+    summaryParts.push(`${reps} × (${setPreview})`);
+  }
+  document.getElementById('session-summary').textContent = summaryParts.join(' — ');
+
+  /* ---- Threshold chip + show-paces toggle ---- */
+  document.getElementById('tc-value').textContent = formatSeconds(state.thresholdSec);
+  document.getElementById('tc-unit').textContent  = unitLabel(state.unit);
+  const pacesToggle = document.getElementById('show-paces-toggle');
+  document.body.classList.toggle('show-paces', pacesToggle.checked);
+  pacesToggle.addEventListener('change', (e) => {
+    document.body.classList.toggle('show-paces', e.target.checked);
+  });
+
+  /* ---- Session body ---- */
+  function ivHtml(iv) {
+    return renderIntervalHtml(iv, state.thresholdSec, state.unit);
+  }
+  let body = '';
+  if (session.longSteady) {
+    body = `
+      <div class="block-label">Steady</div>
+      <div class="interval-block">${ivHtml({z: session.longSteady.z, d: session.longSteady.d})}</div>
+    `;
+  } else {
+    const warm    = (session.warmup || []).map(ivHtml).join('');
+    const setHtml = (session.set    || []).map(ivHtml).join('');
+    body = `
+      ${warm ? `<div class="block-label">Warm-up</div><div class="interval-block">${warm}</div>` : ''}
+      <div class="block-label">Main set <span class="repeat-chip">× ${session.repeat}</span></div>
+      <div class="interval-block">${setHtml}</div>
+    `;
+  }
+  document.getElementById('session-body').innerHTML = body;
+
+  /* ---- Coach's notes (generic by focus until Mick writes real ones) ---- */
+  const NOTE_BY_FOCUS = {
+    'AEROBIC THRESHOLD':
+      'Aerobic threshold work builds the engine — the big, slow adaptation that lets you hold a strong pace for longer. Keep it steady and controlled; it should feel sustainable.',
+    'AEROBIC CAPACITY':
+      'Short, sharp bursts into TZ4 surrounded by easy recovery. The goal is to push into VO₂max territory without bleeding into the easy zones. Quality over quantity — if the bursts slow down, call it.',
+    'ANAEROBIC THRESHOLD':
+      'Tempo work at TZ3 lifts your lactate threshold — the pace you can hold before legs and lungs start burning. Steady, firm, uncomfortable but controlled.',
+    'ANAEROBIC CAPACITY':
+      'Max-effort work in TZ5 — short and brutal. This trains your ability to clear lactate and push your ceiling. Warm up thoroughly first.',
+  };
+  const primary = session.focus[0] || 'AEROBIC THRESHOLD';
+  document.getElementById('coach-notes').textContent =
+    NOTE_BY_FOCUS[primary] || NOTE_BY_FOCUS['AEROBIC THRESHOLD'];
+
+  /* ---- Mark complete + RPE + note ---- */
+  const completeBtn   = document.getElementById('complete-btn');
+  const completeLabel = document.getElementById('complete-btn-label');
+  const completedAt   = document.getElementById('completed-at');
+  const rpe           = document.getElementById('rpe');
+  const rpeValue      = document.getElementById('rpe-value');
+  const noteEl        = document.getElementById('session-note');
+
+  function hydrateLog() {
+    const s    = loadMemberState();
+    const done = !!s.completedSessions[key];
+    const notes = (s.sessionNotes && s.sessionNotes[key]) || {};
+
+    completeBtn.classList.toggle('is-complete', done);
+    completeLabel.textContent = done ? 'Completed' : 'Mark complete';
+    completedAt.textContent   = done && notes.completedAt
+      ? 'Logged ' + new Date(notes.completedAt).toLocaleDateString('en-AU', { day:'numeric', month:'short' })
+      : '';
+
+    if (notes.rpe) { rpe.value = notes.rpe; rpeValue.textContent = notes.rpe; }
+    if (notes.note) noteEl.value = notes.note;
+  }
+  hydrateLog();
+
+  function patchLog(patch) {
+    const s = loadMemberState();
+    s.sessionNotes = s.sessionNotes || {};
+    s.sessionNotes[key] = { ...(s.sessionNotes[key] || {}), ...patch };
+    saveMemberState(s);
+  }
+
+  completeBtn.addEventListener('click', () => {
+    const s = loadMemberState();
+    s.completedSessions = s.completedSessions || {};
+    const nowDone = !s.completedSessions[key];
+    if (nowDone) {
+      s.completedSessions[key] = true;
+      s.sessionNotes = s.sessionNotes || {};
+      s.sessionNotes[key] = {
+        ...(s.sessionNotes[key] || {}),
+        completedAt: new Date().toISOString(),
+        rpe:  Number(rpe.value) || null,
+        note: noteEl.value || '',
+      };
+    } else {
+      delete s.completedSessions[key];
+    }
+    saveMemberState(s);
+    hydrateLog();
+    showToast(nowDone ? 'Session logged' : 'Unmarked as complete');
+  });
+
+  rpe.addEventListener('input', () => {
+    rpeValue.textContent = rpe.value;
+  });
+  rpe.addEventListener('change', () => patchLog({ rpe: Number(rpe.value) }));
+  noteEl.addEventListener('change', () => patchLog({ note: noteEl.value }));
+
+  /* ---- Prev / Next ---- */
+  function coordsAt(delta) {
+    let p = programNum, w = weekNum, s = sessionNum + delta;
+    const weekSessions = (wk) => (getWeek(p, wk) || { sessions: [] }).sessions.length;
+    if (s < 1) {
+      w--;
+      if (w < 1) return null;
+      s = weekSessions(w);
+    } else if (s > weekSessions(w)) {
+      w++;
+      if (!getWeek(p, w)) return null;
+      s = 1;
+    }
+    return { p, w, s };
+  }
+  function labelFor(c) {
+    if (!c) return '—';
+    const sess = getSession(c.p, c.w, c.s);
+    if (!sess) return '—';
+    return `${getWeek(c.p, c.w).label} · Session ${c.s}`;
+  }
+  function wire(id, titleId, c) {
+    const a = document.getElementById(id);
+    const t = document.getElementById(titleId);
+    if (!c) {
+      a.classList.add('disabled');
+      t.textContent = '—';
+      return;
+    }
+    a.classList.remove('disabled');
+    a.href = `session.html?p=${c.p}&w=${c.w}&s=${c.s}`;
+    t.textContent = labelFor(c);
+  }
+  wire('prev-link', 'prev-title', coordsAt(-1));
+  wire('next-link', 'next-title', coordsAt( 1));
+})();
+</script>
+</body>
+</html>

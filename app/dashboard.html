@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — All Paddling</title>
+<meta name="description" content="Your All Paddling member dashboard — see what's next in your training program." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* Big hero "up next" card */
+  .up-next {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2 70%, #06b6d4);
+    border-radius: var(--radius);
+    padding: 2rem 2.25rem;
+    color: white;
+    position: relative; overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 1.5rem;
+  }
+  .up-next::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15), transparent 45%),
+      radial-gradient(circle at 80% 80%, rgba(6,182,212,0.3), transparent 55%);
+  }
+  .up-next > * { position: relative; z-index: 1; }
+  .up-next .eyebrow {
+    display: inline-block;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.12);
+    padding: 0.3rem 0.75rem; border-radius: 999px;
+    margin-bottom: 0.85rem;
+  }
+  .up-next h2 { color: white; font-size: clamp(1.4rem, 2.6vw, 1.85rem); margin-bottom: 0.4rem; }
+  .up-next .structure { color: rgba(255,255,255,0.9); font-size: 1rem; margin: 0 0 1.25rem; }
+  .up-next .focus { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
+  .up-next .focus .tag {
+    background: rgba(255,255,255,0.14);
+    color: white;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.25rem 0.6rem; border-radius: 5px;
+  }
+  .up-next .cta-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+  .up-next .btn {
+    background: white; color: var(--brand-700); border-color: white;
+    padding: 0.7rem 1.25rem;
+  }
+  .up-next .btn:hover { background: #f1f5f9; color: var(--brand-700); }
+  .up-next .btn-ghost {
+    background: transparent; color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+  }
+  .up-next .btn-ghost:hover { background: rgba(255,255,255,0.12); color: white; }
+
+  /* Mini stat cards row */
+  .mini-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 720px) { .mini-stats { grid-template-columns: 1fr; } }
+  .mini-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .mini-stat .label {
+    font-size: 0.78rem; font-weight: 600; color: var(--text-3);
+    letter-spacing: 0.04em; text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+  .mini-stat .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.5rem; font-weight: 700; color: var(--text);
+    display: flex; align-items: baseline; gap: 0.35rem;
+  }
+  .mini-stat .value small {
+    font-size: 0.85rem; font-weight: 500; color: var(--text-3);
+  }
+  .mini-stat .hint { font-size: 0.82rem; color: var(--text-3); margin: 0.5rem 0 0; }
+
+  .recent-row {
+    display: grid; grid-template-columns: 80px 1fr auto;
+    gap: 0.85rem; padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    text-decoration: none; color: inherit;
+  }
+  .recent-row:last-child { border-bottom: 0; }
+  .recent-row:hover { color: inherit; }
+  .recent-row:hover .recent-title { color: var(--brand-700); }
+  .recent-row .recent-date {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600; font-size: 0.85rem; color: var(--text-2);
+  }
+  .recent-row .recent-title { font-weight: 600; color: var(--text); transition: color .15s; }
+  .recent-row .recent-meta { font-size: 0.82rem; color: var(--text-3); margin-top: 0.15rem; }
+  .recent-row .rpe-pill {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 0.85rem;
+    background: var(--brand-50); color: var(--brand-700);
+    padding: 0.22rem 0.55rem; border-radius: 999px;
+    min-width: 42px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+
+  <main class="app-main">
+    <div id="app-mobile-header"></div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb">Member area</div>
+      <h1 id="hero-title">Welcome back.</h1>
+      <p class="lead" id="hero-sub"></p>
+    </div>
+
+    <div class="up-next" id="up-next-card">
+      <!-- Rendered by JS -->
+    </div>
+
+    <div class="mini-stats">
+      <div class="mini-stat">
+        <div class="label">This week</div>
+        <div class="value"><span id="mini-week">0</span><small> / <span id="mini-week-total">4</span> sessions</small></div>
+        <p class="hint" id="mini-week-hint">—</p>
+      </div>
+      <div class="mini-stat">
+        <div class="label">Threshold</div>
+        <div class="value"><span id="mini-threshold">—</span><small id="mini-threshold-unit">/ km</small></div>
+        <p class="hint"><a href="settings.html">Update threshold →</a></p>
+      </div>
+      <div class="mini-stat">
+        <div class="label">Program progress</div>
+        <div class="value"><span id="mini-prog">0</span><small> / <span id="mini-prog-total">16</span> sessions</small></div>
+        <p class="hint" id="mini-prog-hint">Program 1 · Week 1</p>
+      </div>
+    </div>
+
+    <div class="app-card">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.6rem;">
+        <h2 style="margin:0;">Recent activity</h2>
+        <a href="history.html" style="font-size:0.88rem;">View all →</a>
+      </div>
+      <div id="recent-list"></div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/program-data.js"></script>
+<script src="../assets/app.js"></script>
+<script>
+/* ============ Dashboard logic ============ */
+(function () {
+  const member = getMember();
+  const state  = loadMemberState();
+  const programNum = member.currentProgram || 1;
+  const program = getProgram(programNum);
+
+  // Greeting
+  const firstName = (member.name || '').split(' ')[0] || 'there';
+  document.getElementById('hero-title').textContent = `Welcome back, ${firstName}.`;
+  document.getElementById('hero-sub').textContent =
+    `You're on ${program.name} · Week ${member.currentWeek || 1} of ${program.weeks.length}. Here's what's next.`;
+
+  // Find next uncompleted session
+  function findNext() {
+    for (let w = 1; w <= program.weeks.length; w++) {
+      const week = program.weeks[w - 1];
+      for (let s = 1; s <= week.sessions.length; s++) {
+        const k = sessionKey(programNum, w, s);
+        if (!state.completedSessions[k]) {
+          return { w, s, week, session: week.sessions[s - 1] };
+        }
+      }
+    }
+    return null;
+  }
+
+  // Up next card
+  const next = findNext();
+  const upNext = document.getElementById('up-next-card');
+  if (next) {
+    const summary = next.session.longSteady
+      ? `${next.session.longSteady.d} at TZ${next.session.longSteady.z}`
+      : `${next.session.repeat} × (${next.session.set.map(iv => iv.d + ' TZ' + iv.z).join(' / ')})`;
+    const focusTags = next.session.focus.map(f => `<span class="tag">${f}</span>`).join('');
+    upNext.innerHTML = `
+      <span class="eyebrow">Up next · ${program.name} · ${next.week.label}</span>
+      <h2>Session ${next.s} · ${sessionTitle(next.session)}</h2>
+      <div class="focus">${focusTags}</div>
+      <p class="structure">${summary}</p>
+      <div class="cta-row">
+        <a href="session.html?p=${programNum}&w=${next.w}&s=${next.s}" class="btn">
+          Start session
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+        </a>
+        <a href="program.html" class="btn btn-ghost">See the week</a>
+      </div>
+    `;
+  } else {
+    upNext.innerHTML = `
+      <span class="eyebrow">Program complete</span>
+      <h2>${program.name} done — retest your threshold.</h2>
+      <p class="structure">A 3-minute all-out test will reset your zones for the next block.</p>
+      <div class="cta-row">
+        <a href="settings.html" class="btn">Open settings</a>
+        <a href="history.html" class="btn btn-ghost">Review history</a>
+      </div>
+    `;
+  }
+
+  // Mini stats
+  const currentWeekNum = member.currentWeek || (next ? next.w : 1);
+  const week = program.weeks[currentWeekNum - 1] || program.weeks[0];
+  const weekDone = week.sessions.reduce((n, _, idx) =>
+    n + (state.completedSessions[sessionKey(programNum, currentWeekNum, idx + 1)] ? 1 : 0), 0);
+  document.getElementById('mini-week').textContent = weekDone;
+  document.getElementById('mini-week-total').textContent = week.sessions.length;
+  document.getElementById('mini-week-hint').textContent =
+    weekDone === week.sessions.length ? `${week.label} complete.` :
+    weekDone === 0 ? `${week.label} — let's go.` :
+    `${week.sessions.length - weekDone} to go this week.`;
+
+  document.getElementById('mini-threshold').textContent = formatSeconds(state.thresholdSec);
+  document.getElementById('mini-threshold-unit').textContent = unitLabel(state.unit);
+
+  let progDone = 0, progTotal = 0;
+  program.weeks.forEach((w, i) => {
+    progTotal += w.sessions.length;
+    w.sessions.forEach((_, idx) => {
+      if (state.completedSessions[sessionKey(programNum, i + 1, idx + 1)]) progDone++;
+    });
+  });
+  document.getElementById('mini-prog').textContent = progDone;
+  document.getElementById('mini-prog-total').textContent = progTotal;
+  document.getElementById('mini-prog-hint').textContent = `${program.name} · Week ${currentWeekNum} of ${program.weeks.length}`;
+
+  // Recent activity
+  const completed = Object.keys(state.completedSessions || {})
+    .filter(k => state.completedSessions[k])
+    .map(k => {
+      const m = /^p(\d+)w(\d+)s(\d+)$/.exec(k);
+      if (!m) return null;
+      const p = Number(m[1]), w = Number(m[2]), s = Number(m[3]);
+      return { p, w, s, key: k, session: getSession(p, w, s), week: getWeek(p, w),
+               notes: (state.sessionNotes && state.sessionNotes[k]) || {} };
+    })
+    .filter(e => e && e.session);
+
+  completed.sort((a, b) => {
+    const at = a.notes.completedAt ? new Date(a.notes.completedAt).getTime() : 0;
+    const bt = b.notes.completedAt ? new Date(b.notes.completedAt).getTime() : 0;
+    return bt - at;
+  });
+  const top3 = completed.slice(0, 3);
+
+  const listEl = document.getElementById('recent-list');
+  if (!top3.length) {
+    listEl.innerHTML = `
+      <p style="color:var(--text-3); margin:0.5rem 0;">
+        No sessions logged yet. Complete your first one and it'll land here.
+      </p>
+    `;
+  } else {
+    listEl.innerHTML = top3.map(e => {
+      const d = e.notes.completedAt
+        ? new Date(e.notes.completedAt).toLocaleDateString('en-AU', { day:'numeric', month:'short' })
+        : '—';
+      return `
+        <a class="recent-row" href="session.html?p=${e.p}&w=${e.w}&s=${e.s}">
+          <span class="recent-date">${d}</span>
+          <div>
+            <div class="recent-title">${sessionTitle(e.session)}</div>
+            <div class="recent-meta">P${e.p} · ${e.week.label} · Session ${e.s}</div>
+          </div>
+          <span class="rpe-pill">${e.notes.rpe ? 'RPE ' + e.notes.rpe : '—'}</span>
+        </a>
+      `;
+    }).join('');
+  }
+})();
+</script>
+</body>
+</html>

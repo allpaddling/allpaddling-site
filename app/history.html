@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>History — All Paddling</title>
+<meta name="description" content="Every session you've completed — see how far you've come." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 640px) { .stats-row { grid-template-columns: 1fr; } }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-card .stat-label {
+    font-size: 0.8rem; font-weight: 600; color: var(--text-3);
+    letter-spacing: 0.04em; text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+  .stat-card .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem; font-weight: 700; color: var(--text);
+    line-height: 1;
+  }
+  .stat-card .stat-unit {
+    font-size: 0.9rem; font-weight: 500; color: var(--text-3);
+    margin-left: 0.35rem;
+  }
+  .stat-card .stat-hint {
+    font-size: 0.82rem; color: var(--text-3);
+    margin: 0.5rem 0 0;
+  }
+
+  .history-row {
+    display: grid; grid-template-columns: 100px 1fr auto;
+    gap: 1rem; padding: 0.9rem 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .history-row:last-child { border-bottom: 0; }
+  .history-date {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--text-2);
+  }
+  .history-meta .title { font-weight: 600; color: var(--text); margin-bottom: 0.15rem; }
+  .history-meta .sub { font-size: 0.84rem; color: var(--text-3); }
+  .history-focus { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }
+  .focus-tag {
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.22rem 0.5rem; border-radius: 5px;
+  }
+  .focus-tag.f-aer-th  { background: var(--tz2-bg); color: var(--tz2); }
+  .focus-tag.f-ana-th  { background: var(--tz3-bg); color: var(--tz3); }
+  .focus-tag.f-aer-cap { background: var(--tz4-bg); color: var(--tz4); }
+  .focus-tag.f-ana-cap { background: var(--tz5-bg); color: var(--tz5); }
+  .history-rpe {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.95rem; font-weight: 700;
+    color: var(--brand-700);
+    background: var(--brand-50);
+    padding: 0.3rem 0.65rem; border-radius: 999px;
+    min-width: 44px; text-align: center;
+  }
+  .empty-state {
+    text-align: center; padding: 3rem 1rem;
+    color: var(--text-3);
+  }
+  .empty-state h3 { color: var(--text); margin-bottom: 0.5rem; }
+  .empty-state p { margin: 0 0 1rem; }
+
+  @media (max-width: 560px) {
+    .history-row { grid-template-columns: 1fr; gap: 0.35rem; }
+    .history-rpe { justify-self: start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+
+  <main class="app-main">
+    <div id="app-mobile-header"></div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb"><a href="dashboard.html">Dashboard</a> / History</div>
+      <h1>Training History</h1>
+      <p class="lead">Every session you've logged. Threshold changes tracked. Receipts for the work.</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Sessions completed</div>
+        <div class="stat-value" id="stat-completed">0</div>
+        <p class="stat-hint" id="stat-completed-hint">Start logging to build your history.</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Current threshold</div>
+        <div class="stat-value"><span id="stat-threshold">—</span><span class="stat-unit" id="stat-threshold-unit">/ km</span></div>
+        <p class="stat-hint" id="stat-threshold-hint">—</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg. RPE</div>
+        <div class="stat-value" id="stat-rpe">—</div>
+        <p class="stat-hint">Across all logged sessions.</p>
+      </div>
+    </div>
+
+    <div class="app-card">
+      <h2>Completed sessions</h2>
+      <p class="card-sub">Newest first. Click through to the full session detail.</p>
+      <div id="history-list"></div>
+    </div>
+
+    <div class="app-card" id="threshold-card" style="display:none;">
+      <h2>Threshold changes</h2>
+      <p class="card-sub">Every time you updated your threshold on Settings, we saved a snapshot.</p>
+      <div id="threshold-list"></div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/program-data.js"></script>
+<script src="../assets/app.js"></script>
+<script>
+/* ============ History page logic ============ */
+(function () {
+  const state = loadMemberState();
+
+  // Stats
+  const completed = Object.keys(state.completedSessions || {}).filter(k => state.completedSessions[k]);
+  document.getElementById('stat-completed').textContent = completed.length;
+  document.getElementById('stat-completed-hint').textContent = completed.length
+    ? 'Keep it rolling.'
+    : 'Start logging to build your history.';
+
+  document.getElementById('stat-threshold').textContent = formatSeconds(state.thresholdSec);
+  document.getElementById('stat-threshold-unit').textContent = unitLabel(state.unit);
+  document.getElementById('stat-threshold-hint').textContent =
+    (state.thresholdHistory || []).length > 1
+      ? `${state.thresholdHistory.length} retests logged.`
+      : 'Retest every 4–6 weeks on the Settings page.';
+
+  const rpes = completed
+    .map(k => (state.sessionNotes && state.sessionNotes[k] && state.sessionNotes[k].rpe))
+    .filter(n => typeof n === 'number' && n > 0);
+  document.getElementById('stat-rpe').textContent =
+    rpes.length ? (rpes.reduce((a, b) => a + b, 0) / rpes.length).toFixed(1) : '—';
+
+  // List
+  const listEl = document.getElementById('history-list');
+  if (!completed.length) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <h3>No completed sessions yet.</h3>
+        <p>Once you mark a session complete it'll show up here.</p>
+        <a href="program.html" class="btn btn-primary">Open your program</a>
+      </div>
+    `;
+  } else {
+    const entries = completed.map(key => {
+      const m = /^p(\d+)w(\d+)s(\d+)$/.exec(key);
+      if (!m) return null;
+      const p = Number(m[1]), w = Number(m[2]), s = Number(m[3]);
+      const session = getSession(p, w, s);
+      const week    = getWeek(p, w);
+      const notes   = (state.sessionNotes && state.sessionNotes[key]) || {};
+      return { p, w, s, key, session, week, notes };
+    }).filter(e => e && e.session);
+
+    entries.sort((a, b) => {
+      const at = a.notes.completedAt ? new Date(a.notes.completedAt).getTime() : 0;
+      const bt = b.notes.completedAt ? new Date(b.notes.completedAt).getTime() : 0;
+      return bt - at;
+    });
+
+    listEl.innerHTML = entries.map(e => {
+      const dateStr = e.notes.completedAt
+        ? new Date(e.notes.completedAt).toLocaleDateString('en-AU', { day:'numeric', month:'short' })
+        : '—';
+      const focusHtml = (e.session.focus || [])
+        .map(f => `<span class="focus-tag ${focusClass(f)}">${f}</span>`)
+        .join('');
+      return `
+        <a class="history-row" href="session.html?p=${e.p}&w=${e.w}&s=${e.s}" style="text-decoration:none;color:inherit;">
+          <div class="history-date">${dateStr}</div>
+          <div class="history-meta">
+            <div class="title">${sessionTitle(e.session)}</div>
+            <div class="sub">P${e.p} · ${e.week.label} · Session ${e.s}${e.notes.note ? ' · ' + e.notes.note.slice(0, 60) + (e.notes.note.length > 60 ? '…' : '') : ''}</div>
+            <div class="history-focus">${focusHtml}</div>
+          </div>
+          <div class="history-rpe">${e.notes.rpe ? 'RPE ' + e.notes.rpe : '—'}</div>
+        </a>
+      `;
+    }).join('');
+  }
+
+  // Threshold change log
+  const history = state.thresholdHistory || [];
+  if (history.length) {
+    document.getElementById('threshold-card').style.display = '';
+    const rows = history.slice().reverse().map(h => {
+      const d = new Date(h.at);
+      return `
+        <div class="kv-row">
+          <div class="kv-label">${d.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' })}</div>
+          <div class="kv-value">${formatSeconds(h.thresholdSec)} ${unitLabel(h.unit)}</div>
+        </div>
+      `;
+    }).join('');
+    document.getElementById('threshold-list').innerHTML = rows;
+  }
+})();
+</script>
+</body>
+</html>

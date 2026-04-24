@@ -441,57 +441,20 @@
   </div>
 </section>
 
+<script src="assets/program-data.js"></script>
 <script>
-/* ============ Pace calculator logic ============ */
-
-const ZONES = [
-  { key: 'tz1', label: 'TZ1', name: 'Recovery',   purpose: 'Easy aerobic · active recovery',     lo: 0.00, hi: 0.77 },
-  { key: 'tz2', label: 'TZ2', name: 'Endurance',  purpose: 'Aerobic base · long distance',       lo: 0.88, hi: 0.94 },
-  { key: 'tz3', label: 'TZ3', name: 'Threshold',  purpose: 'Tempo · lactate threshold',          lo: 1.00, hi: 1.04 },
-  { key: 'tz4', label: 'TZ4', name: 'VO₂max',      purpose: 'Hard intervals · aerobic power',     lo: 1.04, hi: 1.11 },
-  { key: 'tz5', label: 'TZ5', name: 'Sprint',     purpose: 'Max effort · anaerobic capacity',    lo: 1.11, hi: 999 },
-];
+/* ============ Pace calculator logic ============
+   ZONES, formatSeconds, zonePaceRange, focusClass, renderIntervalHtml,
+   renderSessionCardHtml, and PROGRAM_1 live in assets/program-data.js.
+*/
 
 let state = {
   hours: 0, minutes: 5, seconds: 30,
   unit: 'metric'  // 'metric' = per km, 'imperial' = per mile
 };
 
-function formatSeconds(s) {
-  if (!isFinite(s) || s <= 0) return '—';
-  const total = Math.round(s);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const sec = total % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-  return `${m}:${String(sec).padStart(2, '0')}`;
-}
-
 function thresholdSeconds() {
   return Number(state.hours) * 3600 + Number(state.minutes) * 60 + Number(state.seconds);
-}
-
-/*
-   Pace math: a higher %FTP = FASTER pace = lower time.
-   For a zone [lo, hi] of FTP:
-     - fastest time  = FTP_seconds / hi
-     - slowest time  = FTP_seconds / lo
-   Display the range "slowest – fastest" (bigger number first).
-*/
-function zonePaceRange(zone, ftpSec) {
-  if (ftpSec <= 0) return { label: '—' };
-
-  if (zone.key === 'tz1') {
-    // slower than 77% → pace slower than ftp/0.77
-    return { label: `slower than ${formatSeconds(ftpSec / zone.hi)}` };
-  }
-  if (zone.key === 'tz5') {
-    // faster than 111% → pace faster than ftp/1.11
-    return { label: `faster than ${formatSeconds(ftpSec / zone.lo)}` };
-  }
-  const slow = ftpSec / zone.lo;
-  const fast = ftpSec / zone.hi;
-  return { label: `${formatSeconds(slow)} – ${formatSeconds(fast)}` };
 }
 
 function renderZones() {
@@ -521,112 +484,16 @@ function renderZones() {
   renderSessions();
 }
 
-/* ============ Program preview: April · Week 1 ============ */
-
-const APRIL_WEEK_1 = {
-  label: 'Week 1',
-  date: '30 Mar',
-  sessions: [
-    {
-      focus: ['AEROBIC THRESHOLD', 'AEROBIC CAPACITY'],
-      warmup: [{z:1, d:'2 min'}],
-      set: [
-        {z:4, d:'20 sec'},
-        {z:2, d:'60 sec'},
-        {z:4, d:'20 sec'},
-        {z:2, d:'3 min'},
-        {z:4, d:'20 sec'}
-      ],
-      repeat: 8
-    },
-    {
-      focus: ['ANAEROBIC THRESHOLD', 'AEROBIC THRESHOLD'],
-      warmup: [{z:1, d:'2 min'}],
-      set: [
-        {z:3, d:'1 min'},
-        {z:2, d:'1 min'},
-        {z:3, d:'2 min'},
-        {z:2, d:'2 min'},
-        {z:3, d:'2 min'}
-      ],
-      repeat: 6
-    },
-    {
-      focus: ['AEROBIC THRESHOLD'],
-      warmup: [{z:1, d:'2 min'}],
-      set: [
-        {z:2, d:'2 min'},
-        {z:1, d:'1 min'},
-        {z:2, d:'4 min'}
-      ],
-      repeat: 6
-    },
-    {
-      focus: ['AEROBIC THRESHOLD'],
-      longSteady: {z:2, d:'60 minutes'}
-    }
-  ]
-};
-
-function focusClass(f) {
-  const s = f.toUpperCase();
-  if (s.includes('AEROBIC CAPACITY'))   return 'f-aer-cap';
-  if (s.includes('ANAEROBIC THRESHOLD')) return 'f-ana-th';
-  if (s.includes('ANAEROBIC CAPACITY'))  return 'f-ana-cap';
-  return 'f-aer-th';
-}
-
-function intervalHtml(iv) {
-  const zone = ZONES[iv.z - 1];
-  const ftp = thresholdSeconds();
-  const range = zonePaceRange(zone, ftp);
-  const unitStr = state.unit === 'metric' ? '/ km' : '/ mile';
-  return `
-    <div class="interval" data-zone="${iv.z}">
-      <div class="interval-zone">TZ ${iv.z}</div>
-      <div class="interval-desc">${iv.d}</div>
-      <div class="interval-pace">${range.label} ${unitStr}</div>
-    </div>
-  `;
-}
+/* ============ Program preview: Program 1 · Week 1 ============ */
 
 function renderSessions() {
   const el = document.getElementById('sessions-grid');
   if (!el) return;
-
-  el.innerHTML = APRIL_WEEK_1.sessions.map((s, i) => {
-    const focus = s.focus.map(f => `<span class="focus-tag ${focusClass(f)}">${f}</span>`).join('');
-
-    let body = '';
-    if (s.longSteady) {
-      body = `
-        <div class="session-intervals">
-          ${intervalHtml({z: s.longSteady.z, d: s.longSteady.d})}
-        </div>
-        <div class="session-repeat steady">Single steady effort</div>
-      `;
-    } else {
-      const warm = (s.warmup || []).map(intervalHtml).join('');
-      const setBlock = (s.set || []).map(intervalHtml).join('');
-      body = `
-        <div class="session-intervals">
-          ${warm}
-          ${setBlock}
-        </div>
-        <div class="session-repeat">↻ Repeat all ${s.repeat} times</div>
-      `;
-    }
-
-    return `
-      <div class="session-card">
-        <div class="session-head">
-          <div class="session-num">Session ${i + 1}</div>
-          <div class="session-focus">${focus}</div>
-        </div>
-        ${body}
-      </div>
-    `;
-  }).join('');
+  const ftp = thresholdSeconds();
+  const week = PROGRAM_1.weeks[0]; // Public calculator shows Week 1 only
+  el.innerHTML = week.sessions
+    .map((s, i) => renderSessionCardHtml(s, i, ftp, state.unit))
+    .join('');
 }
 
 // Show-paces toggle

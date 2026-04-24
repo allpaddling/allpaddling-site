@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Current Program — All Paddling</title>
+<meta name="description" content="Your current 4-week program — every session, every interval, personalised to your threshold." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* Re-use session-card patterns the pace calculator inlines. */
+  .session-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem 1.4rem;
+    display: flex; flex-direction: column; gap: 0.85rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .session-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 0.75rem; flex-wrap: wrap;
+  }
+  .session-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+    background: var(--brand-50); color: var(--brand-700);
+    padding: 0.3rem 0.65rem; border-radius: 6px;
+    white-space: nowrap;
+    display: inline-flex; align-items: center;
+  }
+  .session-focus { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: flex-end; }
+  .focus-tag {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.25rem 0.55rem; border-radius: 5px;
+    white-space: nowrap;
+  }
+  .focus-tag.f-aer-th  { background: var(--tz2-bg); color: var(--tz2); }
+  .focus-tag.f-ana-th  { background: var(--tz3-bg); color: var(--tz3); }
+  .focus-tag.f-aer-cap { background: var(--tz4-bg); color: var(--tz4); }
+  .focus-tag.f-ana-cap { background: var(--tz5-bg); color: var(--tz5); }
+
+  .session-intervals { display: grid; gap: 0.35rem; margin-bottom: 0.25rem; }
+  .interval {
+    display: grid; grid-template-columns: 48px 1fr auto; gap: 0.75rem;
+    align-items: center; padding: 0.55rem 0.75rem;
+    border-radius: 8px; border-left: 4px solid var(--border-strong);
+    background: var(--surface-2);
+    font-size: 0.92rem;
+  }
+  .interval[data-zone="1"] { background: var(--tz1-bg); border-left-color: var(--tz1); }
+  .interval[data-zone="2"] { background: var(--tz2-bg); border-left-color: var(--tz2); }
+  .interval[data-zone="3"] { background: var(--tz3-bg); border-left-color: var(--tz3); }
+  .interval[data-zone="4"] { background: var(--tz4-bg); border-left-color: var(--tz4); }
+  .interval[data-zone="5"] { background: var(--tz5-bg); border-left-color: var(--tz5); }
+  .interval-zone {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 700;
+  }
+  .interval[data-zone="1"] .interval-zone { color: var(--tz1); }
+  .interval[data-zone="2"] .interval-zone { color: var(--tz2); }
+  .interval[data-zone="3"] .interval-zone { color: var(--tz3); }
+  .interval[data-zone="4"] .interval-zone { color: var(--tz4); }
+  .interval[data-zone="5"] .interval-zone { color: var(--tz5); }
+  .interval-desc { color: var(--text); font-weight: 500; }
+  .interval-pace {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; font-weight: 600; color: var(--text-2);
+    white-space: nowrap;
+  }
+  .session-repeat {
+    margin-top: auto;
+    padding: 0.55rem 0.75rem; border-radius: 8px;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.85rem; font-weight: 600; text-align: center;
+  }
+  .session-repeat.steady { background: var(--surface-2); color: var(--text-2); }
+
+  .sessions-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  @media (max-width: 760px) { .sessions-grid { grid-template-columns: 1fr; } }
+
+  .week-complete-cta {
+    margin-top: 1.5rem;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2 70%, #06b6d4);
+    color: white; border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+    display: none; justify-content: space-between;
+    align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .week-complete-cta.visible { display: flex; }
+  .week-complete-cta h3 { color: white; margin: 0 0 0.2rem; font-size: 1.15rem; }
+  .week-complete-cta p  { color: rgba(255,255,255,0.9); margin: 0; font-size: 0.92rem; }
+  .week-complete-cta .btn { background: white; color: var(--brand-700); border-color: white; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+
+  <main class="app-main">
+    <div id="app-mobile-header"></div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb"><a href="dashboard.html">Dashboard</a> / Current Program</div>
+      <div class="program-header">
+        <div class="program-meta-stack">
+          <h1 style="margin-bottom:0.15rem;" id="program-title">Program 1</h1>
+          <p class="lead" style="margin:0;" id="program-subtitle">Aerobic base · intro intensity</p>
+        </div>
+        <div class="program-progress" aria-live="polite">
+          <span style="font-size:0.82rem; font-weight:600; color:var(--text-3);">Progress</span>
+          <div class="bar"><span id="progress-bar" style="width:0%"></span></div>
+          <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.9rem;" id="progress-count">0 / 16</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-toolbar">
+      <div class="left">
+        <span class="threshold-chip">
+          Threshold
+          <span id="tc-value">—</span>
+          <small id="tc-unit">/ km</small>
+        </span>
+        <a href="settings.html" style="font-size:0.88rem;">Update →</a>
+      </div>
+      <div class="right">
+        <label class="paces-toggle">
+          <input type="checkbox" id="show-paces-toggle" checked />
+          <span>Show my paces on intervals</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="week-tabs" id="week-tabs" role="tablist"></div>
+
+    <p class="week-note" id="week-note"></p>
+
+    <div class="sessions-grid" id="sessions-grid"></div>
+
+    <div class="week-complete-cta" id="week-cta">
+      <div>
+        <h3 id="week-cta-title">Week 1 complete — well done.</h3>
+        <p id="week-cta-body">Move on to Week 2 when you're ready.</p>
+      </div>
+      <a href="#" class="btn" id="week-cta-btn">Next week →</a>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/program-data.js"></script>
+<script src="../assets/app.js"></script>
+<script>
+/* ============ Program page logic ============ */
+
+(function () {
+  const member = getMember();
+  const state  = loadMemberState();
+
+  const programNum = member.currentProgram || 1;
+  const program = getProgram(programNum);
+
+  document.getElementById('program-title').textContent    = `${program.name} · ${member.discipline}`;
+  document.getElementById('program-subtitle').textContent = program.subtitle;
+
+  // Pace chip
+  document.getElementById('tc-value').textContent = formatSeconds(state.thresholdSec);
+  document.getElementById('tc-unit').textContent  = unitLabel(state.unit);
+
+  // Show-paces toggle (bind to body class so interval-pace visibility cascades)
+  const pacesToggle = document.getElementById('show-paces-toggle');
+  document.body.classList.toggle('show-paces', pacesToggle.checked);
+  pacesToggle.addEventListener('change', (e) => {
+    document.body.classList.toggle('show-paces', e.target.checked);
+  });
+
+  // Completion helpers
+  function isComplete(weekNum, sessionNum) {
+    return !!(state.completedSessions[sessionKey(programNum, weekNum, sessionNum)]);
+  }
+  function weekCompletion(weekNum) {
+    const week = program.weeks[weekNum - 1];
+    const done = week.sessions.reduce((n, _, idx) => n + (isComplete(weekNum, idx + 1) ? 1 : 0), 0);
+    return { done, total: week.sessions.length };
+  }
+  function programCompletion() {
+    let done = 0, total = 0;
+    program.weeks.forEach((w, i) => {
+      const c = weekCompletion(i + 1);
+      done += c.done; total += c.total;
+    });
+    return { done, total };
+  }
+
+  // Initial active week = current week, clamped
+  let activeWeek = Math.min(Math.max(member.currentWeek || 1, 1), program.weeks.length);
+
+  // Render week tabs
+  function renderWeekTabs() {
+    const tabs = program.weeks.map((w, i) => {
+      const n = i + 1;
+      const c = weekCompletion(n);
+      const active = n === activeWeek ? ' active' : '';
+      return `
+        <button class="week-tab${active}" data-week="${n}" role="tab">
+          ${w.label}
+          <span class="count">${c.done}/${c.total}</span>
+        </button>
+      `;
+    }).join('');
+    document.getElementById('week-tabs').innerHTML = tabs;
+  }
+
+  // Render sessions for active week
+  function renderWeek() {
+    const week = program.weeks[activeWeek - 1];
+    document.getElementById('week-note').textContent = `${week.label}${week.startDate ? ' · starts ' + week.startDate : ''} — ${week.note}`;
+    const ftp = state.thresholdSec;
+    const html = week.sessions.map((s, i) => {
+      return renderSessionCardHtml(s, i, ftp, state.unit, {
+        href: `session.html?p=${programNum}&w=${activeWeek}&s=${i + 1}`,
+        completed: isComplete(activeWeek, i + 1),
+      });
+    }).join('');
+    document.getElementById('sessions-grid').innerHTML = html;
+
+    // Week CTA visibility
+    const c = weekCompletion(activeWeek);
+    const cta = document.getElementById('week-cta');
+    if (c.done === c.total) {
+      const isLast = activeWeek === program.weeks.length;
+      document.getElementById('week-cta-title').textContent =
+        isLast ? `Program ${programNum} complete.` : `Week ${activeWeek} complete — well done.`;
+      document.getElementById('week-cta-body').textContent =
+        isLast ? 'Retest your threshold and move on to the next program.'
+               : `Move on to Week ${activeWeek + 1} when you're ready.`;
+      const btn = document.getElementById('week-cta-btn');
+      btn.textContent = isLast ? 'Retest threshold →' : `Open Week ${activeWeek + 1} →`;
+      btn.href = isLast ? 'settings.html' : '#';
+      btn.onclick = isLast ? null : (ev) => { ev.preventDefault(); activeWeek++; renderAll(); };
+      cta.classList.add('visible');
+    } else {
+      cta.classList.remove('visible');
+    }
+  }
+
+  // Overall progress
+  function renderProgress() {
+    const p = programCompletion();
+    const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-count').textContent = `${p.done} / ${p.total}`;
+  }
+
+  function renderAll() {
+    renderWeekTabs();
+    renderWeek();
+    renderProgress();
+  }
+
+  // Tab clicks
+  document.getElementById('week-tabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-week]');
+    if (!btn) return;
+    activeWeek = Number(btn.dataset.week);
+    renderAll();
+  });
+
+  renderAll();
+
+  // Refresh when tab regains focus (in case user updated threshold/completion elsewhere)
+  window.addEventListener('focus', () => {
+    const fresh = loadMemberState();
+    Object.assign(state, fresh);
+    document.getElementById('tc-value').textContent = formatSeconds(state.thresholdSec);
+    document.getElementById('tc-unit').textContent  = unitLabel(state.unit);
+    renderAll();
+  });
+})();
+</script>
+</body>
+</html>
