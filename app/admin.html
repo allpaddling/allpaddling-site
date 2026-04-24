@@ -193,13 +193,36 @@
   <form class="gate-card" id="gate-form">
     <div class="gate-eyebrow">Coach Admin</div>
     <h1>Sign in to continue</h1>
-    <p>This area is for coaches managing program content. Enter your email to continue.</p>
+    <p>Enter your coach email — we'll send you a magic link. No password needed.</p>
     <label for="gate-email">Email</label>
     <input type="email" id="gate-email" autocomplete="email" placeholder="you@allpaddling.com" required />
-    <div class="gate-error" id="gate-error">Email not recognised. Check the address or contact support.</div>
-    <button type="submit" class="btn btn-primary">Sign in →</button>
+    <div class="gate-error" id="gate-error">Something went wrong. Please try again.</div>
+    <button type="submit" class="btn btn-primary" id="gate-submit">Send magic link →</button>
     <p class="gate-note"><a href="../login.html">Member sign-in instead</a></p>
   </form>
+</div>
+
+<!-- "Check your email" — shown after a magic link has been sent -->
+<div id="login-sent" class="gate-wrap" style="display:none;">
+  <div class="gate-card">
+    <div class="gate-eyebrow">Check your inbox</div>
+    <h1>Magic link sent</h1>
+    <p>We've emailed a sign-in link to <strong id="sent-email">your email</strong>. Click the link to finish signing in. You can close this tab if you like.</p>
+    <p class="gate-note" style="margin-top: 1.25rem;">
+      <a href="#" id="sent-back">Use a different email →</a>
+    </p>
+  </div>
+</div>
+
+<!-- "No access" — shown if a non-coach signs in -->
+<div id="login-noaccess" class="gate-wrap" style="display:none;">
+  <div class="gate-card">
+    <div class="gate-eyebrow">Access denied</div>
+    <h1>Coach access only</h1>
+    <p>This area is for coaches managing program content. The email <strong id="noaccess-email">—</strong> isn't on the coach list.</p>
+    <button class="btn btn-primary" id="noaccess-signout" style="width:100%; justify-content:center;">Sign out and try a different email</button>
+    <p class="gate-note"><a href="../login.html">Member sign-in instead</a></p>
+  </div>
 </div>
 
 <!-- Admin app shell — shown after authentication -->
@@ -346,41 +369,97 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js"></script>
 <script>
-(function () {
-  /* ====== Auth gate ====== */
-  if (!adminIsAuthed()) {
-    document.getElementById('login-gate').style.display = '';
-    document.getElementById('admin-shell').style.display = 'none';
-  } else {
-    document.getElementById('login-gate').style.display = 'none';
-    document.getElementById('admin-shell').style.display = '';
-    renderAdmin();
+(async function () {
+  /* ============================================================
+     Wire DOM helpers up front so they work in any state.
+     ============================================================ */
+  const gateEl       = document.getElementById('login-gate');
+  const sentEl       = document.getElementById('login-sent');
+  const noaccessEl   = document.getElementById('login-noaccess');
+  const shellEl      = document.getElementById('admin-shell');
+
+  function showOnly (which) {
+    [gateEl, sentEl, noaccessEl, shellEl].forEach(el => {
+      if (!el) return;
+      el.style.display = (el === which) ? '' : 'none';
+    });
   }
 
-  /* ====== Gate form ====== */
-  document.getElementById('gate-form').addEventListener('submit', function (e) {
+  /* Magic-link form */
+  document.getElementById('gate-form').addEventListener('submit', async function (e) {
     e.preventDefault();
     const email = document.getElementById('gate-email').value.trim().toLowerCase();
-    const err = document.getElementById('gate-error');
-    if (!isAdminEmail(email)) {
-      err.classList.add('visible');
-      return;
-    }
+    const err   = document.getElementById('gate-error');
+    const btn   = document.getElementById('gate-submit');
     err.classList.remove('visible');
-    setAdminAuth(email);
-    document.getElementById('login-gate').style.display = 'none';
-    document.getElementById('admin-shell').style.display = '';
-    renderAdmin();
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      await sendMagicLink(email);
+      document.getElementById('sent-email').textContent = email;
+      showOnly(sentEl);
+    } catch (ex) {
+      console.error('magic link error', ex);
+      err.textContent = (ex && ex.message) ? ex.message : 'Couldn’t send link. Try again.';
+      err.classList.add('visible');
+      btn.disabled = false;
+      btn.textContent = 'Send magic link →';
+    }
   });
 
-  /* ====== Render admin landing ====== */
+  document.getElementById('sent-back').addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('gate-submit').disabled = false;
+    document.getElementById('gate-submit').textContent = 'Send magic link →';
+    showOnly(gateEl);
+  });
+
+  document.getElementById('noaccess-signout').addEventListener('click', async function () {
+    await signOut();
+    location.reload();
+  });
+
+  /* ============================================================
+     Auth check on load — async because Supabase calls are async.
+     If a magic link just landed, the SDK has already parsed the
+     URL hash and stored the session before we get here.
+     ============================================================ */
+  const session = await getCurrentSession();
+  if (!session) {
+    showOnly(gateEl);
+    return;
+  }
+
+  // Strip the magic-link hash from the URL so a refresh doesn't
+  // re-process the (now used-up) tokens.
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+
+  const isCoach = await isCurrentUserCoach();
+  if (!isCoach) {
+    document.getElementById('noaccess-email').textContent = session.user.email || '—';
+    showOnly(noaccessEl);
+    return;
+  }
+
+  /* Authenticated coach — load data and show the admin shell. */
+  await loadProgressivePlans();
+  showOnly(shellEl);
+  renderAdmin();
+
+  /* ============================================================
+     Render admin landing
+     ============================================================ */
   function renderAdmin () {
-    const email = getAdminAuth();
+    const email = session.user.email || '';
     const niceName = nameFromEmail(email);
-    document.getElementById('admin-email').textContent = email || '';
+    document.getElementById('admin-email').textContent = email;
     document.getElementById('admin-name').textContent = niceName;
     const avatarEl = document.getElementById('admin-avatar');
     if (avatarEl) {
@@ -388,20 +467,21 @@
       avatarEl.textContent = initials || 'CO';
     }
 
-    // Last-edited stamps per program
-    const data = loadAdminData();
+    // Last-edited stamps per Progressive plan (from Supabase cache)
     ['prone', 'sup', 'oc', 'ski'].forEach(key => {
       const el = document.getElementById('meta-' + key);
       if (!el) return;
-      const last = data[key] && data[key].lastEdited;
+      const plan = getProgressivePlan(key);
+      const last = plan && plan.lastEdited;
       el.textContent = last ? ('Edited ' + relativeTime(new Date(last))) : 'Never edited';
     });
 
     // Custom tile shows member count + most recent edit across all members
     const customEl = document.getElementById('meta-custom');
     if (customEl) {
-      const members = (data.custom && data.custom.members) || [];
-      const plans = (data.custom && data.custom.plans) || {};
+      const blob = loadCustomBlob();
+      const members = blob.members || [];
+      const plans = blob.plans || {};
       if (!members.length) {
         customEl.textContent = 'No members yet';
       } else {
@@ -420,9 +500,9 @@
     }
 
     // Sign out
-    document.getElementById('signout-btn').addEventListener('click', function (e) {
+    document.getElementById('signout-btn').addEventListener('click', async function (e) {
       e.preventDefault();
-      clearAdminAuth();
+      await signOut();
       location.reload();
     });
 

@@ -32,6 +32,7 @@
     background: #10b981;
   }
   .save-dot.dirty { background: #f59e0b; }
+  .save-dot.errored { background: #ef4444; }
   .save-bar .save-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
   /* ====== Editor form ====== */
@@ -400,16 +401,24 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js"></script>
 <script>
 /* ============================================================
    admin-edit.html — program editor logic
    ============================================================ */
-(function () {
-  /* ---- Auth ---- */
-  if (!adminIsAuthed()) {
+(async function () {
+  /* ---- Auth: must have a Supabase session AND be in the coaches table ---- */
+  const session = await getCurrentSession();
+  if (!session) {
+    document.getElementById('gate-fallback').style.display = '';
+    document.getElementById('admin-shell').style.display = 'none';
+    return;
+  }
+  if (!await isCurrentUserCoach()) {
     document.getElementById('gate-fallback').style.display = '';
     document.getElementById('admin-shell').style.display = 'none';
     return;
@@ -442,25 +451,27 @@
       return;
     }
   } else {
-    plan = loadAdminData()[planKey];
+    // Progressive plan — fetch from Supabase via the admin.js cache
+    await loadProgressivePlans();
+    plan = getProgressivePlan(planKey);
   }
   let activeWeek = 0;
 
   const backHref = (planKey === 'custom') ? 'admin-custom.html' : 'admin.html';
 
   /* ---- Sidebar user ---- */
-  const email = getAdminAuth();
+  const email = session.user.email || '';
   const niceName = (email || 'Coach').split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  document.getElementById('admin-email').textContent = email || '';
+  document.getElementById('admin-email').textContent = email;
   document.getElementById('admin-name').textContent = niceName;
   const avatarEl = document.getElementById('admin-avatar');
   if (avatarEl) {
     const initials = niceName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
     avatarEl.textContent = initials || 'CO';
   }
-  document.getElementById('signout-btn').addEventListener('click', (e) => {
+  document.getElementById('signout-btn').addEventListener('click', async (e) => {
     e.preventDefault();
-    clearAdminAuth();
+    await signOut();
     location.href = 'admin.html';
   });
 
@@ -505,21 +516,25 @@
     planKey === 'custom' ? '← Back to members' : '← Back to programs';
 
   /* ---- Reset ---- */
-  document.getElementById('reset-btn').addEventListener('click', () => {
-    if (!confirm('Reset this program to defaults? All edits on this browser will be lost.')) return;
-    if (planKey === 'custom') {
-      resetCustomPlan(memberId);
-      plan = getCustomPlan(memberId);
-    } else {
-      resetPlan(planKey);
-      plan = loadAdminData()[planKey];
+  document.getElementById('reset-btn').addEventListener('click', async () => {
+    if (!confirm('Reset this program to defaults? All edits will be lost.')) return;
+    try {
+      if (planKey === 'custom') {
+        resetCustomPlan(memberId);
+        plan = getCustomPlan(memberId);
+      } else {
+        plan = await resetProgressivePlan(planKey);
+      }
+      metaName.value = plan.meta.name || '';
+      metaSub.value  = plan.meta.subtitle || '';
+      activeWeek = 0;
+      renderWeekTabs();
+      renderWeekEditor();
+      flashSaved('Reset to defaults.');
+    } catch (err) {
+      console.error('reset failed', err);
+      alert('Reset failed — please refresh and try again.');
     }
-    metaName.value = plan.meta.name || '';
-    metaSub.value  = plan.meta.subtitle || '';
-    activeWeek = 0;
-    renderWeekTabs();
-    renderWeekEditor();
-    flashSaved('Reset to defaults.');
   });
 
   /* ---- Preview as member ---- */
@@ -830,24 +845,47 @@
      Save plumbing
      ============================================================ */
   let saveTimer = null;
+  let saveInFlight = false;
   function debouncedSave () {
     if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      if (planKey === 'custom') {
-        saveCustomPlan(memberId, plan);
-      } else {
-        savePlan(planKey, plan);
+    saveTimer = setTimeout(async () => {
+      if (saveInFlight) {
+        // Schedule another tick so the latest edits aren't lost.
+        debouncedSave();
+        return;
       }
-      flashSaved();
+      saveInFlight = true;
+      try {
+        if (planKey === 'custom') {
+          saveCustomPlan(memberId, plan);
+        } else {
+          await saveProgressivePlan(planKey, plan);
+        }
+        flashSaved();
+      } catch (err) {
+        console.error('save failed', err);
+        flashError('Save failed — check connection.');
+      } finally {
+        saveInFlight = false;
+      }
     }, 350);
   }
   function markDirty () {
-    document.getElementById('save-dot').classList.add('dirty');
+    const dot = document.getElementById('save-dot');
+    dot.classList.add('dirty');
+    dot.classList.remove('errored');
     document.getElementById('save-msg').textContent = 'Saving…';
   }
   function flashSaved (msg) {
-    document.getElementById('save-dot').classList.remove('dirty');
+    const dot = document.getElementById('save-dot');
+    dot.classList.remove('dirty');
+    dot.classList.remove('errored');
     document.getElementById('save-msg').textContent = msg || 'All changes saved.';
+  }
+  function flashError (msg) {
+    const dot = document.getElementById('save-dot');
+    dot.classList.add('errored');
+    document.getElementById('save-msg').textContent = msg || 'Save failed.';
   }
 
   /* ---- HTML escape helpers ---- */

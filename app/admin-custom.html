@@ -342,15 +342,18 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js"></script>
 <script>
 /* ============================================================
    admin-custom.html — Custom plan members list
    ============================================================ */
-(function () {
-  /* ---- Auth ---- */
-  if (!adminIsAuthed()) {
+(async function () {
+  /* ---- Auth: must have a Supabase session AND be in coaches ---- */
+  const session = await getCurrentSession();
+  if (!session || !await isCurrentUserCoach()) {
     document.getElementById('gate-fallback').style.display = '';
     document.getElementById('admin-shell').style.display = 'none';
     return;
@@ -358,18 +361,18 @@
   document.getElementById('admin-shell').style.display = '';
 
   /* ---- Sidebar user ---- */
-  const email = getAdminAuth();
+  const email = session.user.email || '';
   const niceName = (email || 'Coach').split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  document.getElementById('admin-email').textContent = email || '';
+  document.getElementById('admin-email').textContent = email;
   document.getElementById('admin-name').textContent = niceName;
   const avatarEl = document.getElementById('admin-avatar');
   if (avatarEl) {
     const initials = niceName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
     avatarEl.textContent = initials || 'CO';
   }
-  document.getElementById('signout-btn').addEventListener('click', (e) => {
+  document.getElementById('signout-btn').addEventListener('click', async (e) => {
     e.preventDefault();
-    clearAdminAuth();
+    await signOut();
     location.href = 'admin.html';
   });
 
