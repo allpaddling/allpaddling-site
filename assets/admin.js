@@ -85,23 +85,11 @@ function defaultAdminData () {
 }
 
 function defaultPlan (planKey) {
-  const meta = PLAN_META[planKey] || { title: planKey, tier: 'Progressive', cadence: '4 weeks' };
-  const source = (typeof PROGRAM_1 !== 'undefined') ? PROGRAM_1 : null;
-
-  // For prototype: clone PROGRAM_1 as the seed for each Progressive plan.
-  // Custom gets the same seed but labelled differently — real data comes later.
+  // Custom is special — it's a collection of per-member plans, not a single plan.
   if (planKey === 'custom') {
-    return {
-      meta: {
-        name: 'Custom Season Race Plan · Block 1',
-        subtitle: 'Base block — aerobic + threshold foundation',
-        tier: 'Custom',
-        cadence: '16 weeks',
-      },
-      programs: source ? clone(source.weeks) : [],
-      lastEdited: null,
-    };
+    return { members: [], plans: {} };
   }
+  const source = (typeof PROGRAM_1 !== 'undefined') ? PROGRAM_1 : null;
   return {
     meta: {
       name: (source && source.name) || 'Program 1',
@@ -114,16 +102,137 @@ function defaultPlan (planKey) {
   };
 }
 
+/* Shape of a single member's Custom plan (separate from the member record). */
+function defaultCustomPlan () {
+  const source = (typeof PROGRAM_1 !== 'undefined') ? PROGRAM_1 : null;
+  return {
+    meta: {
+      name: 'Custom Season Race Plan · Block 1',
+      subtitle: 'Base block — aerobic + threshold foundation',
+      tier: 'Custom',
+      cadence: '16 weeks',
+    },
+    programs: source ? clone(source.weeks) : [],
+    lastEdited: null,
+  };
+}
+
+function defaultCustomMember () {
+  return {
+    id: '',
+    name: '',
+    email: '',
+    raceGoal: '',
+    raceDate: '',
+    notes: '',
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function makeMemberId () {
+  return 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+}
+
 function clone (obj) { return JSON.parse(JSON.stringify(obj)); }
 
 function migrate (data) {
   // Ensure every plan key exists (future-proofing if we add plans later).
   Object.keys(PLAN_META).forEach(k => {
+    if (k === 'custom') {
+      if (!data[k]) data[k] = defaultPlan(k);
+
+      // Legacy shape: custom was a single { meta, programs, lastEdited }.
+      // Upgrade it into { members, plans } so we don't lose any edits.
+      if (data[k].meta && data[k].programs && !data[k].members) {
+        const legacyId = makeMemberId();
+        data[k] = {
+          members: [Object.assign(defaultCustomMember(), {
+            id: legacyId,
+            name: 'Legacy plan',
+            notes: 'Imported from the previous single-plan editor.',
+          })],
+          plans: {
+            [legacyId]: {
+              meta: data[k].meta,
+              programs: data[k].programs,
+              lastEdited: data[k].lastEdited || null,
+            },
+          },
+        };
+      }
+
+      if (!Array.isArray(data[k].members)) data[k].members = [];
+      if (!data[k].plans || typeof data[k].plans !== 'object') data[k].plans = {};
+      return;
+    }
     if (!data[k]) data[k] = defaultPlan(k);
     if (!data[k].meta) data[k].meta = defaultPlan(k).meta;
     if (!Array.isArray(data[k].programs)) data[k].programs = defaultPlan(k).programs;
   });
   return data;
+}
+
+/* ---------- Custom-plan member helpers ----------
+   Custom plans are per-member, not a shared template, so the admin UI
+   needs to pick a member before opening the editor.
+*/
+function getCustomMembers () {
+  const all = loadAdminData();
+  return (all.custom && all.custom.members) || [];
+}
+
+function getCustomMember (id) {
+  return getCustomMembers().find(m => m.id === id) || null;
+}
+
+function addCustomMember (partial) {
+  const all = loadAdminData();
+  if (!all.custom) all.custom = { members: [], plans: {} };
+  const member = Object.assign(defaultCustomMember(), partial || {}, {
+    id: makeMemberId(),
+    createdAt: new Date().toISOString(),
+  });
+  all.custom.members.push(member);
+  all.custom.plans[member.id] = defaultCustomPlan();
+  saveAdminData(all);
+  return member;
+}
+
+function updateCustomMember (id, patch) {
+  const all = loadAdminData();
+  const idx = all.custom.members.findIndex(m => m.id === id);
+  if (idx === -1) return null;
+  all.custom.members[idx] = Object.assign({}, all.custom.members[idx], patch || {});
+  saveAdminData(all);
+  return all.custom.members[idx];
+}
+
+function removeCustomMember (id) {
+  const all = loadAdminData();
+  all.custom.members = all.custom.members.filter(m => m.id !== id);
+  if (all.custom.plans) delete all.custom.plans[id];
+  saveAdminData(all);
+}
+
+function getCustomPlan (memberId) {
+  const all = loadAdminData();
+  return (all.custom && all.custom.plans && all.custom.plans[memberId]) || null;
+}
+
+function saveCustomPlan (memberId, plan) {
+  const all = loadAdminData();
+  if (!all.custom) all.custom = { members: [], plans: {} };
+  if (!all.custom.plans) all.custom.plans = {};
+  plan.lastEdited = new Date().toISOString();
+  all.custom.plans[memberId] = plan;
+  saveAdminData(all);
+}
+
+function resetCustomPlan (memberId) {
+  const all = loadAdminData();
+  if (!all.custom || !all.custom.plans) return;
+  all.custom.plans[memberId] = defaultCustomPlan();
+  saveAdminData(all);
 }
 
 /* ---------- Small shared helpers used by editor ----------
