@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stand Up Paddle Board Plan — All Paddling</title>
+<meta name="description" content="Progressive 4-week training plan for stand up paddlers. Two paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<style>
+  /* ====== Progressive Plan — clean, structured, entry-level layout ====== */
+  .plan-hero {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem;
+    align-items: start;
+  }
+  @media (max-width: 880px) { .plan-hero { grid-template-columns: 1fr; gap: 1.75rem; } }
+
+  .plan-hero .eyebrow-pill {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.76rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-700); background: var(--brand-50);
+    padding: 0.4rem 0.85rem; border-radius: 999px;
+    margin-bottom: 1.25rem;
+  }
+  .plan-hero .eyebrow-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--brand-700); }
+  .plan-hero h1 { font-size: clamp(1.9rem, 3.8vw, 2.6rem); margin-bottom: 0.9rem; }
+  .plan-hero .lead { margin-bottom: 1.5rem; }
+
+  .plan-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .plan-stat { padding: 1rem 1.1rem; border-right: 1px solid var(--border); }
+  .plan-stat:last-child { border-right: 0; }
+  .plan-stat .plan-stat-label {
+    font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+    letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 0.3rem;
+  }
+  .plan-stat .plan-stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.15rem; font-weight: 700; color: var(--text);
+  }
+  @media (max-width: 560px) {
+    .plan-stats { grid-template-columns: 1fr; }
+    .plan-stat { border-right: 0; border-bottom: 1px solid var(--border); }
+    .plan-stat:last-child { border-bottom: 0; }
+  }
+
+  .subscribe-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.75rem;
+    box-shadow: var(--shadow);
+    position: sticky; top: 1rem;
+  }
+  .subscribe-card .price-row {
+    display: flex; align-items: baseline; gap: 0.5rem;
+    padding-bottom: 1rem; border-bottom: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .subscribe-card .amount { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; font-weight: 700; color: var(--text); line-height: 1; }
+  .subscribe-card .period { color: var(--text-3); font-size: 0.9rem; }
+  .subscribe-card h3 { font-size: 1rem; margin-bottom: 0.35rem; }
+  .subscribe-card .cancel-tag {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.78rem; font-weight: 600;
+    background: #ecfdf5; color: #047857;
+    padding: 0.25rem 0.6rem; border-radius: 999px;
+    margin-bottom: 1rem;
+  }
+  .subscribe-card .cancel-tag::before {
+    content: ''; width: 8px; height: 8px; border-radius: 50%; background: #10b981;
+  }
+  .btn-full { width: 100%; justify-content: center; }
+  .subscribe-card .sub-note { font-size: 0.82rem; color: var(--text-3); margin: 0.85rem 0 0; }
+
+  .week-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+    margin-top: 1.75rem;
+  }
+  .week-block {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 1.1rem 1.1rem 1.2rem;
+    position: relative;
+  }
+  .week-block .week-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--brand-700); margin-bottom: 0.3rem;
+  }
+  .week-block h4 { font-size: 1rem; margin-bottom: 0.4rem; }
+  .week-block p { font-size: 0.85rem; color: var(--text-2); margin-bottom: 0.85rem; line-height: 1.5; }
+  .week-block .focus-line { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+  .focus-mini {
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 0.2rem 0.45rem; border-radius: 5px;
+  }
+  .f-z2 { background: var(--tz2-bg); color: var(--tz2); }
+  .f-z3 { background: var(--tz3-bg); color: var(--tz3); }
+  .f-z4 { background: var(--tz4-bg); color: var(--tz4); }
+  .f-z5 { background: var(--tz5-bg); color: var(--tz5); }
+  @media (max-width: 880px) { .week-strip { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .week-strip { grid-template-columns: 1fr; } }
+
+  .fit-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    margin-top: 1.75rem;
+  }
+  .fit-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.75rem;
+  }
+  .fit-card.positive { border-color: var(--brand-100); background: var(--brand-50); }
+  .fit-card h3 {
+    font-size: 1.05rem; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .fit-card h3 svg { width: 18px; height: 18px; }
+  .fit-card.positive h3 { color: var(--brand-700); }
+  .fit-card ul { list-style: none; padding: 0; margin: 0; }
+  .fit-card li {
+    position: relative; padding-left: 1.5rem; padding-bottom: 0.6rem;
+    font-size: 0.93rem; color: var(--text-2);
+  }
+  .fit-card li:last-child { padding-bottom: 0; }
+  .fit-card.positive li::before {
+    content: '✓'; position: absolute; left: 0; top: 0;
+    color: var(--brand-700); font-weight: 700;
+  }
+  .fit-card.neutral li::before {
+    content: '→'; position: absolute; left: 0; top: 0;
+    color: var(--text-3); font-weight: 700;
+  }
+  .fit-card.neutral { background: var(--surface-2); }
+  .fit-card .fit-cta {
+    display: inline-block; margin-top: 1rem;
+    font-size: 0.9rem; font-weight: 600; color: var(--brand-700);
+  }
+  @media (max-width: 640px) { .fit-grid { grid-template-columns: 1fr; } }
+
+  .snapshot-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;
+  }
+  .snapshot-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.4rem;
+  }
+  .snapshot-card .session-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-3); margin-bottom: 0.3rem;
+  }
+  .snapshot-card h4 { font-size: 1.05rem; margin-bottom: 0.6rem; }
+  .snapshot-card p { font-size: 0.9rem; color: var(--text-2); margin-bottom: 0; line-height: 1.55; }
+  @media (max-width: 640px) { .snapshot-grid { grid-template-columns: 1fr; } }
+
+  .faq-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem;
+    margin-bottom: 0.6rem;
+  }
+  .faq-item summary {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600; font-size: 1rem;
+    cursor: pointer; list-style: none;
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--text);
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after { content: '+'; font-size: 1.4rem; color: var(--brand-700); }
+  .faq-item[open] summary::after { content: '−'; }
+  .faq-item p { margin: 0.85rem 0 0; color: var(--text-2); font-size: 0.94rem; }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<section class="page-hero">
+  <div class="container">
+    <div class="plan-hero">
+      <div>
+        <span class="eyebrow-pill">Progressive 4-Week Plan</span>
+        <h1>Stand Up Paddle Board Plan</h1>
+        <p class="lead">A self-guided 4-week training block built for SUP. Two paddle-specific sessions a week, 5-zone pace targets, and week-over-week progression. Balance, stroke efficiency, and aerobic engine — all sharpened.</p>
+
+        <div class="plan-stats">
+          <div class="plan-stat">
+            <div class="plan-stat-label">Sessions / week</div>
+            <div class="plan-stat-value">2</div>
+          </div>
+          <div class="plan-stat">
+            <div class="plan-stat-label">Block length</div>
+            <div class="plan-stat-value">4 weeks</div>
+          </div>
+          <div class="plan-stat">
+            <div class="plan-stat-label">Commitment</div>
+            <div class="plan-stat-value">None — cancel anytime</div>
+          </div>
+        </div>
+
+        <p style="color: var(--text-3); font-size: 0.92rem; margin-bottom: 0;">
+          Already know your threshold? Run our <a href="pace-calculator.html">free pace calculator</a> to see what your first week will look like.
+        </p>
+      </div>
+
+      <aside class="subscribe-card">
+        <div class="price-row">
+          <span class="amount">$80</span>
+          <span class="period">AUD / 4 weeks</span>
+        </div>
+        <span class="cancel-tag">Cancel anytime — no lock-in</span>
+        <h3>Start your SUP block</h3>
+        <p style="font-size: 0.88rem; color: var(--text-2); margin-bottom: 1rem;">Billed every 4 weeks at $80 AUD. Pause, skip, or cancel at the end of any cycle.</p>
+        <button class="btn btn-primary btn-full" onclick="alert('Checkout coming soon — this will connect to the new member signup flow.');">
+          Subscribe &amp; Start
+        </button>
+        <p class="sub-note">By subscribing, you authorise recurring 4-weekly charges until cancelled.</p>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">Inside the 4-week block</div>
+    <h2 class="section-title">A progression, not a pile of sessions.</h2>
+    <p class="section-sub">Each week builds on the last. Volume and intensity step up, then pull back in week 4 so you can retest and see the work pay off.</p>
+
+    <div class="week-strip">
+      <div class="week-block">
+        <div class="week-num">Week 1</div>
+        <h4>Build your base</h4>
+        <p>Establish aerobic rhythm on the board. Introduce threshold-zone intervals at controlled volume.</p>
+        <div class="focus-line">
+          <span class="focus-mini f-z2">AEROBIC</span>
+          <span class="focus-mini f-z3">THRESHOLD</span>
+        </div>
+      </div>
+      <div class="week-block">
+        <div class="week-num">Week 2</div>
+        <h4>Add volume</h4>
+        <p>More reps at threshold, longer distance session. Teach your SUP stroke to hold form under load.</p>
+        <div class="focus-line">
+          <span class="focus-mini f-z2">AEROBIC</span>
+          <span class="focus-mini f-z3">THRESHOLD</span>
+        </div>
+      </div>
+      <div class="week-block">
+        <div class="week-num">Week 3</div>
+        <h4>Sharpen</h4>
+        <p>Shift intensity toward TZ4. Shorter rest, faster efforts — build the top end of your aerobic engine.</p>
+        <div class="focus-line">
+          <span class="focus-mini f-z3">THRESHOLD</span>
+          <span class="focus-mini f-z4">VO₂MAX</span>
+        </div>
+      </div>
+      <div class="week-block">
+        <div class="week-num">Week 4</div>
+        <h4>Recover &amp; retest</h4>
+        <p>Volume drops. A 3-minute threshold test tells you exactly how much faster you got.</p>
+        <div class="focus-line">
+          <span class="focus-mini f-z2">AEROBIC</span>
+          <span class="focus-mini f-z5">TEST</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container">
+    <div class="section-eyebrow">A typical week</div>
+    <h2 class="section-title">Two sessions, built around the SUP stroke.</h2>
+    <p class="section-sub">One interval session tuned to an energy system, one longer distance session to build capacity. Both are prescribed in your own pace zones.</p>
+
+    <div class="snapshot-grid">
+      <div class="snapshot-card">
+        <div class="session-label">Session 1 · Intervals</div>
+        <h4>Threshold repeats</h4>
+        <p>Structured reps in TZ3–TZ4 with measured recovery. Every interval has a prescribed pace range calculated from your threshold — stay stable, drive the blade.</p>
+      </div>
+      <div class="snapshot-card">
+        <div class="session-label">Session 2 · Distance</div>
+        <h4>Steady aerobic paddle</h4>
+        <p>A longer TZ2 session to build aerobic capacity and groove your SUP stroke under fatigue. The work that makes everything else stick.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel alt">
+  <div class="container">
+    <div class="section-eyebrow">Is this the right plan?</div>
+    <h2 class="section-title">Self-guided progression vs. a full season build.</h2>
+    <p class="section-sub">The Progressive Plan is a solid 4-week block on its own. For race-specific periodisation, taper, peaking, and one-on-one consultation, move up to the Custom Season Race Plan.</p>
+
+    <div class="fit-grid">
+      <div class="fit-card positive">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
+          Progressive SUP Plan fits if…
+        </h3>
+        <ul>
+          <li>You paddle SUP and can go 60+ minutes comfortably</li>
+          <li>You want structure without a specific goal race</li>
+          <li>You'd like 2 prescribed sessions a week and the freedom to cancel anytime</li>
+          <li>You'd rather start self-guided and see how you go</li>
+        </ul>
+      </div>
+      <div class="fit-card neutral">
+        <h3>Move up to Custom if…</h3>
+        <ul>
+          <li>You have a specific goal race on the calendar</li>
+          <li>You want taper and peaking weeks programmed in</li>
+          <li>You'd like a dryland strength program alongside the water work</li>
+          <li>You want a one-on-one consultation shaping your season</li>
+        </ul>
+        <a href="custom-plan.html" class="fit-cta">See the Custom Plan →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="container" style="max-width: 860px;">
+    <div class="section-eyebrow">Common questions</div>
+    <h2 class="section-title">Good to know.</h2>
+
+    <details class="faq-item" open>
+      <summary>Do I need to know my threshold pace to start?</summary>
+      <p>It helps. The fastest way to find it is a 3-minute test — paddle as hard as you can sustain for three continuous minutes, and use the resulting pace as your threshold. Our <a href="pace-calculator.html">pace calculator</a> then gives you every zone target.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How many sessions per week?</summary>
+      <p>Two structured sessions — typically one interval session and one longer distance session. You can add your own easy paddling around that if your schedule allows.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What happens after the 4 weeks?</summary>
+      <p>Your subscription renews for another 4-week block at the next progression level. You retest your threshold, your zones update, and the sessions adjust accordingly. Or cancel — no questions asked.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Can I switch disciplines later?</summary>
+      <p>Yes. You can switch between Prone, SUP, Outrigger Canoe, and Surf Ski from your member settings. The 4-week cycle stays the same.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Why pick Progressive over Custom?</summary>
+      <p>If you don't have a goal race you're building toward, a Progressive block gives you real structure without the commitment. You can always move up to the Custom Plan later when a race is on the calendar.</p>
+    </details>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
