@@ -317,7 +317,7 @@
         <span id="save-msg">All changes saved.</span>
       </div>
       <div class="save-actions">
-        <a href="admin.html" class="btn btn-ghost">← Back to programs</a>
+        <a href="#" class="btn btn-ghost" id="back-btn">← Back</a>
         <button class="btn btn-ghost" id="preview-btn">Preview as member →</button>
       </div>
     </div>
@@ -393,18 +393,37 @@
   }
   document.getElementById('admin-shell').style.display = '';
 
-  /* ---- Route: ?plan=<key> ---- */
+  /* ---- Route: ?plan=<key>[&member=<id>] ---- */
   const params = new URLSearchParams(location.search);
   const planKey = params.get('plan');
+  const memberId = params.get('member');
   if (!planKey || !isValidPlanKey(planKey)) {
     alert('Unknown plan. Redirecting to programs list.');
     location.href = 'admin.html';
     return;
   }
+  // Custom plans are per-member — must have ?member=<id>
+  if (planKey === 'custom' && !memberId) {
+    location.href = 'admin-custom.html';
+    return;
+  }
 
   /* ---- Load data ---- */
-  let plan = loadAdminData()[planKey];
+  let plan, member = null;
+  if (planKey === 'custom') {
+    plan = getCustomPlan(memberId);
+    member = getCustomMember(memberId);
+    if (!plan || !member) {
+      alert('This member could not be found. Returning to the members list.');
+      location.href = 'admin-custom.html';
+      return;
+    }
+  } else {
+    plan = loadAdminData()[planKey];
+  }
   let activeWeek = 0;
+
+  const backHref = (planKey === 'custom') ? 'admin-custom.html' : 'admin.html';
 
   /* ---- Sidebar user ---- */
   const email = getAdminAuth();
@@ -424,10 +443,23 @@
 
   /* ---- Header ---- */
   const meta = PLAN_META[planKey];
-  document.getElementById('crumb-plan').textContent = meta.title;
-  document.getElementById('page-title').textContent = meta.title;
-  document.getElementById('page-sub').textContent =
-    meta.tier + ' plan · ' + meta.cadence + ' · editing the program template all subscribers see.';
+  if (planKey === 'custom' && member) {
+    document.getElementById('crumb-plan').innerHTML =
+      '<a href="admin-custom.html">Custom plan members</a> / ' + escapeHtml(member.name || 'Unnamed member');
+    document.getElementById('page-title').textContent =
+      meta.title + ' · ' + (member.name || 'Unnamed member');
+    const bits = [];
+    bits.push(meta.tier + ' plan');
+    bits.push(meta.cadence);
+    if (member.raceGoal) bits.push('Race: ' + member.raceGoal);
+    if (member.raceDate) bits.push('On ' + member.raceDate);
+    document.getElementById('page-sub').textContent = bits.join(' · ');
+  } else {
+    document.getElementById('crumb-plan').textContent = meta.title;
+    document.getElementById('page-title').textContent = meta.title;
+    document.getElementById('page-sub').textContent =
+      meta.tier + ' plan · ' + meta.cadence + ' · editing the program template all subscribers see.';
+  }
 
   /* ---- Program meta inputs ---- */
   const metaName = document.getElementById('meta-name');
@@ -441,11 +473,24 @@
   renderWeekTabs();
   renderWeekEditor();
 
+  /* ---- Back button ---- */
+  document.getElementById('back-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    location.href = backHref;
+  });
+  document.getElementById('back-btn').textContent =
+    planKey === 'custom' ? '← Back to members' : '← Back to programs';
+
   /* ---- Reset ---- */
   document.getElementById('reset-btn').addEventListener('click', () => {
     if (!confirm('Reset this program to defaults? All edits on this browser will be lost.')) return;
-    resetPlan(planKey);
-    plan = loadAdminData()[planKey];
+    if (planKey === 'custom') {
+      resetCustomPlan(memberId);
+      plan = getCustomPlan(memberId);
+    } else {
+      resetPlan(planKey);
+      plan = loadAdminData()[planKey];
+    }
     metaName.value = plan.meta.name || '';
     metaSub.value  = plan.meta.subtitle || '';
     activeWeek = 0;
@@ -736,7 +781,11 @@
   function debouncedSave () {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      savePlan(planKey, plan);
+      if (planKey === 'custom') {
+        saveCustomPlan(memberId, plan);
+      } else {
+        savePlan(planKey, plan);
+      }
       flashSaved();
     }, 350);
   }

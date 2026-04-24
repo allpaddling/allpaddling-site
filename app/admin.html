@@ -306,17 +306,17 @@
 
     <!-- Custom Plan -->
     <div class="app-card">
-      <h2>Custom Season Race Plan</h2>
-      <p class="card-sub">The premium $140 / 4-week plan. Bespoke programming, taper, peaking, and strength.</p>
+      <h2>Custom Season Race Plans</h2>
+      <p class="card-sub">The premium $140 / 4-week plan. Bespoke programming per member — each Custom subscriber has their own 16-week plan tailored to their race.</p>
 
       <div class="program-grid" style="grid-template-columns: 1fr;">
-        <a class="program-tile custom" href="admin-edit.html?plan=custom">
-          <div class="tile-eyebrow">Premium · 16-week block</div>
-          <h3>Custom Season Race Plan template</h3>
-          <p class="tile-sub">Edit the master 16-week structure — base → build → taper → peak.</p>
+        <a class="program-tile custom" href="admin-custom.html">
+          <div class="tile-eyebrow">Premium · per-member plans</div>
+          <h3>Manage Custom plan members</h3>
+          <p class="tile-sub">Pick a member to open their 16-week plan — base → build → taper → peak, tuned to their race date.</p>
           <div class="tile-meta">
-            <span id="meta-custom">Never edited</span>
-            <span class="edit-arrow">Edit →</span>
+            <span id="meta-custom">No members yet</span>
+            <span class="edit-arrow">Open →</span>
           </div>
         </a>
       </div>
@@ -390,12 +390,34 @@
 
     // Last-edited stamps per program
     const data = loadAdminData();
-    ['prone', 'sup', 'oc', 'ski', 'custom'].forEach(key => {
+    ['prone', 'sup', 'oc', 'ski'].forEach(key => {
       const el = document.getElementById('meta-' + key);
       if (!el) return;
       const last = data[key] && data[key].lastEdited;
       el.textContent = last ? ('Edited ' + relativeTime(new Date(last))) : 'Never edited';
     });
+
+    // Custom tile shows member count + most recent edit across all members
+    const customEl = document.getElementById('meta-custom');
+    if (customEl) {
+      const members = (data.custom && data.custom.members) || [];
+      const plans = (data.custom && data.custom.plans) || {};
+      if (!members.length) {
+        customEl.textContent = 'No members yet';
+      } else {
+        let mostRecent = null;
+        Object.values(plans).forEach(p => {
+          if (p && p.lastEdited) {
+            const t = new Date(p.lastEdited).getTime();
+            if (!mostRecent || t > mostRecent) mostRecent = t;
+          }
+        });
+        const mCount = members.length + ' member' + (members.length === 1 ? '' : 's');
+        customEl.textContent = mostRecent
+          ? (mCount + ' · edited ' + relativeTime(new Date(mostRecent)))
+          : (mCount + ' · no edits yet');
+      }
+    }
 
     // Sign out
     document.getElementById('signout-btn').addEventListener('click', function (e) {
