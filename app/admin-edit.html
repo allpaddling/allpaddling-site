@@ -148,6 +148,10 @@
     background: var(--surface-2);
     border-left: 4px solid var(--border-strong);
   }
+  /* Draggable rows have an extra handle column on the left. */
+  .interval-row.draggable {
+    grid-template-columns: 28px 180px 1fr 36px;
+  }
   .interval-row[data-zone="1"] { background: var(--tz1-bg); border-left-color: var(--tz1); }
   .interval-row[data-zone="2"] { background: var(--tz2-bg); border-left-color: var(--tz2); }
   .interval-row[data-zone="3"] { background: var(--tz3-bg); border-left-color: var(--tz3); }
@@ -167,7 +171,25 @@
   .interval-row .remove-btn:hover { color: #b91c1c; background: rgba(185,28,28,0.08); }
   @media (max-width: 640px) {
     .interval-row { grid-template-columns: 140px 1fr 32px; gap: 0.4rem; }
+    .interval-row.draggable { grid-template-columns: 24px 140px 1fr 32px; }
   }
+
+  /* Drag handle + Sortable.js visual states */
+  .drag-handle {
+    cursor: grab;
+    color: var(--text-3);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    user-select: none;
+    touch-action: none;
+  }
+  .drag-handle:hover { color: var(--text-1); background: rgba(0,0,0,0.04); }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-handle svg { width: 14px; height: 18px; }
+  .interval-row.sortable-chosen { box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+  .interval-row.sortable-ghost { opacity: 0.35; }
+  .interval-row.sortable-drag { opacity: 0.95; }
+  .interval-list.drag-over { outline: 2px dashed var(--brand-100); outline-offset: 2px; border-radius: 8px; }
 
   .add-interval-btn {
     display: inline-flex; align-items: center; gap: 0.35rem;
@@ -378,6 +400,7 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="../assets/program-data.js"></script>
 <script src="../assets/admin.js"></script>
 <script>
@@ -676,7 +699,10 @@
 
   function intervalRowHtml (iv, idx, listName, sessionIdx) {
     return `
-      <div class="interval-row" data-zone="${iv.z || 1}" data-list="${listName}" data-idx="${idx}" data-session="${sessionIdx}">
+      <div class="interval-row draggable" data-zone="${iv.z || 1}" data-list="${listName}" data-idx="${idx}" data-session="${sessionIdx}">
+        <span class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
+        </span>
         <select class="select-input js-iv-zone">${zoneOptionsHtml(iv.z || 1)}</select>
         <input type="text" class="text-input js-iv-dur" value="${escapeAttr(iv.d || '')}" placeholder="e.g. 30 sec" />
         <button class="remove-btn js-iv-remove" title="Remove interval">×</button>
@@ -771,6 +797,32 @@
         s.repeat = Math.max(1, Number(e.target.value) || 1);
         markDirty(); debouncedSave();
       });
+
+      // Drag-and-drop reordering for warmup + main set.
+      // Sortable.js comes from the CDN — if it's unavailable (offline),
+      // we silently skip drag functionality; everything else still works.
+      if (typeof Sortable !== 'undefined') {
+        root.querySelectorAll('.interval-list[data-list]').forEach(listEl => {
+          const listName = listEl.dataset.list;
+          Sortable.create(listEl, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            onEnd: function (evt) {
+              if (evt.oldIndex === evt.newIndex) return;
+              const arr = s[listName];
+              if (!arr) return;
+              const [moved] = arr.splice(evt.oldIndex, 1);
+              arr.splice(evt.newIndex, 0, moved);
+              markDirty();
+              debouncedSave();
+              renderWeekEditor(); // rebuild so data-idx stays in sync with the array
+            }
+          });
+        });
+      }
     }
   }
 
