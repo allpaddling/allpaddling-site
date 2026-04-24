@@ -355,6 +355,8 @@
     document.getElementById('login-gate').style.display = '';
     document.getElementById('admin-shell').style.display = 'none';
   } else {
+    document.getElementById('login-gate').style.display = 'none';
+    document.getElementById('admin-shell').style.display = '';
     renderAdmin();
   }
 
