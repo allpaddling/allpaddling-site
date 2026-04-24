@@ -6,11 +6,11 @@
 
 /* ---- Training zones (percent of FTP / threshold pace) ---- */
 const ZONES = [
-  { key: 'tz1', label: 'TZ1', name: 'Recovery',   purpose: 'Easy aerobic · active recovery',     lo: 0.00, hi: 0.77 },
-  { key: 'tz2', label: 'TZ2', name: 'Endurance',  purpose: 'Aerobic base · long distance',       lo: 0.88, hi: 0.94 },
-  { key: 'tz3', label: 'TZ3', name: 'Threshold',  purpose: 'Tempo · lactate threshold',          lo: 1.00, hi: 1.04 },
-  { key: 'tz4', label: 'TZ4', name: 'VO₂max',     purpose: 'Hard intervals · aerobic power',     lo: 1.04, hi: 1.11 },
-  { key: 'tz5', label: 'TZ5', name: 'Sprint',     purpose: 'Max effort · anaerobic capacity',    lo: 1.11, hi: 999 },
+  { key: 'tz1', label: 'TZ1', name: 'Warmup/Recovery',      purpose: 'Warmup · active recovery',             lo: 0.00, hi: 0.77 },
+  { key: 'tz2', label: 'TZ2', name: 'Aerobic threshold',    purpose: 'Aerobic base · long distance',         lo: 0.88, hi: 0.94 },
+  { key: 'tz3', label: 'TZ3', name: 'Anaerobic threshold',  purpose: 'Tempo · lactate threshold',            lo: 1.00, hi: 1.04 },
+  { key: 'tz4', label: 'TZ4', name: 'Aerobic capacity',     purpose: 'Hard intervals · aerobic power',       lo: 1.04, hi: 1.11 },
+  { key: 'tz5', label: 'TZ5', name: 'Anaerobic capacity',   purpose: 'Max effort · neuromuscular power',     lo: 1.11, hi: 999 },
 ];
 
 /* ---- Time formatting ---- */
@@ -51,9 +51,11 @@ function unitLabel(unit) {
 /* ---- Focus-tag colour class ---- */
 function focusClass(f) {
   const s = (f || '').toUpperCase();
-  if (s.includes('AEROBIC CAPACITY'))    return 'f-aer-cap';
+  // Check anaerobic variants first — "ANAEROBIC CAPACITY" contains "AEROBIC CAPACITY"
+  // as a substring, so specificity order matters.
   if (s.includes('ANAEROBIC THRESHOLD')) return 'f-ana-th';
   if (s.includes('ANAEROBIC CAPACITY'))  return 'f-ana-cap';
+  if (s.includes('AEROBIC CAPACITY'))    return 'f-aer-cap';
   return 'f-aer-th';
 }
 

@@ -251,9 +251,9 @@ function focusLabel (f) {
   return opt ? opt.label : f;
 }
 const ZONE_OPTIONS = [
-  { value: 1, label: 'TZ1 · Recovery'   },
-  { value: 2, label: 'TZ2 · Endurance'  },
-  { value: 3, label: 'TZ3 · Threshold'  },
-  { value: 4, label: 'TZ4 · VO₂max'     },
-  { value: 5, label: 'TZ5 · Sprint'     },
+  { value: 1, label: 'TZ1 · Warmup/Recovery'     },
+  { value: 2, label: 'TZ2 · Aerobic threshold'   },
+  { value: 3, label: 'TZ3 · Anaerobic threshold' },
+  { value: 4, label: 'TZ4 · Aerobic capacity'    },
+  { value: 5, label: 'TZ5 · Anaerobic capacity'  },
 ];
