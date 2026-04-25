@@ -19,6 +19,14 @@
   @media (max-width: 920px) {
     .threshold-grid { grid-template-columns: 1fr; }
   }
+  /* Override the global `.app-card + .app-card { margin-top: 1.5rem }` rule
+     for cards that sit side-by-side inside the grid — they're DOM siblings
+     but visual neighbours, so the stack-spacer is wrong. And restore a
+     proper top spacer on the first card that follows the grid (its
+     previous sibling is .threshold-grid, not .app-card, so the global
+     rule otherwise misses it). */
+  .threshold-grid > .app-card { margin-top: 0; }
+  .threshold-grid + .app-card { margin-top: 1.5rem; }
 
   /* ==== Zones display (mirrors public pace-calculator visual conventions) ==== */
   .zones-list { display: grid; gap: 0.55rem; }
