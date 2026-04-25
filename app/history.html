@@ -133,12 +133,20 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/published-plans.js"></script>
 <script src="../assets/app.js"></script>
 <script>
 /* ============ History page logic ============ */
-(function () {
+(async function () {
   const state = loadMemberState();
+  /* Load the member's discipline plan so we can resolve completed
+     session refs to the right week/session metadata. Falls back to
+     the static PROGRAM_1 if the cloud fetch fails. */
+  const program = await loadCurrentPlan() ||
+    { weeks: (typeof PROGRAM_1 !== 'undefined' ? PROGRAM_1.weeks : []), isEmpty: false };
 
   // Stats
   const completed = Object.keys(state.completedSessions || {}).filter(k => state.completedSessions[k]);
@@ -175,11 +183,11 @@
       const m = /^p(\d+)w(\d+)s(\d+)$/.exec(key);
       if (!m) return null;
       const p = Number(m[1]), w = Number(m[2]), s = Number(m[3]);
-      const session = getSession(p, w, s);
-      const week    = getWeek(p, w);
+      const week    = program.weeks[w - 1] || null;
+      const session = week && week.sessions ? week.sessions[s - 1] : null;
       const notes   = (state.sessionNotes && state.sessionNotes[key]) || {};
       return { p, w, s, key, session, week, notes };
-    }).filter(e => e && e.session);
+    }).filter(e => e && e.session && e.week);
 
     entries.sort((a, b) => {
       const at = a.notes.completedAt ? new Date(a.notes.completedAt).getTime() : 0;

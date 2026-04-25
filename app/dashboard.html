@@ -157,15 +157,38 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/published-plans.js"></script>
 <script src="../assets/app.js"></script>
 <script>
 /* ============ Dashboard logic ============ */
-(function () {
+(async function () {
   const member = getMember();
   const state  = loadMemberState();
   const programNum = member.currentProgram || 1;
-  const program = getProgram(programNum);
+
+  /* Load the published plan for the member's discipline.
+     Falls back to the static PROGRAM_1 if the cloud fetch fails. */
+  const program = await loadCurrentPlan() ||
+    { name: 'Program 1', subtitle: '', weeks: (typeof PROGRAM_1 !== 'undefined' ? PROGRAM_1.weeks : []), isEmpty: false };
+
+  /* Empty state: Mick hasn't seeded this discipline yet. */
+  if (program.isEmpty) {
+    document.getElementById('hero-title').textContent = 'Your plan is on the way.';
+    document.getElementById('hero-sub').textContent =
+      `Your coach hasn't published the ${member.discipline} plan yet. Check back soon — once it's live you'll see your week here.`;
+    document.getElementById('up-next-card').innerHTML = `
+      <span class="eyebrow">Plan pending</span>
+      <h2>Nothing scheduled yet</h2>
+      <p class="structure">Mick is still putting together your ${member.discipline} program. We'll notify you when the first week is ready.</p>
+      <div class="cta-row">
+        <a href="settings.html" class="btn btn-ghost">Review your settings</a>
+      </div>
+    `;
+    return;
+  }
 
   // Greeting
   const firstName = (member.name || '').split(' ')[0] || 'there';
@@ -246,17 +269,19 @@
   document.getElementById('mini-prog-total').textContent = progTotal;
   document.getElementById('mini-prog-hint').textContent = `${program.name} · Week ${currentWeekNum} of ${program.weeks.length}`;
 
-  // Recent activity
+  // Recent activity — look up sessions in the currently-loaded plan
   const completed = Object.keys(state.completedSessions || {})
     .filter(k => state.completedSessions[k])
     .map(k => {
       const m = /^p(\d+)w(\d+)s(\d+)$/.exec(k);
       if (!m) return null;
       const p = Number(m[1]), w = Number(m[2]), s = Number(m[3]);
-      return { p, w, s, key: k, session: getSession(p, w, s), week: getWeek(p, w),
+      const week = program.weeks[w - 1];
+      const session = week && week.sessions ? week.sessions[s - 1] : null;
+      return { p, w, s, key: k, session, week,
                notes: (state.sessionNotes && state.sessionNotes[k]) || {} };
     })
-    .filter(e => e && e.session);
+    .filter(e => e && e.session && e.week);
 
   completed.sort((a, b) => {
     const at = a.notes.completedAt ? new Date(a.notes.completedAt).getTime() : 0;

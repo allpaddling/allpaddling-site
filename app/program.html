@@ -156,17 +156,38 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/published-plans.js"></script>
 <script src="../assets/app.js"></script>
 <script>
 /* ============ Program page logic ============ */
 
-(function () {
+(async function () {
   const member = getMember();
   const state  = loadMemberState();
 
   const programNum = member.currentProgram || 1;
-  const program = getProgram(programNum);
+
+  /* Load the published plan for the member's discipline. */
+  const program = await loadCurrentPlan() ||
+    { name: 'Program 1', subtitle: '', weeks: (typeof PROGRAM_1 !== 'undefined' ? PROGRAM_1.weeks : []), isEmpty: false };
+
+  /* Empty state — Mick hasn't seeded this discipline yet. */
+  if (program.isEmpty) {
+    document.getElementById('program-title').textContent    = `${member.discipline} plan · pending`;
+    document.getElementById('program-subtitle').textContent = `Your coach hasn't published this plan yet.`;
+    document.getElementById('week-tabs').innerHTML = '';
+    document.getElementById('week-note').textContent = '';
+    document.getElementById('sessions-grid').innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 2.5rem 1.5rem; text-align: center; color: var(--text-3); border: 2px dashed var(--border); border-radius: var(--radius); background: var(--surface);">
+        <h3 style="margin: 0 0 0.5rem; color: var(--text-2);">Plan coming soon</h3>
+        <p style="margin: 0;">Mick is still putting together your ${member.discipline} program.<br/>We'll let you know when it's ready.</p>
+      </div>
+    `;
+    return;
+  }
 
   document.getElementById('program-title').textContent    = `${program.name} · ${member.discipline}`;
   document.getElementById('program-subtitle').textContent = program.subtitle;

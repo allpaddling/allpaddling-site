@@ -202,25 +202,31 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/published-plans.js"></script>
 <script src="../assets/app.js"></script>
 <script>
 /* ============ Session detail logic ============ */
 
-(function () {
+(async function () {
   const params = new URLSearchParams(location.search);
   const programNum = Math.max(1, Number(params.get('p')) || 1);
   const weekNum    = Math.max(1, Number(params.get('w')) || 1);
   const sessionNum = Math.max(1, Number(params.get('s')) || 1);
 
-  const program = getProgram(programNum);
-  const week    = getWeek(programNum, weekNum);
-  const session = getSession(programNum, weekNum, sessionNum);
+  /* Pull the member's discipline plan from Supabase. */
+  const program = await loadCurrentPlan();
+  const week    = program && program.weeks ? program.weeks[weekNum - 1] : null;
+  const session = week && week.sessions   ? week.sessions[sessionNum - 1] : null;
 
-  if (!program || !week || !session) {
+  if (!program || program.isEmpty || !week || !session) {
     document.getElementById('session-title').textContent = 'Session not found';
     document.getElementById('session-summary').textContent =
-      'We couldn\'t find that session. It may not have been built yet.';
+      program && program.isEmpty
+        ? 'Your coach hasn\'t published this plan yet — check back soon.'
+        : 'We couldn\'t find that session. It may have been removed since you last visited.';
     document.getElementById('session-body').innerHTML = '';
     return;
   }
