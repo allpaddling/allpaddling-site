@@ -133,13 +133,23 @@
   .pill.custom      { background: #fef3c7; color: #92400e; }
   .pill.discipline  { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
-  .notes-cell {
+  .notes-cell, .detail-cell {
     max-width: 240px;
     color: var(--text-2); font-size: 0.86rem; line-height: 1.45;
     overflow: hidden; text-overflow: ellipsis;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   }
-  .notes-cell.empty { color: var(--text-3); font-style: italic; }
+  .notes-cell.empty, .detail-cell.empty { color: var(--text-3); font-style: italic; }
+  .detail-cell.goal { color: var(--brand-700); font-weight: 500; -webkit-line-clamp: 1; }
+  .detail-cell.goal svg { color: var(--brand-700); }
+
+  .onboard-badge {
+    display: inline-block; margin-top: 0.2rem;
+    padding: 0.1rem 0.45rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .onboard-badge.pending { background: #fef3c7; color: #92400e; }
+  .onboard-badge.nologin { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
 
   .joined-cell { color: var(--text-3); font-size: 0.84rem; white-space: nowrap; }
 
@@ -301,7 +311,7 @@
             <th>Member</th>
             <th>Plan</th>
             <th class="col-discipline">Discipline</th>
-            <th class="col-notes">Notes</th>
+            <th class="col-notes">Detail</th>
             <th class="col-joined">Joined</th>
             <th style="text-align:right;">Actions</th>
           </tr>
@@ -354,34 +364,60 @@
     location.href = '../login.html';
   });
 
-  // ---------- Load members ----------
-  await Promise.all([loadProgressiveMembers(), loadCustomData()]);
+  // ---------- Load members + linked data ----------
+  // member_profiles + subscriptions key on auth.users(id); we join client-side
+  // via the auth_user_id column on each member row. Both tables are admin-
+  // readable per the is_coach() RLS policy, so a service-role hop isn't needed.
+  const [, , profilesRes, subsRes] = await Promise.all([
+    loadProgressiveMembers(),
+    loadCustomData(),
+    sb.from('member_profiles')
+      .select('user_id, completed_onboarding_at, goal_race_name, goal_race_date, weekly_training_hours, ability_level'),
+    sb.from('subscriptions')
+      .select('user_id, status, current_period_end, cancel_at, cancel_unlocks_at'),
+  ]);
+  if (profilesRes.error) console.warn('admin-members: member_profiles load failed', profilesRes.error);
+  if (subsRes.error)     console.warn('admin-members: subscriptions load failed', subsRes.error);
+
+  // Index by user_id for fast lookup.
+  const profileByUser = Object.create(null);
+  for (const p of (profilesRes.data || [])) profileByUser[p.user_id] = p;
+  const subByUser = Object.create(null);
+  for (const s of (subsRes.data || []))     subByUser[s.user_id]     = s;
 
   const PROGRESSIVE_LABELS = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
 
-  // Unified row shape for the table.
-  const allMembers = [
-    ...getProgressiveMembers().map(m => ({
+  function buildRow (m, type) {
+    const userId  = m.authUserId || null;
+    const profile = userId ? profileByUser[userId] : null;
+    const sub     = userId ? subByUser[userId]     : null;
+    return {
       id:         m.id,
-      type:       'progressive',
+      type,
       name:       m.name      || '(no name)',
       email:      m.email     || '',
-      discipline: PROGRESSIVE_LABELS[m.planKey] || m.planKey || '',
-      notes:      m.notes     || '',
-      createdAt:  m.createdAt || null,
-      editHref:   'admin-progressive.html?edit=' + encodeURIComponent(m.id),
-    })),
-    ...getCustomMembers().map(m => ({
-      id:         m.id,
-      type:       'custom',
-      name:       m.name      || '(no name)',
-      email:      m.email     || '',
-      discipline: '',  // not tracked on custom_members today
+      discipline: type === 'progressive' ? (PROGRESSIVE_LABELS[m.planKey] || m.planKey || '') : '',
       notes:      m.notes     || '',
       createdAt:  m.createdAt || m.created_at || null,
-      editHref:   'admin-custom.html?edit=' + encodeURIComponent(m.id),
-      planHref:   'admin-edit.html?plan=custom&member=' + encodeURIComponent(m.id),
-    })),
+      editHref:   type === 'progressive'
+        ? 'admin-progressive.html?edit=' + encodeURIComponent(m.id)
+        : 'admin-custom.html?edit=' + encodeURIComponent(m.id),
+      planHref:   type === 'custom' ? 'admin-edit.html?plan=custom&member=' + encodeURIComponent(m.id) : null,
+      // ---- joined data ----
+      hasProfile:    !!profile,
+      onboarded:     !!(profile && profile.completed_onboarding_at),
+      goalRaceName:  profile && profile.goal_race_name || '',
+      goalRaceDate:  profile && profile.goal_race_date || '',
+      weeklyHours:   profile && profile.weekly_training_hours,
+      abilityLevel:  profile && profile.ability_level || '',
+      subStatus:     sub && sub.status || '',
+    };
+  }
+
+  // Unified row shape for the table.
+  const allMembers = [
+    ...getProgressiveMembers().map(m => buildRow(m, 'progressive')),
+    ...getCustomMembers().map(m      => buildRow(m, 'custom')),
   ];
 
   // Sort newest first
@@ -405,9 +441,14 @@
     }
   }
 
-  // Joined last 30 days
+  // Joined last 30 days + onboarding pending count
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const recent = allMembers.filter(m => m.createdAt && Date.parse(m.createdAt) >= cutoff).length;
+  // "Pending" = member has signed in (so an auth_user_id exists) but
+  // hasn't completed onboarding. Members without an auth_user_id at all
+  // haven't logged in yet — they're in a different state (not "pending").
+  const pendingOnboarding = allMembers.filter(m => m.hasProfile && !m.onboarded).length;
+  const noLogin           = allMembers.filter(m => !m.hasProfile).length;
 
   document.getElementById('stat-total').textContent  = total;
   document.getElementById('stat-prog').textContent   = progCount;
@@ -419,6 +460,13 @@
     `<span><b>${byDisc.prone}</b> Prone</span><span><b>${byDisc.sup}</b> SUP</span><span><b>${byDisc.oc}</b> OC</span><span><b>${byDisc.ski}</b> Ski</span>`;
   document.getElementById('stat-custom-sub').innerHTML =
     customCount > 0 ? `<span>$140 / 4-week subscriptions</span>` : `<span>None yet</span>`;
+  // Repurpose the "Joined last 30 days" tile breakdown to surface the
+  // onboarding signal — this is the more actionable number for Mick.
+  const recentSubBits = [];
+  if (pendingOnboarding) recentSubBits.push(`<span><b>${pendingOnboarding}</b> pending onboarding</span>`);
+  if (noLogin)           recentSubBits.push(`<span><b>${noLogin}</b> not signed in yet</span>`);
+  const recentSubEl = document.querySelector('#stat-row .stat-tile:last-child .breakdown');
+  if (recentSubEl && recentSubBits.length) recentSubEl.innerHTML = recentSubBits.join('');
 
   // Tab counts
   document.getElementById('count-all').textContent         = total;
@@ -480,9 +528,35 @@
       const disciplineCell = m.discipline
         ? `<span class="pill discipline">${escapeHtml(m.discipline)}</span>`
         : `<span style="color: var(--text-3);">—</span>`;
-      const notesCell = m.notes
-        ? `<div class="notes-cell" title="${escapeHtml(m.notes)}">${escapeHtml(m.notes)}</div>`
-        : `<div class="notes-cell empty">No notes</div>`;
+
+      // Onboarding badge under the email line. Three states:
+      //   onboarded:           no badge (default — happy path is silent)
+      //   pending onboarding:  amber pill (member has signed in but not finished form)
+      //   not signed in yet:   gray pill (Mick added them but they haven't opened a magic link)
+      let onboardingBadge = '';
+      if (m.hasProfile && !m.onboarded) {
+        onboardingBadge = `<span class="onboard-badge pending">Onboarding pending</span>`;
+      } else if (!m.hasProfile) {
+        onboardingBadge = `<span class="onboard-badge nologin">Not signed in yet</span>`;
+      }
+
+      // "Detail" column prefers goal race info when set (signal from
+      // onboarding), then notes, then "—". Gives Mick the most useful
+      // glance value per row.
+      let detailHtml;
+      if (m.goalRaceName || m.goalRaceDate) {
+        const date = m.goalRaceDate ? fmtDate(m.goalRaceDate) : '';
+        const bits = [m.goalRaceName, date].filter(Boolean).join(' · ');
+        detailHtml = `<div class="detail-cell goal" title="Goal race: ${escapeHtml(bits)}">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; vertical-align:-2px; margin-right:4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          ${escapeHtml(bits)}
+        </div>`;
+      } else if (m.notes) {
+        detailHtml = `<div class="detail-cell" title="${escapeHtml(m.notes)}">${escapeHtml(m.notes)}</div>`;
+      } else {
+        detailHtml = `<div class="detail-cell empty">—</div>`;
+      }
+
       const planLink = m.planHref
         ? `<a class="btn-mini" href="${escapeHtml(m.planHref)}">Open plan</a>`
         : '';
@@ -494,12 +568,13 @@
               <div>
                 <div class="name">${escapeHtml(m.name)}</div>
                 <div class="email">${escapeHtml(m.email)}</div>
+                ${onboardingBadge}
               </div>
             </div>
           </td>
           <td>${planPill}</td>
           <td class="col-discipline">${disciplineCell}</td>
-          <td class="col-notes">${notesCell}</td>
+          <td class="col-notes">${detailHtml}</td>
           <td class="col-joined joined-cell">${fmtDate(m.createdAt)}</td>
           <td class="actions-cell">
             ${planLink}

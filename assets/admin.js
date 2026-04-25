@@ -389,6 +389,7 @@ function memberRowToCache (row) {
     raceGoal: row.race_goal || '',
     raceDate: row.race_date || '',
     notes: row.notes || '',
+    authUserId: row.auth_user_id || null,
     createdAt: row.created_at || null,
   };
 }
@@ -653,12 +654,13 @@ function defaultProgressiveMember () {
 function progressiveMemberRowToCache (row) {
   if (!row) return null;
   return {
-    id:        row.id,
-    email:     row.email     || '',
-    name:      row.name      || '',
-    planKey:   row.plan_key  || 'prone',
-    notes:     row.notes     || '',
-    createdAt: row.created_at || null,
+    id:         row.id,
+    email:      row.email     || '',
+    name:       row.name      || '',
+    planKey:    row.plan_key  || 'prone',
+    notes:      row.notes     || '',
+    authUserId: row.auth_user_id || null,
+    createdAt:  row.created_at || null,
   };
 }
 
