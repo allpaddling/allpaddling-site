@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Welcome — let's tune your plan — All Paddling</title>
+<meta name="description" content="A few quick questions so your coach can shape the program around you." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* Page-specific layout — onboarding is a focused single-column form,
+     not the usual app-shell with sidebar. */
+  .onboard-shell {
+    max-width: 640px; margin: 0 auto; padding: 3rem 1.5rem;
+  }
+  .onboard-eyebrow {
+    display: inline-block;
+    font-size: 0.76rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-700); background: var(--brand-50);
+    padding: 0.4rem 0.85rem; border-radius: 999px;
+    margin-bottom: 1.25rem;
+  }
+  .onboard-shell h1 { font-size: clamp(1.7rem, 3vw, 2.1rem); margin-bottom: 0.6rem; }
+  .onboard-shell .lead { color: var(--text-2); margin-bottom: 2.25rem; max-width: 540px; }
+  .onboard-card { padding: 1.75rem; }
+  .onboard-card .card-sub {
+    font-size: 0.92rem; color: var(--text-3);
+    margin-top: -0.4rem; margin-bottom: 1.4rem;
+  }
+  .field-row.two { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem; }
+  @media (max-width: 540px) { .field-row.two { grid-template-columns: 1fr; } }
+
+  .ability-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem;
+  }
+  @media (max-width: 540px) { .ability-grid { grid-template-columns: 1fr; } }
+  .ability-option {
+    display: block; cursor: pointer;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface);
+    transition: border-color .15s, background .15s;
+  }
+  .ability-option:hover { border-color: var(--text-2); }
+  .ability-option input { position: absolute; opacity: 0; pointer-events: none; }
+  .ability-option .lbl { font-weight: 600; color: var(--text); display: block; margin-bottom: 0.15rem; font-size: 0.95rem; }
+  .ability-option .sub { font-size: 0.84rem; color: var(--text-3); display: block; line-height: 1.4; }
+  .ability-option.selected {
+    border-color: var(--brand-700); background: var(--brand-50);
+  }
+  .ability-option.selected .lbl { color: var(--brand-700); }
+
+  .submit-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin-top: 1.75rem;
+  }
+  .submit-row .skip-link {
+    color: var(--text-3); font-size: 0.92rem;
+  }
+  .submit-row .skip-link:hover { color: var(--text-2); }
+  #submit-status { font-size: 0.88rem; color: var(--text-3); }
+  #submit-status.error { color: #b91c1c; }
+
+  .save-btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="onboard-shell">
+
+  <span class="onboard-eyebrow">Welcome aboard</span>
+  <h1>A few quick questions before you start.</h1>
+  <p class="lead">This shapes how Mick builds your blocks. None of it is locked in — change anything later from your settings.</p>
+
+  <form id="onboard-form" class="app-card onboard-card" novalidate>
+
+    <div class="form-field">
+      <label for="preferred-name">What should we call you?</label>
+      <input type="text" id="preferred-name" name="preferred_name" autocomplete="given-name" required maxlength="80" placeholder="First name is fine" />
+    </div>
+
+    <div class="form-field">
+      <label for="discipline">Your main discipline</label>
+      <select id="discipline" name="discipline" required>
+        <option value="">Choose one…</option>
+        <option value="prone">Prone Paddle Board</option>
+        <option value="sup">Stand Up Paddle Board</option>
+        <option value="oc">Outrigger Canoe</option>
+        <option value="ski">Surf Ski</option>
+      </select>
+      <p class="hint" id="discipline-hint" style="margin-top:0.4rem; font-size:0.82rem; color:var(--text-3); display:none;">
+        Locked to your subscription. Visit settings to switch.
+      </p>
+    </div>
+
+    <div class="form-field">
+      <label>How would you describe your level?</label>
+      <div class="ability-grid" role="radiogroup" aria-label="Ability level">
+        <label class="ability-option">
+          <input type="radio" name="ability_level" value="new" required />
+          <span class="lbl">New to it</span>
+          <span class="sub">First season or just starting structured training.</span>
+        </label>
+        <label class="ability-option">
+          <input type="radio" name="ability_level" value="recreational" />
+          <span class="lbl">Recreational</span>
+          <span class="sub">Paddle regularly, occasional events, training when you can.</span>
+        </label>
+        <label class="ability-option">
+          <input type="radio" name="ability_level" value="competitive" />
+          <span class="lbl">Competitive</span>
+          <span class="sub">Race the season, train consistently, chasing results.</span>
+        </label>
+        <label class="ability-option">
+          <input type="radio" name="ability_level" value="elite" />
+          <span class="lbl">Elite</span>
+          <span class="sub">National-level or above. Training is structured year-round.</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="weekly-hours">Hours per week you can train</label>
+      <input type="number" id="weekly-hours" name="weekly_training_hours" min="0" max="40" step="1" inputmode="numeric" placeholder="e.g. 6" />
+      <p class="hint" style="margin-top:0.4rem; font-size:0.82rem; color:var(--text-3);">
+        On-water and dryland combined. Best honest answer — sets the volume your blocks are built around.
+      </p>
+    </div>
+
+    <div class="form-field">
+      <label>Goal race <span style="color:var(--text-3); font-weight:400;">— optional</span></label>
+      <p class="card-sub" style="margin:-0.2rem 0 0.65rem;">If you've got a target event on the calendar, drop it here. If not, leave both fields blank.</p>
+      <div class="field-row two">
+        <input type="text" id="goal-race-name" name="goal_race_name" maxlength="120" placeholder="e.g. Molokai 2 Oahu" />
+        <input type="date" id="goal-race-date" name="goal_race_date" />
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="notes">Anything Mick should know? <span style="color:var(--text-3); font-weight:400;">— optional</span></label>
+      <textarea id="notes" name="notes" rows="3" maxlength="600" placeholder="Injuries, time-of-day preferences, equipment quirks, kids' schedules, anything that shapes your week."></textarea>
+    </div>
+
+    <div class="submit-row">
+      <a href="#" class="skip-link" id="skip-link">Skip for now</a>
+      <button type="submit" class="btn btn-primary save-btn" id="save-btn">Start training</button>
+    </div>
+    <p id="submit-status" style="margin-top:1rem;"></p>
+  </form>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script>
+/* ============ Onboarding logic ============
+   Single source of truth for the redirect signal is
+   member_profiles.completed_onboarding_at — null means "show
+   onboarding". Submitting the form sets it; "Skip for now"
+   also sets it (with no other fields populated) so we don't
+   nag on every page load. */
+
+(async function () {
+  const session = await getCurrentSession();
+  if (!session) { location.href = '../login.html'; return; }
+
+  const profile = await getCurrentMemberProfile();
+  const isCoachUser = await isCurrentUserCoach();
+  if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+
+  // If onboarding is already complete, skip back to dashboard.
+  const { data: existing } = await sb
+    .from('member_profiles')
+    .select('*')
+    .eq('user_id', session.user.id)
+    .maybeSingle();
+
+  if (existing && existing.completed_onboarding_at) {
+    location.href = 'dashboard.html';
+    return;
+  }
+
+  // ---- Pre-fill from existing partial profile + member type ----
+  const form         = document.getElementById('onboard-form');
+  const elName       = form.elements['preferred_name'];
+  const elDiscipline = form.elements['discipline'];
+  const elAbility    = form.querySelectorAll('input[name="ability_level"]');
+  const elHours      = form.elements['weekly_training_hours'];
+  const elRaceName   = form.elements['goal_race_name'];
+  const elRaceDate   = form.elements['goal_race_date'];
+  const elNotes      = form.elements['notes'];
+  const disciplineHint = document.getElementById('discipline-hint');
+  const saveBtn      = document.getElementById('save-btn');
+  const skipLink     = document.getElementById('skip-link');
+  const status       = document.getElementById('submit-status');
+
+  if (existing) {
+    if (existing.preferred_name)        elName.value = existing.preferred_name;
+    if (existing.discipline)            elDiscipline.value = existing.discipline;
+    if (existing.weekly_training_hours != null) elHours.value = existing.weekly_training_hours;
+    if (existing.goal_race_name)        elRaceName.value = existing.goal_race_name;
+    if (existing.goal_race_date)        elRaceDate.value = existing.goal_race_date;
+    if (existing.notes)                 elNotes.value = existing.notes;
+    if (existing.ability_level) {
+      const r = form.querySelector(`input[name="ability_level"][value="${existing.ability_level}"]`);
+      if (r) r.checked = true;
+    }
+  }
+
+  // Lock discipline for Progressive members (it's tied to their subscription).
+  if (profile && profile.type === 'progressive' && profile.planKey) {
+    elDiscipline.value    = profile.planKey;
+    elDiscipline.disabled = true;
+    disciplineHint.style.display = '';
+  } else if (!elName.value && session.user.email) {
+    // Helpful default: derive a starting name from the email local-part.
+    const local = session.user.email.split('@')[0]
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .trim();
+    elName.value = local;
+  }
+
+  // Visual highlight on the selected ability tile.
+  const abilityOptions = form.querySelectorAll('.ability-option');
+  function refreshAbilityHighlight () {
+    abilityOptions.forEach(label => {
+      const input = label.querySelector('input');
+      label.classList.toggle('selected', input.checked);
+    });
+  }
+  refreshAbilityHighlight();
+  elAbility.forEach(r => r.addEventListener('change', refreshAbilityHighlight));
+
+  // ---- Submit / skip ----
+  function clearStatus () { status.textContent = ''; status.classList.remove('error'); }
+  function showError (msg) { status.textContent = msg; status.classList.add('error'); }
+
+  async function persistProfile (row) {
+    saveBtn.disabled = true;
+    clearStatus();
+    const payload = {
+      user_id:                 session.user.id,
+      ...row,
+      completed_onboarding_at: new Date().toISOString(),
+    };
+    const { error } = await sb.from('member_profiles')
+      .upsert(payload, { onConflict: 'user_id' });
+    if (error) {
+      saveBtn.disabled = false;
+      showError('Couldn’t save just now — please try again. (' + error.message + ')');
+      return false;
+    }
+    return true;
+  }
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    clearStatus();
+    if (!form.reportValidity()) return;
+
+    const row = {
+      preferred_name:        elName.value.trim() || null,
+      discipline:            elDiscipline.value || null,
+      ability_level:         (form.querySelector('input[name="ability_level"]:checked') || {}).value || null,
+      weekly_training_hours: elHours.value ? parseInt(elHours.value, 10) : null,
+      goal_race_name:        elRaceName.value.trim() || null,
+      goal_race_date:        elRaceDate.value || null,
+      notes:                 elNotes.value.trim() || null,
+    };
+    if (await persistProfile(row)) {
+      location.href = 'dashboard.html';
+    }
+  });
+
+  skipLink.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    if (await persistProfile({})) {
+      location.href = 'dashboard.html';
+    }
+  });
+})();
+</script>
+</body>
+</html>

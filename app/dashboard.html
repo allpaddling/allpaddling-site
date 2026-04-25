@@ -172,6 +172,23 @@
   const profile = await getCurrentMemberProfile();
   const isCoachUser = await isCurrentUserCoach();
   if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+
+  // === Onboarding gate (§3.3): if the member hasn't completed the
+  // onboarding form yet, route them there before showing a dashboard
+  // that hasn't been personalised. Coaches skip this — they don't
+  // have a member_profiles row of their own. ===
+  if (profile && !isCoachUser) {
+    const { data: mp } = await sb
+      .from('member_profiles')
+      .select('completed_onboarding_at')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if (!mp || !mp.completed_onboarding_at) {
+      location.href = 'onboarding.html';
+      return;
+    }
+  }
+
   if (profile && profile.type === 'progressive') {
     setSessionPlanKey(profile.planKey);
     // Sync localStorage so sidebar / settings reflect the locked discipline
