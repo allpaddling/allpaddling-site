@@ -489,7 +489,10 @@
   }
   let activeWeek = 0;
 
-  const backHref = (planKey === 'custom') ? 'admin-custom.html' : 'admin.html';
+  // Custom plans are per-member; "Back" returns to the unified Members page.
+  // Progressive plans are per-discipline (one shared template per discipline);
+  // "Back" returns to the Programs picker.
+  const backHref = (planKey === 'custom') ? 'admin-members.html' : 'admin.html';
 
   /* ---- Sidebar user ---- */
   const email = session.user.email || '';
@@ -511,7 +514,7 @@
   const meta = PLAN_META[planKey];
   if (planKey === 'custom' && member) {
     document.getElementById('crumb-plan').innerHTML =
-      '<a href="admin-custom.html">Custom plan members</a> / ' + escapeHtml(member.name || 'Unnamed member');
+      '<a href="admin-members.html">Members</a> / ' + escapeHtml(member.name || 'Unnamed member');
     document.getElementById('page-title').textContent =
       meta.title + ' · ' + (member.name || 'Unnamed member');
     const bits = [];
