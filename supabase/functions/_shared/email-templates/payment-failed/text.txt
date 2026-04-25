@@ -1,0 +1,14 @@
+Hi {{member_name}},
+
+We weren't able to process your most recent {{amount}} {{currency}} payment. This is almost always a card expiry or a temporary bank hold — easy to fix.
+
+Stripe will retry on {{retry_date}}. Updating your card now means there's nothing to interrupt your training.
+
+Update your payment method:
+{{update_card_url}}
+
+Your access continues until the retry. If three attempts fail in a row your subscription will pause — but reply to this email any time and {{coach_name}} will sort it.
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.
+Questions? Reply to this email.

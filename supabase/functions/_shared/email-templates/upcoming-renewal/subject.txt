@@ -1,0 +1,1 @@
+Your next 4-week block renews on {{renewal_date}}

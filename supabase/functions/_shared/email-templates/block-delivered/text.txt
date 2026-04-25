@@ -1,0 +1,12 @@
+Hi {{member_name}},
+
+Block {{block_number}} of your {{plan_name}} is now in your dashboard. Same structure, progressed volume and intensity based on what you did last block.
+
+How was the last block? Anything that felt too easy, too hard, or didn't fit your week? Hit reply — what you flag shapes the next one.
+
+Open block {{block_number}}:
+{{plan_url}}
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.
+Need a hand? Reply to this email.

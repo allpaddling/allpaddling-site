@@ -1,0 +1,15 @@
+Hi {{member_name}},
+
+Heads-up: your {{plan_name}} subscription will renew in {{days_until_renewal}} days, on {{renewal_date}}.
+
+  Renewal date:  {{renewal_date}}
+  Amount:        {{amount}} {{currency}}
+
+If you'd like to keep going — no action needed. Your card on file will be charged automatically.
+
+Want to update your card, change your plan, or cancel? Manage everything in your settings:
+{{settings_url}}
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.
+Questions? Reply to this email.

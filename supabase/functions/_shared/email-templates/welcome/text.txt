@@ -1,0 +1,14 @@
+Hi {{member_name}},
+
+Welcome to All Paddling. Your subscription to the {{plan_name}} is now active.
+
+{{coach_name}} is putting your first 4-week block together right now — you'll get a separate email the moment it's live in your dashboard. Usually that's within a day or two.
+
+Sign in to your dashboard:
+{{plan_url}}
+
+Got a question, a quirk in your training week, or a goal race you want to flag? Just reply to this email — it lands with {{coach_name}} directly.
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.
+Need a hand? Reply to this email.

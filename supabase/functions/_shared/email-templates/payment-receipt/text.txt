@@ -1,0 +1,18 @@
+Hi {{member_name}},
+
+Your latest 4-week cycle has been billed. Details for your records:
+
+  Plan:           {{plan_name}}
+  Amount:         {{amount}} {{currency}}
+  Billing period: {{period_start}} – {{period_end}}
+  Next billing:   {{next_billing_date}}
+
+Download the tax invoice:
+{{invoice_pdf_url}}
+
+To update your card, change your plan, or cancel — visit your billing settings:
+{{settings_url}}
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.
+Questions about this charge? Reply to this email.

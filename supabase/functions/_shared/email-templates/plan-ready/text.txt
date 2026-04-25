@@ -1,0 +1,12 @@
+Hi {{member_name}},
+
+{{coach_name}} has finished setting up your {{plan_name}}. Block 1 — your first 4 weeks of training — is now in your dashboard, ready to go.
+
+Have a look through the week. If anything won't fit your schedule, or doesn't feel right for where you're at, hit reply and {{coach_name}} will adjust.
+
+Open your plan:
+{{plan_url}}
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.
+Need a hand? Reply to this email.
