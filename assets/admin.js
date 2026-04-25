@@ -762,36 +762,56 @@ async function getCurrentMemberProfile () {
   if (!session || !session.user || !session.user.email) return null;
   const email = session.user.email.toLowerCase();
 
-  // Try progressive_members first (each member can read only their own row via RLS)
-  const { data: pm, error: pmErr } = await sb
-    .from('progressive_members')
-    .select('*')
-    .eq('email', email)
-    .maybeSingle();
-  if (!pmErr && pm) {
-    return {
-      type: 'progressive',
-      id: pm.id,
-      email: pm.email,
-      name: pm.name,
-      planKey: pm.plan_key,
-    };
-  }
+  // Race-tolerant lookup. The webhook that creates a member row (Stripe →
+  // Supabase) may not have replicated by the time the post-checkout redirect
+  // lands here, so a single empty result is not conclusive. Retry the lookup
+  // a small bounded number of times with backoff; only after every attempt
+  // returns nothing do we treat the user as "not a member yet".
+  //
+  // Worst-case added latency for genuine non-members is ~1.6s, paid for once
+  // per page load; this is well below the cost of mis-routing a paying
+  // customer to the "no access" view.
+  const RETRY_DELAYS_MS = [0, 400, 1200];
 
-  // Fall back to custom_members (still localStorage-side for plan_key concept,
-  // but membership check works the same)
-  const { data: cm, error: cmErr } = await sb
-    .from('custom_members')
-    .select('*')
-    .eq('email', email)
-    .maybeSingle();
-  if (!cmErr && cm) {
-    return {
-      type: 'custom',
-      id: cm.id,
-      email: cm.email,
-      name: cm.name,
-    };
+  for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+    if (RETRY_DELAYS_MS[attempt] > 0) {
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+
+    // Try progressive_members first (each member can read only their own row via RLS)
+    const { data: pm, error: pmErr } = await sb
+      .from('progressive_members')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+    if (!pmErr && pm) {
+      return {
+        type: 'progressive',
+        id: pm.id,
+        email: pm.email,
+        name: pm.name,
+        planKey: pm.plan_key,
+      };
+    }
+
+    // Fall back to custom_members (still localStorage-side for plan_key concept,
+    // but membership check works the same)
+    const { data: cm, error: cmErr } = await sb
+      .from('custom_members')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+    if (!cmErr && cm) {
+      return {
+        type: 'custom',
+        id: cm.id,
+        email: cm.email,
+        name: cm.name,
+      };
+    }
+
+    // Both tables returned empty (or errored). If this isn't the last attempt,
+    // wait and try again — the row may still be replicating.
   }
 
   return null;
