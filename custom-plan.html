@@ -52,7 +52,12 @@
   }
   .product-price .amount { font-family: 'Space Grotesk', sans-serif; font-size: 2.6rem; font-weight: 700; color: var(--text); line-height: 1; }
   .product-price .period { color: var(--text-3); font-size: 1rem; }
-  .product-price .tax-note { margin-left: auto; font-size: 0.82rem; color: var(--text-3); }
+  .product-price .tax-note {
+    margin-left: auto; font-size: 0.85rem; font-weight: 700;
+    color: #a86200; background: #fff3e0;
+    padding: 0.4rem 0.75rem; border-radius: 999px;
+    border: 1px solid #f0c890;
+  }
 
   .purchase-box {
     background: var(--surface); border: 2px solid var(--brand-700);
@@ -151,13 +156,13 @@
       <div class="product-price">
         <span class="amount">$140</span>
         <span class="period">AUD / 4 weeks</span>
-        <span class="tax-note">16-week minimum</span>
+        <span class="tax-note">⚑ 12-week minimum commitment</span>
       </div>
 
       <div class="purchase-box">
         <span class="subscription-tag">4-Week Subscription</span>
-        <h3>Subscribe now — cancel after 16 weeks</h3>
-        <p style="font-size: 0.9rem; margin-bottom: 1rem;">Billed every 4 weeks at $140 AUD. Skip, reschedule, or cancel anytime after the 16-week minimum.</p>
+        <h3>Subscribe now — cancel after 12 weeks</h3>
+        <p style="font-size: 0.9rem; margin-bottom: 1rem;">Billed every 4 weeks at $140 AUD. Skip, reschedule, or cancel anytime after the 12-week minimum.</p>
         <button class="btn btn-primary btn-full" onclick="alert('Checkout coming soon — this will connect to the new member signup flow.');">
           Subscribe &amp; Start
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
@@ -234,7 +239,7 @@
       <div class="timeline-step">
         <div class="step-num">01</div>
         <h3>Subscribe</h3>
-        <p>Start your $140 / 4-week subscription. 16-week minimum.</p>
+        <p>Start your $140 / 4-week subscription. 12-week minimum.</p>
       </div>
       <div class="timeline-step">
         <div class="step-num">02</div>
@@ -266,8 +271,8 @@
       <p>Paddlers with a competitive background who've set a major goal race. You should be comfortable paddling for 60+ minutes before you start. If you're newer, consider starting with a Progressive 4-Week Plan and moving up later.</p>
     </details>
     <details class="faq-item">
-      <summary>Why a 16-week minimum?</summary>
-      <p>The plan is designed to build over a full training block — base, build, taper, peak. That's four consecutive 4-week programs. Shorter periods don't give the adaptations time to compound. You can cancel after the 16-week minimum.</p>
+      <summary>Why a 12-week minimum?</summary>
+      <p>The plan is designed to build over a full training block — base, build, peak. That's three consecutive 4-week programs. Shorter periods don't give the adaptations time to compound. You can cancel after the 12-week minimum.</p>
     </details>
     <details class="faq-item">
       <summary>How do I find my threshold pace?</summary>
