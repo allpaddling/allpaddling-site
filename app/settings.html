@@ -22,44 +22,7 @@
     <div class="app-page-header">
       <div class="breadcrumb"><a href="dashboard.html">Dashboard</a> / Settings</div>
       <h1>Settings</h1>
-      <p class="lead">Keep your threshold pace fresh — it powers every session in your program.</p>
-    </div>
-
-    <!-- ==================== Threshold pace ==================== -->
-    <div class="app-card">
-      <h2>Threshold pace</h2>
-      <p class="card-sub">Your Z3 / lactate threshold. A 3-minute all-out test is the quickest way to find it. Retest every 4–6 weeks.</p>
-
-      <div class="form-field">
-        <label>Units</label>
-        <div class="segmented" id="unit-toggle" role="tablist">
-          <button type="button" data-unit="metric" role="tab">Per km</button>
-          <button type="button" data-unit="imperial" role="tab">Per mile</button>
-        </div>
-      </div>
-
-      <div class="field-row">
-        <div class="form-field">
-          <label for="t-hours">Hours</label>
-          <input type="number" id="t-hours" min="0" max="9" step="1" value="0" inputmode="numeric" />
-        </div>
-        <div class="form-field">
-          <label for="t-minutes">Minutes</label>
-          <input type="number" id="t-minutes" min="0" max="59" step="1" value="5" inputmode="numeric" />
-        </div>
-        <div class="form-field">
-          <label for="t-seconds">Seconds</label>
-          <input type="number" id="t-seconds" min="0" max="59" step="1" value="30" inputmode="numeric" />
-        </div>
-      </div>
-
-      <div class="save-row">
-        <span class="threshold-chip">
-          <span id="threshold-display">—</span>
-          <small id="threshold-unit">/ km</small>
-        </span>
-        <span class="hint" id="threshold-hint">Updates save automatically.</span>
-      </div>
+      <p class="lead">Your discipline, account, and subscription. Threshold pace lives in <a href="threshold.html">its own page</a> now — quicker to retest from there.</p>
     </div>
 
     <!-- ==================== Discipline ==================== -->
@@ -168,13 +131,7 @@
   const state  = loadMemberState();
   const member = getMember();
 
-  const elH = document.getElementById('t-hours');
-  const elM = document.getElementById('t-minutes');
-  const elS = document.getElementById('t-seconds');
-  const unitToggle = document.getElementById('unit-toggle');
   const disciplineSel = document.getElementById('discipline');
-  const displayEl = document.getElementById('threshold-display');
-  const unitEl = document.getElementById('threshold-unit');
 
   // ---- Account panel
   document.getElementById('acct-name').textContent  = member.name;
@@ -201,33 +158,6 @@
       ? '12 weeks (complete your first 3 programs before cancelling)'
       : '4 weeks at a time — cancel anytime';
 
-  // ---- Hydrate threshold inputs from state
-  function secondsToHMS(total) {
-    total = Math.max(0, Math.round(total));
-    const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const s = total % 60;
-    return { h, m, s };
-  }
-  function hmsToSeconds() {
-    return (Number(elH.value) || 0) * 3600
-         + (Number(elM.value) || 0) * 60
-         + (Number(elS.value) || 0);
-  }
-
-  const { h, m, s } = secondsToHMS(state.thresholdSec);
-  elH.value = h; elM.value = m; elS.value = s;
-
-  // Unit buttons
-  function syncUnitButtons() {
-    unitToggle.querySelectorAll('button').forEach(btn => {
-      const active = btn.dataset.unit === state.unit;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-  }
-  syncUnitButtons();
-
   disciplineSel.value = state.discipline;
 
   // Lock the discipline picker for paying Progressive members.
@@ -241,52 +171,13 @@
       'Your discipline is set by your subscription. To switch disciplines, contact your coach.';
   }
 
-  // ---- Display refresh
-  function refreshDisplay() {
-    const ftp = hmsToSeconds();
-    displayEl.textContent = formatSeconds(ftp);
-    unitEl.textContent = unitLabel(state.unit);
-  }
-  refreshDisplay();
-
-  // ---- Save (autosave) with threshold-history tracking
-  let saveTimer;
-  function queueSave() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(commitSave, 350);
-  }
-  function commitSave() {
-    const newSec = hmsToSeconds();
-    const prev = loadMemberState();
-    const thresholdChanged = newSec !== prev.thresholdSec;
-
-    const history = prev.thresholdHistory || [];
-    if (thresholdChanged && newSec > 0) {
-      history.push({ at: new Date().toISOString(), thresholdSec: newSec, unit: state.unit });
-    }
-    const next = {
-      ...prev,
-      thresholdSec: newSec,
-      unit: state.unit,
-      discipline: disciplineSel.value,
-      thresholdHistory: history,
-    };
+  // Save discipline changes (only one persisted setting on this page now —
+  // threshold and unit live on threshold.html).
+  disciplineSel.addEventListener('change', () => {
+    const next = { ...loadMemberState(), discipline: disciplineSel.value };
     saveMemberState(next);
     showToast('Saved');
-  }
-
-  [elH, elM, elS].forEach(inp => {
-    inp.addEventListener('input', () => { refreshDisplay(); queueSave(); });
   });
-  unitToggle.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-unit]');
-    if (!btn) return;
-    state.unit = btn.dataset.unit;
-    syncUnitButtons();
-    refreshDisplay();
-    queueSave();
-  });
-  disciplineSel.addEventListener('change', queueSave);
 
   // ---- Export CSV
   document.getElementById('export-btn').addEventListener('click', () => {

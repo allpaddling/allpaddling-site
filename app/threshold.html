@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Threshold pace — All Paddling</title>
+<meta name="description" content="Set your threshold pace and see your training zones. Powers every session in your program." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* ==== Two-column layout: input on the left, zones panel on the right ==== */
+  .threshold-grid {
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 920px) {
+    .threshold-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ==== Zones display (mirrors public pace-calculator visual conventions) ==== */
+  .zones-list { display: grid; gap: 0.55rem; }
+  .zone-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--brand);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1.1rem;
+    display: grid; grid-template-columns: 60px 1fr auto; gap: 0.85rem;
+    align-items: center;
+  }
+  .zone-row.tz1 { border-left-color: var(--tz1); background: var(--tz1-bg); }
+  .zone-row.tz2 { border-left-color: var(--tz2); background: var(--tz2-bg); }
+  .zone-row.tz3 { border-left-color: var(--tz3); background: var(--tz3-bg); }
+  .zone-row.tz4 { border-left-color: var(--tz4); background: var(--tz4-bg); }
+  .zone-row.tz5 { border-left-color: var(--tz5); background: var(--tz5-bg); }
+
+  .zone-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .zone-row.tz1 .zone-label { color: var(--tz1); }
+  .zone-row.tz2 .zone-label { color: var(--tz2); }
+  .zone-row.tz3 .zone-label { color: var(--tz3); }
+  .zone-row.tz4 .zone-label { color: var(--tz4); }
+  .zone-row.tz5 .zone-label { color: var(--tz5); }
+
+  .zone-desc { min-width: 0; }
+  .zone-desc .name    { font-weight: 600; font-size: 0.9rem; color: var(--text); margin-bottom: 0.1rem; }
+  .zone-desc .purpose { font-size: 0.78rem; color: var(--text-3); }
+
+  .zone-pace {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem; font-weight: 600; color: var(--text);
+    white-space: nowrap;
+  }
+  .zone-pace .per { font-size: 0.7rem; color: var(--text-3); font-weight: 500; margin-left: 0.2rem; }
+
+  @media (max-width: 520px) {
+    .zone-row { grid-template-columns: 50px 1fr; }
+    .zone-pace { grid-column: 2; text-align: left; }
+  }
+
+  /* History card */
+  .threshold-history-list { display: grid; gap: 0.4rem; }
+  .threshold-history-list .kv-row { padding: 0.5rem 0; }
+  .threshold-history-list .kv-row + .kv-row { border-top: 1px solid var(--border); }
+  .threshold-history-empty {
+    color: var(--text-3); font-size: 0.92rem; padding: 0.4rem 0; margin: 0;
+  }
+
+  /* "How to test" panel */
+  .how-to-test ol { margin: 0.5rem 0 0 1.1rem; padding: 0; }
+  .how-to-test li { margin-bottom: 0.35rem; font-size: 0.92rem; color: var(--text-2); line-height: 1.5; }
+  .how-to-test li strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+
+  <main class="app-main">
+    <div id="app-mobile-header"></div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb"><a href="dashboard.html">Dashboard</a> / Threshold pace</div>
+      <h1>Threshold pace</h1>
+      <p class="lead">Your Z3 / lactate-threshold pace. Every interval in every session is calculated from this number — keep it fresh and your zones stay honest.</p>
+    </div>
+
+    <div class="threshold-grid">
+
+      <!-- ============ Threshold input ============ -->
+      <div class="app-card">
+        <h2>Your threshold pace</h2>
+        <p class="card-sub">Enter your most recent test result. We'll auto-save as you type.</p>
+
+        <div class="form-field">
+          <label>Units</label>
+          <div class="segmented" id="unit-toggle" role="tablist">
+            <button type="button" data-unit="metric"   role="tab">Per km</button>
+            <button type="button" data-unit="imperial" role="tab">Per mile</button>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="form-field">
+            <label for="t-hours">Hours</label>
+            <input type="number" id="t-hours"   min="0" max="9"  step="1" value="0" inputmode="numeric" />
+          </div>
+          <div class="form-field">
+            <label for="t-minutes">Minutes</label>
+            <input type="number" id="t-minutes" min="0" max="59" step="1" value="5" inputmode="numeric" />
+          </div>
+          <div class="form-field">
+            <label for="t-seconds">Seconds</label>
+            <input type="number" id="t-seconds" min="0" max="59" step="1" value="30" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="save-row">
+          <span class="threshold-chip">
+            <span id="threshold-display">—</span>
+            <small id="threshold-unit">/ km</small>
+          </span>
+          <span class="hint" id="threshold-hint">Updates save automatically.</span>
+        </div>
+      </div>
+
+      <!-- ============ Derived training zones ============ -->
+      <div class="app-card">
+        <h2>Your training zones</h2>
+        <p class="card-sub">Computed from your threshold above. These are the pace targets every session in your plan refers to.</p>
+        <div class="zones-list" id="zones-list"></div>
+      </div>
+
+    </div>
+
+    <!-- ============ How to test ============ -->
+    <div class="app-card how-to-test">
+      <h2>Re-testing</h2>
+      <p class="card-sub">Most accurate way to find your threshold pace. Repeat every 4–6 weeks — your zones update automatically when you do.</p>
+      <ol>
+        <li><strong>Warm up</strong> for 10–15 minutes with a few short builds at the end.</li>
+        <li><strong>Paddle as hard as you can sustain for exactly 3 minutes.</strong> Pace it so you finish empty — not so hot you fade in the first minute.</li>
+        <li><strong>Note the average pace</strong> (per km or per mile) over those 3 minutes. That's your threshold pace — punch it in above.</li>
+        <li><strong>Cool down</strong> easy for 10 minutes.</li>
+      </ol>
+    </div>
+
+    <!-- ============ History ============ -->
+    <div class="app-card">
+      <h2>Recent tests</h2>
+      <p class="card-sub">Every time you change your threshold, we log it here so you can see your trend.</p>
+      <div id="threshold-history" class="threshold-history-list"></div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script src="../assets/published-plans.js"></script>
+<script src="../assets/app.js"></script>
+<script>
+/* ============ Threshold pace page ============ */
+
+(async function () {
+  // === Member auth gate (mirrors settings.html) ===
+  const session = await getCurrentSession();
+  if (!session) { location.href = '../login.html'; return; }
+  const profile = await getCurrentMemberProfile();
+  const isCoachUser = await isCurrentUserCoach();
+  if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+  if (profile && profile.type === 'progressive') {
+    setSessionPlanKey(profile.planKey);
+    const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+    const _s = loadMemberState();
+    if (_s.discipline !== PLAN_KEY_TO_DISC[profile.planKey]) {
+      _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
+      saveMemberState(_s);
+    }
+    const _planEl = document.querySelector('.app-member-meta .plan');
+    if (_planEl) _planEl.textContent = 'Progressive · ' + PLAN_KEY_TO_DISC[profile.planKey];
+  }
+
+  const state = loadMemberState();
+
+  // ---- DOM refs
+  const elH = document.getElementById('t-hours');
+  const elM = document.getElementById('t-minutes');
+  const elS = document.getElementById('t-seconds');
+  const unitToggle = document.getElementById('unit-toggle');
+  const displayEl  = document.getElementById('threshold-display');
+  const unitEl     = document.getElementById('threshold-unit');
+  const zonesEl    = document.getElementById('zones-list');
+  const historyEl  = document.getElementById('threshold-history');
+
+  // ---- Helpers
+  function secondsToHMS (total) {
+    total = Math.max(0, Math.round(total));
+    return {
+      h: Math.floor(total / 3600),
+      m: Math.floor((total % 3600) / 60),
+      s: total % 60,
+    };
+  }
+  function hmsToSeconds () {
+    return (Number(elH.value) || 0) * 3600
+         + (Number(elM.value) || 0) * 60
+         + (Number(elS.value) || 0);
+  }
+  function escapeHtml (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ---- Hydrate inputs from state
+  const { h, m, s } = secondsToHMS(state.thresholdSec || 0);
+  elH.value = h; elM.value = m; elS.value = s;
+
+  function syncUnitButtons () {
+    unitToggle.querySelectorAll('button').forEach(btn => {
+      const active = btn.dataset.unit === state.unit;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+  syncUnitButtons();
+
+  // ---- Render the zones table from current threshold + unit
+  function renderZones () {
+    const ftpSec = hmsToSeconds();
+    const u      = unitLabel(state.unit);
+    zonesEl.innerHTML = ZONES.map(zone => {
+      const range = zonePaceRange(zone, ftpSec);
+      return `
+        <div class="zone-row ${zone.key}">
+          <div class="zone-label">${zone.label}</div>
+          <div class="zone-desc">
+            <div class="name">${escapeHtml(zone.name)}</div>
+            <div class="purpose">${escapeHtml(zone.purpose)}</div>
+          </div>
+          <div class="zone-pace">${escapeHtml(range.label)}<span class="per">${escapeHtml(u)}</span></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ---- Render the recent-tests list
+  function renderHistory () {
+    const fresh = loadMemberState();
+    const history = (fresh.thresholdHistory || []).slice().reverse();
+    if (!history.length) {
+      historyEl.innerHTML = `<p class="threshold-history-empty">No tests logged yet — your first save will start the trend.</p>`;
+      return;
+    }
+    historyEl.innerHTML = history.map(h => {
+      const d = new Date(h.at);
+      return `
+        <div class="kv-row">
+          <div class="kv-label">${d.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' })}</div>
+          <div class="kv-value">${formatSeconds(h.thresholdSec)} ${unitLabel(h.unit)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ---- Live display refresh
+  function refreshDisplay () {
+    const ftp = hmsToSeconds();
+    displayEl.textContent = formatSeconds(ftp);
+    unitEl.textContent    = unitLabel(state.unit);
+    renderZones();
+  }
+  refreshDisplay();
+  renderHistory();
+
+  // ---- Save (autosave) with threshold-history tracking
+  let saveTimer;
+  function queueSave () {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(commitSave, 350);
+  }
+  function commitSave () {
+    const newSec = hmsToSeconds();
+    const prev = loadMemberState();
+    const thresholdChanged = newSec !== prev.thresholdSec;
+    const unitChanged      = state.unit !== prev.unit;
+
+    const history = prev.thresholdHistory || [];
+    if (thresholdChanged && newSec > 0) {
+      history.push({ at: new Date().toISOString(), thresholdSec: newSec, unit: state.unit });
+    }
+    const next = {
+      ...prev,
+      thresholdSec: newSec,
+      unit: state.unit,
+      thresholdHistory: history,
+    };
+    saveMemberState(next);
+    if (thresholdChanged || unitChanged) renderHistory();
+    showToast('Saved');
+  }
+
+  [elH, elM, elS].forEach(inp => {
+    inp.addEventListener('input', () => { refreshDisplay(); queueSave(); });
+  });
+  unitToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-unit]');
+    if (!btn) return;
+    state.unit = btn.dataset.unit;
+    syncUnitButtons();
+    refreshDisplay();
+    queueSave();
+  });
+})();
+</script>
+</body>
+</html>
