@@ -232,7 +232,7 @@
   }
 
   const state = loadMemberState();
-  const key   = sessionKey(programNum, weekNum, sessionNum);
+  const key   = memberSessionKey(getCurrentPlanKey(), weekNum, sessionNum);
 
   /* ---- Header ---- */
   document.getElementById('breadcrumb').innerHTML = `
@@ -364,26 +364,27 @@
   rpe.addEventListener('change', () => patchLog({ rpe: Number(rpe.value) }));
   noteEl.addEventListener('change', () => patchLog({ note: noteEl.value }));
 
-  /* ---- Prev / Next ---- */
+  /* ---- Prev / Next (navigate within the currently-loaded plan) ---- */
   function coordsAt(delta) {
-    let p = programNum, w = weekNum, s = sessionNum + delta;
-    const weekSessions = (wk) => (getWeek(p, wk) || { sessions: [] }).sessions.length;
+    let w = weekNum, s = sessionNum + delta;
+    const wkSessions = (wkIdx) => (program.weeks[wkIdx - 1] || { sessions: [] }).sessions.length;
     if (s < 1) {
       w--;
       if (w < 1) return null;
-      s = weekSessions(w);
-    } else if (s > weekSessions(w)) {
+      s = wkSessions(w);
+    } else if (s > wkSessions(w)) {
       w++;
-      if (!getWeek(p, w)) return null;
+      if (!program.weeks[w - 1]) return null;
       s = 1;
     }
-    return { p, w, s };
+    return { w, s };
   }
   function labelFor(c) {
     if (!c) return '—';
-    const sess = getSession(c.p, c.w, c.s);
+    const wk = program.weeks[c.w - 1];
+    const sess = wk && wk.sessions ? wk.sessions[c.s - 1] : null;
     if (!sess) return '—';
-    return `${getWeek(c.p, c.w).label} · Session ${c.s}`;
+    return `${wk.label} · Session ${c.s}`;
   }
   function wire(id, titleId, c) {
     const a = document.getElementById(id);
@@ -394,7 +395,7 @@
       return;
     }
     a.classList.remove('disabled');
-    a.href = `session.html?p=${c.p}&w=${c.w}&s=${c.s}`;
+    a.href = `session.html?w=${c.w}&s=${c.s}`;
     t.textContent = labelFor(c);
   }
   wire('prev-link', 'prev-title', coordsAt(-1));

@@ -153,6 +153,8 @@
       <a href="#" class="btn" id="week-cta-btn">Next week →</a>
     </div>
 
+    <p id="published-stamp" style="text-align:center; font-size:0.82rem; color:var(--text-3); margin: 1.5rem 0 0;"></p>
+
   </main>
 </div>
 
@@ -192,6 +194,13 @@
   document.getElementById('program-title').textContent    = `${program.name} · ${member.discipline}`;
   document.getElementById('program-subtitle').textContent = program.subtitle;
 
+  // "Updated by your coach" stamp
+  const stampEl = document.getElementById('published-stamp');
+  if (stampEl && program.publishedAt) {
+    const ago = relativeTimeShort(new Date(program.publishedAt));
+    stampEl.textContent = `Updated ${ago} by your coach.`;
+  }
+
   // Pace chip
   document.getElementById('tc-value').textContent = formatSeconds(state.thresholdSec);
   document.getElementById('tc-unit').textContent  = unitLabel(state.unit);
@@ -205,7 +214,7 @@
 
   // Completion helpers
   function isComplete(weekNum, sessionNum) {
-    return !!(state.completedSessions[sessionKey(programNum, weekNum, sessionNum)]);
+    return !!(state.completedSessions[memberSessionKey(getCurrentPlanKey(), weekNum, sessionNum)]);
   }
   function weekCompletion(weekNum) {
     const week = program.weeks[weekNum - 1];
@@ -305,6 +314,18 @@
     document.getElementById('tc-unit').textContent  = unitLabel(state.unit);
     renderAll();
   });
+
+  function relativeTimeShort (d) {
+    const ms = Date.now() - d.getTime();
+    const mins = Math.round(ms / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + ' hr ago';
+    const days = Math.round(hrs / 24);
+    if (days < 30) return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+    return d.toLocaleDateString('en-AU', { day:'numeric', month:'short' });
+  }
 })();
 </script>
 </body>

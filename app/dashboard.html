@@ -197,11 +197,13 @@
     `You're on ${program.name} · Week ${member.currentWeek || 1} of ${program.weeks.length}. Here's what's next.`;
 
   // Find next uncompleted session
+  const planKey = getCurrentPlanKey();
+
   function findNext() {
     for (let w = 1; w <= program.weeks.length; w++) {
       const week = program.weeks[w - 1];
       for (let s = 1; s <= week.sessions.length; s++) {
-        const k = sessionKey(programNum, w, s);
+        const k = memberSessionKey(planKey, w, s);
         if (!state.completedSessions[k]) {
           return { w, s, week, session: week.sessions[s - 1] };
         }
@@ -247,7 +249,7 @@
   const currentWeekNum = member.currentWeek || (next ? next.w : 1);
   const week = program.weeks[currentWeekNum - 1] || program.weeks[0];
   const weekDone = week.sessions.reduce((n, _, idx) =>
-    n + (state.completedSessions[sessionKey(programNum, currentWeekNum, idx + 1)] ? 1 : 0), 0);
+    n + (state.completedSessions[memberSessionKey(planKey, currentWeekNum, idx + 1)] ? 1 : 0), 0);
   document.getElementById('mini-week').textContent = weekDone;
   document.getElementById('mini-week-total').textContent = week.sessions.length;
   document.getElementById('mini-week-hint').textContent =
@@ -262,23 +264,25 @@
   program.weeks.forEach((w, i) => {
     progTotal += w.sessions.length;
     w.sessions.forEach((_, idx) => {
-      if (state.completedSessions[sessionKey(programNum, i + 1, idx + 1)]) progDone++;
+      if (state.completedSessions[memberSessionKey(planKey, i + 1, idx + 1)]) progDone++;
     });
   });
   document.getElementById('mini-prog').textContent = progDone;
   document.getElementById('mini-prog-total').textContent = progTotal;
   document.getElementById('mini-prog-hint').textContent = `${program.name} · Week ${currentWeekNum} of ${program.weeks.length}`;
 
-  // Recent activity — look up sessions in the currently-loaded plan
+  // Recent activity — look up sessions in the currently-loaded plan.
+  // We only show stamps for the discipline the member is currently on.
   const completed = Object.keys(state.completedSessions || {})
     .filter(k => state.completedSessions[k])
     .map(k => {
-      const m = /^p(\d+)w(\d+)s(\d+)$/.exec(k);
+      const m = /^([a-z]+)-w(\d+)s(\d+)$/.exec(k);
       if (!m) return null;
-      const p = Number(m[1]), w = Number(m[2]), s = Number(m[3]);
+      if (m[1] !== planKey) return null;  // skip other-discipline stamps
+      const w = Number(m[2]), s = Number(m[3]);
       const week = program.weeks[w - 1];
       const session = week && week.sessions ? week.sessions[s - 1] : null;
-      return { p, w, s, key: k, session, week,
+      return { w, s, key: k, session, week,
                notes: (state.sessionNotes && state.sessionNotes[k]) || {} };
     })
     .filter(e => e && e.session && e.week);
@@ -303,11 +307,11 @@
         ? new Date(e.notes.completedAt).toLocaleDateString('en-AU', { day:'numeric', month:'short' })
         : '—';
       return `
-        <a class="recent-row" href="session.html?p=${e.p}&w=${e.w}&s=${e.s}">
+        <a class="recent-row" href="session.html?w=${e.w}&s=${e.s}">
           <span class="recent-date">${d}</span>
           <div>
             <div class="recent-title">${sessionTitle(e.session)}</div>
-            <div class="recent-meta">P${e.p} · ${e.week.label} · Session ${e.s}</div>
+            <div class="recent-meta">${e.week.label} · Session ${e.s}</div>
           </div>
           <span class="rpe-pill">${e.notes.rpe ? 'RPE ' + e.notes.rpe : '—'}</span>
         </a>

@@ -33,6 +33,27 @@
   }
   .save-dot.dirty { background: #f59e0b; }
   .save-dot.errored { background: #ef4444; }
+
+  /* Publish status pill — sits next to the save dot */
+  .publish-pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.28rem 0.6rem; border-radius: 999px;
+    background: var(--surface-2); color: var(--text-3);
+    text-transform: uppercase;
+    margin-left: 0.4rem;
+  }
+  .publish-pill.pending {
+    background: #fef3c7; color: #92400e;
+  }
+  .publish-pill.live {
+    background: #d1fae5; color: #065f46;
+  }
+  .publish-pill .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
   .save-bar .save-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
   /* ====== Editor form ====== */
@@ -338,10 +359,12 @@
       <div class="save-state">
         <span class="save-dot" id="save-dot"></span>
         <span id="save-msg">All changes saved.</span>
+        <span class="publish-pill" id="publish-pill" style="display:none;"></span>
       </div>
       <div class="save-actions">
         <a href="#" class="btn btn-ghost" id="back-btn">← Back</a>
         <button class="btn btn-ghost" id="preview-btn">Preview as member →</button>
+        <button class="btn btn-primary" id="publish-btn" style="display:none;">Publish changes →</button>
       </div>
     </div>
 
@@ -393,9 +416,13 @@
 
     <!-- Danger zone -->
     <div class="danger-zone">
-      <h3>Reset this program</h3>
-      <p>Discards all edits on this browser and restores the default program. Cannot be undone.</p>
-      <button class="btn btn-danger" id="reset-btn">Reset to default</button>
+      <h3>Discard draft changes</h3>
+      <p id="revert-help">Throw away in-progress draft edits and restore the published version. Members aren't affected — they're already seeing the published version.</p>
+      <button class="btn btn-danger" id="revert-btn" style="display:none;">Revert draft to published</button>
+
+      <h3 style="margin-top: 1.5rem;">Reset to default template</h3>
+      <p>Replaces the current draft with the PROGRAM_1 starter template. Doesn't publish — review the reset draft first, then click Publish if you want it live.</p>
+      <button class="btn btn-danger" id="reset-btn">Reset draft to default</button>
     </div>
 
   </main>
@@ -507,6 +534,11 @@
   renderWeekTabs();
   renderWeekEditor();
 
+  /* ---- Publish UI: prime the status pill on first load ---- */
+  // (publishBtn / revertBtn / updatePublishUI are defined further down,
+  //  but the function expression hoists since it's a function declaration.)
+  setTimeout(() => updatePublishUI(), 0);
+
   /* ---- Back button ---- */
   document.getElementById('back-btn').addEventListener('click', (e) => {
     e.preventDefault();
@@ -536,6 +568,53 @@
       alert('Reset failed — please refresh and try again.');
     }
   });
+
+  /* ---- Publish / Revert (Progressive plans only) ---- */
+  const isProgressive = (planKey !== 'custom');
+  const publishBtn = document.getElementById('publish-btn');
+  const revertBtn  = document.getElementById('revert-btn');
+
+  if (isProgressive) {
+    publishBtn.addEventListener('click', async () => {
+      publishBtn.disabled = true;
+      const originalLabel = publishBtn.textContent;
+      publishBtn.textContent = 'Publishing…';
+      try {
+        await publishProgressivePlan(planKey);
+        flashSaved('Published just now.');
+      } catch (err) {
+        console.error('publish failed', err);
+        flashError('Publish failed — try again.');
+      } finally {
+        publishBtn.textContent = originalLabel;
+        updatePublishUI();
+      }
+    });
+
+    revertBtn.addEventListener('click', async () => {
+      if (!confirm('Discard your in-progress draft and restore the published version? This can\'t be undone.')) return;
+      try {
+        await revertProgressiveDraft(planKey);
+        // Refresh local plan reference and re-render the editor
+        plan = getProgressiveDraft(planKey);
+        metaName.value = plan.meta.name || '';
+        metaSub.value  = plan.meta.subtitle || '';
+        activeWeek = 0;
+        renderWeekTabs();
+        renderWeekEditor();
+        flashSaved('Draft reverted to published.');
+      } catch (err) {
+        console.error('revert failed', err);
+        alert('Revert failed — please refresh and try again.');
+      }
+    });
+  } else {
+    // Custom plans don't have a publish gate yet (Phase C will add one)
+    publishBtn.style.display = 'none';
+    revertBtn.style.display  = 'none';
+    document.getElementById('revert-help').textContent =
+      'Custom plans publish to the member immediately on save. A publish gate will be added in Phase C.';
+  }
 
   /* ---- Preview as member ---- */
   document.getElementById('preview-btn').addEventListener('click', () => {
@@ -881,11 +960,55 @@
     dot.classList.remove('dirty');
     dot.classList.remove('errored');
     document.getElementById('save-msg').textContent = msg || 'All changes saved.';
+    updatePublishUI();
   }
   function flashError (msg) {
     const dot = document.getElementById('save-dot');
     dot.classList.add('errored');
     document.getElementById('save-msg').textContent = msg || 'Save failed.';
+    updatePublishUI();
+  }
+
+  /* Update the Publish button + status pill to reflect the current
+     draft-vs-published state. Called after every save/publish/revert. */
+  function updatePublishUI () {
+    const pill = document.getElementById('publish-pill');
+    if (!isProgressive) {
+      pill.style.display = 'none';
+      return;
+    }
+    const pending = hasUnpublishedChanges(planKey);
+    const publishedAt = getPublishedAt(planKey);
+
+    pill.style.display = '';
+    pill.classList.remove('pending', 'live');
+    if (pending) {
+      pill.classList.add('pending');
+      pill.innerHTML = '<span class="dot"></span><span>Pending publish</span>';
+      publishBtn.style.display = '';
+      publishBtn.disabled = false;
+      revertBtn.style.display = '';
+    } else {
+      pill.classList.add('live');
+      const stamp = publishedAt
+        ? 'Published ' + relativeTimeShort(new Date(publishedAt))
+        : 'Never published';
+      pill.innerHTML = '<span class="dot"></span><span>' + stamp + '</span>';
+      publishBtn.style.display = 'none';
+      revertBtn.style.display  = 'none';
+    }
+  }
+
+  function relativeTimeShort (date) {
+    const diff = Date.now() - date.getTime();
+    const mins = Math.round(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + ' hr ago';
+    const days = Math.round(hrs / 24);
+    if (days < 30) return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+    return date.toLocaleDateString();
   }
 
   /* ---- HTML escape helpers ---- */

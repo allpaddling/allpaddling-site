@@ -255,9 +255,9 @@
   // ---- Export CSV
   document.getElementById('export-btn').addEventListener('click', () => {
     const s = loadMemberState();
-    const rows = [['program', 'week', 'session', 'completed', 'rpe', 'note']];
+    const rows = [['discipline', 'week', 'session', 'completed', 'rpe', 'note']];
     Object.keys(s.completedSessions || {}).forEach(key => {
-      const match = /^p(\d+)w(\d+)s(\d+)$/.exec(key);
+      const match = /^([a-z]+)-w(\d+)s(\d+)$/.exec(key);
       if (!match) return;
       const notes = (s.sessionNotes && s.sessionNotes[key]) || {};
       rows.push([

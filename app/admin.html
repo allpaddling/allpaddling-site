@@ -467,13 +467,21 @@
       avatarEl.textContent = initials || 'CO';
     }
 
-    // Last-edited stamps per Progressive plan (from Supabase cache)
+    // Publish-status stamp per Progressive plan (from Supabase cache)
     ['prone', 'sup', 'oc', 'ski'].forEach(key => {
       const el = document.getElementById('meta-' + key);
       if (!el) return;
-      const plan = getProgressivePlan(key);
-      const last = plan && plan.lastEdited;
-      el.textContent = last ? ('Edited ' + relativeTime(new Date(last))) : 'Never edited';
+      const publishedAt = getPublishedAt(key);
+      const pending = hasUnpublishedChanges(key);
+      if (pending && publishedAt) {
+        el.textContent = 'Changes pending publish · last published ' + relativeTime(new Date(publishedAt));
+      } else if (pending) {
+        el.textContent = 'Changes pending publish · never published';
+      } else if (publishedAt) {
+        el.textContent = 'Published ' + relativeTime(new Date(publishedAt));
+      } else {
+        el.textContent = 'Never published';
+      }
     });
 
     // Custom tile shows member count + most recent edit across all members
