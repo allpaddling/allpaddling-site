@@ -116,6 +116,63 @@ async function reloadPublishedPlan (planKey) {
   return await loadPublishedPlan(planKey);
 }
 
+/* ============================================================
+   DRAFT loaders — only used in coach Preview-as-member mode.
+   These bypass the normal "members never see drafts" isolation
+   above; the calling page MUST gate on isCurrentUserCoach()
+   before invoking either of these.
+   ============================================================ */
+
+/* Load the DRAFT version of a Progressive discipline plan.
+   Falls back to the published version if no draft has been
+   started yet (so the preview always shows something). */
+async function loadDraftProgressivePlan (planKey) {
+  if (!VALID_PLAN_KEYS.includes(planKey)) {
+    console.warn('published-plans — invalid key for draft', planKey);
+    planKey = 'prone';
+  }
+  if (typeof sb === 'undefined') return null;
+
+  const { data, error } = await sb
+    .from('progressive_plans')
+    .select('key, meta, programs, draft_meta, draft_programs, last_edited, published_at')
+    .eq('key', planKey)
+    .maybeSingle();
+  if (error) { console.warn('published-plans — draft load failed', error); return null; }
+  if (!data)  return null;
+
+  // Prefer draft fields when populated; otherwise fall back to published.
+  const draftMeta     = (data.draft_meta     && Object.keys(data.draft_meta).length)     ? data.draft_meta     : null;
+  const draftPrograms = Array.isArray(data.draft_programs) && data.draft_programs.length ? data.draft_programs : null;
+  return rowToProgram({
+    meta:         draftMeta || data.meta,
+    programs:     draftPrograms || data.programs,
+    last_edited:  data.last_edited,
+    published_at: data.published_at,
+  });
+}
+
+/* Load the DRAFT custom plan for a single member. */
+async function loadDraftCustomPlan (memberId) {
+  if (typeof sb === 'undefined' || !memberId) return null;
+  const { data, error } = await sb
+    .from('custom_plans')
+    .select('member_id, meta, programs, draft_meta, draft_programs, last_edited, published_at')
+    .eq('member_id', memberId)
+    .maybeSingle();
+  if (error) { console.warn('published-plans — custom draft load failed', error); return null; }
+  if (!data)  return null;
+
+  const draftMeta     = (data.draft_meta     && Object.keys(data.draft_meta).length)     ? data.draft_meta     : null;
+  const draftPrograms = Array.isArray(data.draft_programs) && data.draft_programs.length ? data.draft_programs : null;
+  return rowToProgram({
+    meta:         draftMeta || data.meta,
+    programs:     draftPrograms || data.programs,
+    last_edited:  data.last_edited,
+    published_at: data.published_at,
+  });
+}
+
 /* Per-discipline session completion key.
    Format: "{planKey}-w{weekNum}s{sessionNum}" e.g. "prone-w2s3".
    Replaces the legacy "p1w2s3" format which didn't track discipline. */

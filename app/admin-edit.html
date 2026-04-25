@@ -367,6 +367,7 @@
       </div>
       <div class="save-actions">
         <a href="#" class="btn btn-ghost" id="back-btn">← Back</a>
+        <a href="#" class="btn btn-ghost" id="preview-btn" target="_blank" rel="noopener">Preview as member →</a>
         <button class="btn btn-primary" id="publish-btn" style="display:none;">Publish changes →</button>
       </div>
     </div>
@@ -553,6 +554,25 @@
   });
   document.getElementById('back-btn').textContent =
     planKey === 'custom' ? '← Back to members' : '← Back to programs';
+
+  /* ---- Preview as member ----
+     Opens program.html in preview mode, in a new tab. The page's own
+     URL-param parser does the rest (loading the draft, showing the
+     banner). For Custom plans we have to pass the member id too. */
+  const previewBtn = document.getElementById('preview-btn');
+  if (previewBtn) {
+    let href;
+    if (planKey === 'custom' && member && member.id) {
+      href = `program.html?preview=draft&plan=custom&member=${encodeURIComponent(member.id)}`;
+    } else if (planKey !== 'custom') {
+      href = `program.html?preview=draft&plan=${encodeURIComponent(planKey)}`;
+    } else {
+      // Custom plan but no member context (shouldn't happen given the
+      // page guards earlier) — disable the button.
+      previewBtn.style.display = 'none';
+    }
+    if (href) previewBtn.setAttribute('href', href);
+  }
 
   /* ---- Reset ---- */
   document.getElementById('reset-btn').addEventListener('click', async () => {
