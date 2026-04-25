@@ -470,7 +470,8 @@
   /* ---- Load data ---- */
   let plan, member = null;
   if (planKey === 'custom') {
-    plan = getCustomPlan(memberId);
+    await loadCustomData();
+    plan = getCustomPlanDraft(memberId);
     member = getCustomMember(memberId);
     if (!plan || !member) {
       alert('This member could not be found. Returning to the members list.');
@@ -552,8 +553,8 @@
     if (!confirm('Reset this program to defaults? All edits will be lost.')) return;
     try {
       if (planKey === 'custom') {
-        resetCustomPlan(memberId);
-        plan = getCustomPlan(memberId);
+        await resetCustomPlan(memberId);
+        plan = getCustomPlanDraft(memberId);
       } else {
         plan = await resetProgressivePlan(planKey);
       }
@@ -569,52 +570,53 @@
     }
   });
 
-  /* ---- Publish / Revert (Progressive plans only) ---- */
-  const isProgressive = (planKey !== 'custom');
+  /* ---- Publish / Revert (works for both Progressive and Custom) ---- */
+  const isCustom = (planKey === 'custom');
   const publishBtn = document.getElementById('publish-btn');
   const revertBtn  = document.getElementById('revert-btn');
 
-  if (isProgressive) {
-    publishBtn.addEventListener('click', async () => {
-      publishBtn.disabled = true;
-      const originalLabel = publishBtn.textContent;
-      publishBtn.textContent = 'Publishing…';
-      try {
+  publishBtn.addEventListener('click', async () => {
+    publishBtn.disabled = true;
+    const originalLabel = publishBtn.textContent;
+    publishBtn.textContent = 'Publishing…';
+    try {
+      if (isCustom) {
+        await publishCustomPlan(memberId);
+      } else {
         await publishProgressivePlan(planKey);
-        flashSaved('Published just now.');
-      } catch (err) {
-        console.error('publish failed', err);
-        flashError('Publish failed — try again.');
-      } finally {
-        publishBtn.textContent = originalLabel;
-        updatePublishUI();
       }
-    });
+      flashSaved('Published just now.');
+    } catch (err) {
+      console.error('publish failed', err);
+      flashError('Publish failed — try again.');
+    } finally {
+      publishBtn.textContent = originalLabel;
+      updatePublishUI();
+    }
+  });
 
-    revertBtn.addEventListener('click', async () => {
-      if (!confirm('Discard your in-progress draft and restore the published version? This can\'t be undone.')) return;
-      try {
+  revertBtn.addEventListener('click', async () => {
+    if (!confirm('Discard your in-progress draft and restore the published version? This can\'t be undone.')) return;
+    try {
+      if (isCustom) {
+        await revertCustomDraft(memberId);
+        plan = getCustomPlanDraft(memberId);
+      } else {
         await revertProgressiveDraft(planKey);
-        // Refresh local plan reference and re-render the editor
         plan = getProgressiveDraft(planKey);
-        metaName.value = plan.meta.name || '';
-        metaSub.value  = plan.meta.subtitle || '';
-        activeWeek = 0;
-        renderWeekTabs();
-        renderWeekEditor();
-        flashSaved('Draft reverted to published.');
-      } catch (err) {
-        console.error('revert failed', err);
-        alert('Revert failed — please refresh and try again.');
       }
-    });
-  } else {
-    // Custom plans don't have a publish gate yet (Phase C will add one)
-    publishBtn.style.display = 'none';
-    revertBtn.style.display  = 'none';
-    document.getElementById('revert-help').textContent =
-      'Custom plans publish to the member immediately on save. A publish gate will be added in Phase C.';
-  }
+      // Re-render the editor with the reverted draft
+      metaName.value = plan.meta.name || '';
+      metaSub.value  = plan.meta.subtitle || '';
+      activeWeek = 0;
+      renderWeekTabs();
+      renderWeekEditor();
+      flashSaved('Draft reverted to published.');
+    } catch (err) {
+      console.error('revert failed', err);
+      alert('Revert failed — please refresh and try again.');
+    }
+  });
 
   /* ---- Preview as member ---- */
   document.getElementById('preview-btn').addEventListener('click', () => {
@@ -970,15 +972,12 @@
   }
 
   /* Update the Publish button + status pill to reflect the current
-     draft-vs-published state. Called after every save/publish/revert. */
+     draft-vs-published state. Called after every save/publish/revert.
+     Works for both Progressive (planKey) and Custom (memberId). */
   function updatePublishUI () {
     const pill = document.getElementById('publish-pill');
-    if (!isProgressive) {
-      pill.style.display = 'none';
-      return;
-    }
-    const pending = hasUnpublishedChanges(planKey);
-    const publishedAt = getPublishedAt(planKey);
+    const pending     = isCustom ? hasCustomUnpublishedChanges(memberId) : hasUnpublishedChanges(planKey);
+    const publishedAt = isCustom ? getCustomPublishedAt(memberId)        : getPublishedAt(planKey);
 
     pill.style.display = '';
     pill.classList.remove('pending', 'live');

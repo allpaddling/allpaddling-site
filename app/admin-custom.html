@@ -420,7 +420,7 @@
 
   cancelBtn.addEventListener('click', () => setMode('add'));
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const payload = {
       name: nameEl.value.trim(),
@@ -431,13 +431,24 @@
     };
     if (!payload.name) { nameEl.focus(); return; }
 
-    if (editingId) {
-      updateCustomMember(editingId, payload);
-    } else {
-      addCustomMember(payload);
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = editingId ? 'Saving…' : 'Adding…';
+    try {
+      if (editingId) {
+        await updateCustomMember(editingId, payload);
+      } else {
+        await addCustomMember(payload);
+      }
+      setMode('add');
+      renderMembers();
+    } catch (err) {
+      console.error('member save failed', err);
+      alert('Save failed — please check your connection and try again.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
     }
-    setMode('add');
-    renderMembers();
   });
 
   /* ---- Render list ---- */
@@ -463,22 +474,32 @@
       });
     });
     list.querySelectorAll('[data-remove]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.preventDefault();
         const m = getCustomMember(btn.dataset.remove);
         if (!m) return;
         if (!confirm(`Remove ${m.name}? Their Custom plan and all edits will be deleted. This cannot be undone.`)) return;
-        removeCustomMember(m.id);
-        if (editingId === m.id) setMode('add');
-        renderMembers();
+        try {
+          await removeCustomMember(m.id);
+          if (editingId === m.id) setMode('add');
+          renderMembers();
+        } catch (err) {
+          console.error('removeCustomMember failed', err);
+          alert('Could not remove member — please try again.');
+        }
       });
     });
   }
 
   function renderMemberCard (m) {
-    const plan = getCustomPlan(m.id);
-    const last = plan && plan.lastEdited;
-    const stamp = last ? ('Edited ' + relativeTime(new Date(last))) : 'Never edited';
+    // Stamp now reflects publish status (matches Progressive tiles)
+    const publishedAt = getCustomPublishedAt(m.id);
+    const pending = hasCustomUnpublishedChanges(m.id);
+    let stamp;
+    if (pending && publishedAt)      stamp = 'Pending publish · last published ' + relativeTime(new Date(publishedAt));
+    else if (pending)                stamp = 'Pending publish · never published';
+    else if (publishedAt)            stamp = 'Published ' + relativeTime(new Date(publishedAt));
+    else                             stamp = 'Never published';
     const initials = (m.name || '').split(/\s+/).filter(Boolean).map(p => p[0]).join('').slice(0, 2).toUpperCase() || '?';
     const dateLabel = m.raceDate ? formatRaceDate(m.raceDate) : '';
 
@@ -548,8 +569,17 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  /* ---- First paint ---- */
-  renderMembers();
+  /* ---- First paint: hydrate from Supabase, then render ---- */
+  document.getElementById('members-list').innerHTML =
+    '<div class="members-empty"><p>Loading members…</p></div>';
+  try {
+    await loadCustomData();
+    renderMembers();
+  } catch (err) {
+    console.error('loadCustomData failed', err);
+    document.getElementById('members-list').innerHTML =
+      '<div class="members-empty"><h3>Couldn\'t load members</h3><p>Check your connection and refresh.</p></div>';
+  }
 })();
 </script>
 </body>
