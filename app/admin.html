@@ -327,6 +327,24 @@
       </div>
     </div>
 
+    <!-- Progressive plan members -->
+    <div class="app-card">
+      <h2>Progressive Plan Members</h2>
+      <p class="card-sub">Each Progressive subscriber is locked to one of the four disciplines. They can only see the plan they paid for.</p>
+
+      <div class="program-grid" style="grid-template-columns: 1fr;">
+        <a class="program-tile" href="admin-progressive.html">
+          <div class="tile-eyebrow">Members · entitlements</div>
+          <h3>Manage Progressive plan members</h3>
+          <p class="tile-sub">Add a member, pick which discipline they paid for. They sign in with their email and only see that plan.</p>
+          <div class="tile-meta">
+            <span id="meta-progressive-members">No members yet</span>
+            <span class="edit-arrow">Open →</span>
+          </div>
+        </a>
+      </div>
+    </div>
+
     <!-- Custom Plan -->
     <div class="app-card">
       <h2>Custom Season Race Plans</h2>
@@ -505,6 +523,27 @@
           ? (mCount + ' · edited ' + relativeTime(new Date(mostRecent)))
           : (mCount + ' · no edits yet');
       }
+    }
+
+    // Progressive members tile — count + per-discipline breakdown
+    const progEl = document.getElementById('meta-progressive-members');
+    if (progEl) {
+      // Fire-and-forget load; we update the tile when data arrives
+      loadProgressiveMembers().then(() => {
+        const all = getProgressiveMembers();
+        if (!all.length) {
+          progEl.textContent = 'No members yet';
+          return;
+        }
+        const counts = {};
+        all.forEach(m => { counts[m.planKey] = (counts[m.planKey] || 0) + 1; });
+        const parts = [];
+        ['prone','sup','oc','ski'].forEach(k => {
+          if (counts[k]) parts.push(counts[k] + ' ' + ({prone:'Prone',sup:'SUP',oc:'OC',ski:'Ski'}[k]));
+        });
+        const total = all.length + ' member' + (all.length === 1 ? '' : 's');
+        progEl.textContent = total + ' · ' + parts.join(', ');
+      }).catch(() => { progEl.textContent = 'Couldn\'t load member count'; });
     }
 
     // Sign out

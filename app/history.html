@@ -136,11 +136,28 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
 <script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
 <script src="../assets/published-plans.js"></script>
 <script src="../assets/app.js"></script>
 <script>
 /* ============ History page logic ============ */
 (async function () {
+  // === Member auth gate (Phase D.1 entitlement enforcement) ===
+  const session = await getCurrentSession();
+  if (!session) { location.href = '../login.html'; return; }
+  const profile = await getCurrentMemberProfile();
+  const isCoachUser = await isCurrentUserCoach();
+  if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+  if (profile && profile.type === 'progressive') {
+    setSessionPlanKey(profile.planKey);
+    const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+    const _s = loadMemberState();
+    if (_s.discipline !== PLAN_KEY_TO_DISC[profile.planKey]) {
+      _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
+      saveMemberState(_s);
+    }
+  }
+
   const state = loadMemberState();
   /* Load the member's discipline plan so we can resolve completed
      session refs to the right week/session metadata. Falls back to

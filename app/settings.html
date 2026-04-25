@@ -65,9 +65,9 @@
     <!-- ==================== Discipline ==================== -->
     <div class="app-card">
       <h2>Discipline</h2>
-      <p class="card-sub">Used for program language and (later) discipline-specific strength work.</p>
+      <p class="card-sub">The plan you're subscribed to. Locked once you've signed up.</p>
 
-      <div class="form-field">
+      <div class="form-field" id="discipline-field">
         <label for="discipline">Primary discipline</label>
         <select id="discipline">
           <option value="Prone">Prone Paddle Board</option>
@@ -75,7 +75,7 @@
           <option value="OC">Outrigger Canoe</option>
           <option value="Ski">Surf Ski</option>
         </select>
-        <p class="hint" style="margin-top:0.4rem; font-size:0.82rem; color:var(--text-3);">
+        <p class="hint" id="discipline-hint" style="margin-top:0.4rem; font-size:0.82rem; color:var(--text-3);">
           Determines which plan you see in your dashboard and program pages.
         </p>
       </div>
@@ -134,12 +134,35 @@
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script src="../assets/published-plans.js"></script>
 <script src="../assets/app.js"></script>
 <script>
 /* ============ Settings page logic ============ */
 
-(function () {
+(async function () {
+  // === Member auth gate (Phase D.1 entitlement enforcement) ===
+  const session = await getCurrentSession();
+  if (!session) { location.href = '../login.html'; return; }
+  const profile = await getCurrentMemberProfile();
+  const isCoachUser = await isCurrentUserCoach();
+  if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+  if (profile && profile.type === 'progressive') {
+    setSessionPlanKey(profile.planKey);
+    const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+    const _s = loadMemberState();
+    if (_s.discipline !== PLAN_KEY_TO_DISC[profile.planKey]) {
+      _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
+      saveMemberState(_s);
+    }
+  }
+  // Track whether the current user can edit their discipline (only true
+  // for coaches in preview mode; locked for paying Progressive members).
+  const disciplineLocked = !!(profile && profile.type === 'progressive');
+
   const state  = loadMemberState();
   const member = getMember();
 
@@ -204,6 +227,17 @@
   syncUnitButtons();
 
   disciplineSel.value = state.discipline;
+
+  // Lock the discipline picker for paying Progressive members.
+  // Coaches in preview mode can still change it (their localStorage
+  // determines what they're previewing).
+  if (disciplineLocked) {
+    disciplineSel.disabled = true;
+    disciplineSel.style.cursor = 'not-allowed';
+    disciplineSel.style.opacity = '0.7';
+    document.getElementById('discipline-hint').textContent =
+      'Your discipline is set by your subscription. To switch disciplines, contact your coach.';
+  }
 
   // ---- Display refresh
   function refreshDisplay() {
