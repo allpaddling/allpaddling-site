@@ -226,6 +226,8 @@
       _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
       saveMemberState(_s);
     }
+    const _planEl = document.querySelector('.app-member-meta .plan');
+    if (_planEl) _planEl.textContent = 'Progressive · ' + PLAN_KEY_TO_DISC[profile.planKey];
   }
 
   const params = new URLSearchParams(location.search);

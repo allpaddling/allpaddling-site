@@ -158,6 +158,8 @@
       _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
       saveMemberState(_s);
     }
+    const _planEl = document.querySelector('.app-member-meta .plan');
+    if (_planEl) _planEl.textContent = 'Progressive · ' + PLAN_KEY_TO_DISC[profile.planKey];
   }
   // Track whether the current user can edit their discipline (only true
   // for coaches in preview mode; locked for paying Progressive members).

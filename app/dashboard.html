@@ -181,6 +181,11 @@
       _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
       saveMemberState(_s);
     }
+    // Patch the already-rendered sidebar member chip (app.js mounts on
+    // DOMContentLoaded, before this async gate completes — so it may have
+    // rendered with stale localStorage. This brings it back in sync.)
+    const _planEl = document.querySelector('.app-member-meta .plan');
+    if (_planEl) _planEl.textContent = 'Progressive · ' + PLAN_KEY_TO_DISC[profile.planKey];
   }
 
   const member = getMember();
