@@ -305,14 +305,14 @@ function defaultProgressivePlan (planKey) {
 /* Returns the same flat shape the prototype used. For Progressive
    plans we return the *draft* view, since this shim is consumed by
    admin pages that operate on what Mick is editing — not what's live
-   to members. */
+   to members. Custom returns the cached members + plans collection. */
 function loadAdminData () {
   return {
     prone:  getProgressiveDraft('prone'),
     sup:    getProgressiveDraft('sup'),
     oc:     getProgressiveDraft('oc'),
     ski:    getProgressiveDraft('ski'),
-    custom: loadCustomBlob(),
+    custom: { members: __customCache.members, plans: __customCache.plans },
   };
 }
 
@@ -329,70 +329,32 @@ async function resetPlan (planKey) {
 }
 
 /* ============================================================
-   Custom plans (per-member) — localStorage for now
+   Custom plans (per-member) — Supabase-backed (Phase C).
+
+   Two tables:
+     custom_members  — one row per paying Custom subscriber
+     custom_plans    — one row per member (their personalised plan)
+
+   Cache shape (in-memory, populated by loadCustomData()):
+
+     __customCache = {
+       loaded: true,
+       members: [ {...}, ... ],
+       plans: {
+         '<member-id>': {
+           draft:     { meta, programs },
+           published: { meta, programs },
+           lastEdited:  ISO,
+           publishedAt: ISO|null,
+         }
+       }
+     }
    ============================================================ */
 
-function loadCustomBlob () {
-  // Migration: if new key is missing but legacy exists, lift the
-  // .custom subtree across so we don't lose the prototype's data.
-  if (!localStorage.getItem(CUSTOM_DATA_KEY)) {
-    const legacy = localStorage.getItem(LEGACY_DATA_KEY);
-    if (legacy) {
-      try {
-        const parsed = JSON.parse(legacy);
-        if (parsed && parsed.custom) {
-          localStorage.setItem(CUSTOM_DATA_KEY, JSON.stringify(parsed.custom));
-        }
-      } catch (e) {
-        console.warn('admin.js — could not migrate legacy custom blob', e);
-      }
-    }
-  }
+let __customCache = { loaded: false, members: [], plans: {} };
 
-  let blob = null;
-  try {
-    const raw = localStorage.getItem(CUSTOM_DATA_KEY);
-    if (raw) blob = JSON.parse(raw);
-  } catch (e) {
-    console.warn('admin.js — custom blob parse failed', e);
-  }
-  if (!blob || typeof blob !== 'object') {
-    blob = { members: [], plans: {} };
-  }
-
-  // Legacy upgrade: the very first prototype shape had
-  // { meta, programs, lastEdited } at the top level.
-  if (blob.meta && blob.programs && !blob.members) {
-    const legacyId = makeMemberId();
-    blob = {
-      members: [Object.assign(defaultCustomMember(), {
-        id: legacyId,
-        name: 'Legacy plan',
-        notes: 'Imported from the previous single-plan editor.',
-      })],
-      plans: {
-        [legacyId]: {
-          meta: blob.meta,
-          programs: blob.programs,
-          lastEdited: blob.lastEdited || null,
-        },
-      },
-    };
-    saveCustomBlob(blob);
-  }
-
-  if (!Array.isArray(blob.members)) blob.members = [];
-  if (!blob.plans || typeof blob.plans !== 'object') blob.plans = {};
-  __cache.custom = blob;
-  return blob;
-}
-
-function saveCustomBlob (blob) {
-  __cache.custom = blob;
-  localStorage.setItem(CUSTOM_DATA_KEY, JSON.stringify(blob));
-}
-
-function defaultCustomPlan () {
+/* ---------- Defaults ---------- */
+function defaultCustomPlanContent () {
   const source = (typeof PROGRAM_1 !== 'undefined') ? PROGRAM_1 : null;
   return {
     meta: {
@@ -402,7 +364,6 @@ function defaultCustomPlan () {
       cadence: '16 weeks',
     },
     programs: source ? clone(source.weeks) : [],
-    lastEdited: null,
   };
 }
 
@@ -418,59 +379,245 @@ function defaultCustomMember () {
   };
 }
 
-function makeMemberId () {
-  return 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+/* ---------- Row → cache shape ---------- */
+function memberRowToCache (row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name || '',
+    email: row.email || '',
+    raceGoal: row.race_goal || '',
+    raceDate: row.race_date || '',
+    notes: row.notes || '',
+    createdAt: row.created_at || null,
+  };
 }
 
-function getCustomMembers ()   { return loadCustomBlob().members; }
-function getCustomMember (id)  { return getCustomMembers().find(m => m.id === id) || null; }
+function planRowToCacheEntry (row) {
+  if (!row) return null;
+  const draftMeta     = row.draft_meta     && Object.keys(row.draft_meta).length     ? row.draft_meta     : {};
+  const draftPrograms = Array.isArray(row.draft_programs) ? row.draft_programs : [];
+  const pubMeta       = row.meta           && Object.keys(row.meta).length           ? row.meta           : {};
+  const pubPrograms   = Array.isArray(row.programs)       ? row.programs       : [];
+  return {
+    draft:     { meta: draftMeta, programs: draftPrograms },
+    published: { meta: pubMeta,   programs: pubPrograms   },
+    lastEdited:  row.last_edited  || null,
+    publishedAt: row.published_at || null,
+  };
+}
 
-function addCustomMember (partial) {
-  const blob = loadCustomBlob();
-  const member = Object.assign(defaultCustomMember(), partial || {}, {
-    id: makeMemberId(),
-    createdAt: new Date().toISOString(),
-  });
-  blob.members.push(member);
-  blob.plans[member.id] = defaultCustomPlan();
-  saveCustomBlob(blob);
+/* ---------- Load ---------- */
+async function loadCustomData () {
+  const [membersRes, plansRes] = await Promise.all([
+    sb.from('custom_members').select('*').order('created_at', { ascending: false }),
+    sb.from('custom_plans').select('*'),
+  ]);
+  if (membersRes.error) {
+    console.error('admin.js — failed to load custom_members', membersRes.error);
+    __customCache = { loaded: true, members: [], plans: {} };
+    return;
+  }
+  const members = (membersRes.data || []).map(memberRowToCache);
+  const plans = {};
+  if (!plansRes.error) {
+    (plansRes.data || []).forEach(row => {
+      const entry = planRowToCacheEntry(row);
+      if (entry) plans[row.member_id] = entry;
+    });
+  } else {
+    console.warn('admin.js — failed to load custom_plans', plansRes.error);
+  }
+  __customCache = { loaded: true, members, plans };
+}
+
+/* ---------- Sync getters (after loadCustomData) ---------- */
+function getCustomMembers ()  { return __customCache.members.slice(); }
+function getCustomMember (id) { return __customCache.members.find(m => m.id === id) || null; }
+
+function getCustomPlanDraft (memberId) {
+  const entry = __customCache.plans[memberId];
+  if (!entry) return null;
+  return {
+    meta:       entry.draft.meta,
+    programs:   entry.draft.programs,
+    lastEdited: entry.lastEdited,
+  };
+}
+
+/* Older shorthand used across the editor — returns the draft view. */
+function getCustomPlan (memberId) {
+  return getCustomPlanDraft(memberId);
+}
+
+function getCustomPlanPublished (memberId) {
+  const entry = __customCache.plans[memberId];
+  if (!entry) return null;
+  return {
+    meta:        entry.published.meta,
+    programs:    entry.published.programs,
+    publishedAt: entry.publishedAt,
+  };
+}
+
+function hasCustomUnpublishedChanges (memberId) {
+  const entry = __customCache.plans[memberId];
+  if (!entry) return false;
+  return JSON.stringify(entry.draft.meta)     !== JSON.stringify(entry.published.meta) ||
+         JSON.stringify(entry.draft.programs) !== JSON.stringify(entry.published.programs);
+}
+
+function getCustomPublishedAt (memberId) {
+  const entry = __customCache.plans[memberId];
+  return entry ? entry.publishedAt : null;
+}
+
+/* ---------- Mutations (write through Supabase, then update cache) ---------- */
+
+async function addCustomMember (partial) {
+  const p = partial || {};
+  const insertRow = {
+    name:      (p.name      || '').trim(),
+    email:     (p.email     || '').trim() || null,
+    race_goal: (p.raceGoal  || '').trim() || null,
+    race_date: (p.raceDate  || '') || null,
+    notes:     (p.notes     || '').trim() || null,
+  };
+  const { data: memberRow, error: memberErr } = await sb
+    .from('custom_members')
+    .insert(insertRow)
+    .select()
+    .single();
+  if (memberErr) { console.error('addCustomMember — insert failed', memberErr); throw memberErr; }
+
+  // Seed a fresh plan row with PROGRAM_1 defaults in the draft.
+  // Members see nothing until Mick reviews and publishes.
+  const fresh = defaultCustomPlanContent();
+  const { data: planRow, error: planErr } = await sb
+    .from('custom_plans')
+    .insert({
+      member_id:      memberRow.id,
+      draft_meta:     fresh.meta,
+      draft_programs: fresh.programs,
+      meta:           {},
+      programs:       [],
+      last_edited:    new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (planErr) {
+    console.error('addCustomMember — plan insert failed', planErr);
+    // Roll back the member if plan creation failed
+    await sb.from('custom_members').delete().eq('id', memberRow.id);
+    throw planErr;
+  }
+
+  const member = memberRowToCache(memberRow);
+  __customCache.members.unshift(member);
+  __customCache.plans[member.id] = planRowToCacheEntry(planRow);
   return member;
 }
 
-function updateCustomMember (id, patch) {
-  const blob = loadCustomBlob();
-  const idx = blob.members.findIndex(m => m.id === id);
-  if (idx === -1) return null;
-  blob.members[idx] = Object.assign({}, blob.members[idx], patch || {});
-  saveCustomBlob(blob);
-  return blob.members[idx];
+async function updateCustomMember (id, patch) {
+  const p = patch || {};
+  const updateRow = {};
+  if ('name'      in p) updateRow.name      = p.name;
+  if ('email'     in p) updateRow.email     = (p.email     || '').trim() || null;
+  if ('raceGoal'  in p) updateRow.race_goal = (p.raceGoal  || '').trim() || null;
+  if ('raceDate'  in p) updateRow.race_date = p.raceDate || null;
+  if ('notes'     in p) updateRow.notes     = (p.notes     || '').trim() || null;
+
+  const { data, error } = await sb
+    .from('custom_members')
+    .update(updateRow)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) { console.error('updateCustomMember failed', error); throw error; }
+
+  const idx = __customCache.members.findIndex(m => m.id === id);
+  if (idx !== -1) __customCache.members[idx] = memberRowToCache(data);
+  return memberRowToCache(data);
 }
 
-function removeCustomMember (id) {
-  const blob = loadCustomBlob();
-  blob.members = blob.members.filter(m => m.id !== id);
-  if (blob.plans) delete blob.plans[id];
-  saveCustomBlob(blob);
+async function removeCustomMember (id) {
+  const { error } = await sb
+    .from('custom_members')
+    .delete()
+    .eq('id', id);
+  if (error) { console.error('removeCustomMember failed', error); throw error; }
+  // ON DELETE CASCADE removes the matching custom_plans row server-side.
+  __customCache.members = __customCache.members.filter(m => m.id !== id);
+  delete __customCache.plans[id];
 }
 
-function getCustomPlan (memberId) {
-  const blob = loadCustomBlob();
-  return (blob.plans && blob.plans[memberId]) || null;
+/* Auto-save target. Writes ONLY to draft columns. */
+async function saveCustomPlan (memberId, plan) {
+  const now = new Date().toISOString();
+  const entry = __customCache.plans[memberId] || planRowToCacheEntry({});
+  entry.draft = { meta: plan.meta, programs: plan.programs };
+  entry.lastEdited = now;
+  __customCache.plans[memberId] = entry;
+
+  const { error } = await sb
+    .from('custom_plans')
+    .update({
+      draft_meta:     plan.meta,
+      draft_programs: plan.programs,
+      last_edited:    now,
+    })
+    .eq('member_id', memberId);
+  if (error) { console.error('saveCustomPlan failed', error); throw error; }
 }
 
-function saveCustomPlan (memberId, plan) {
-  const blob = loadCustomBlob();
-  if (!blob.plans) blob.plans = {};
-  plan.lastEdited = new Date().toISOString();
-  blob.plans[memberId] = plan;
-  saveCustomBlob(blob);
+/* Publish — copy draft into the live (member-facing) columns. */
+async function publishCustomPlan (memberId) {
+  const entry = __customCache.plans[memberId];
+  if (!entry) throw new Error('Plan not loaded for member: ' + memberId);
+  const now = new Date().toISOString();
+  entry.published = {
+    meta:     clone(entry.draft.meta),
+    programs: clone(entry.draft.programs),
+  };
+  entry.publishedAt = now;
+
+  const { error } = await sb
+    .from('custom_plans')
+    .update({
+      meta:         entry.draft.meta,
+      programs:     entry.draft.programs,
+      published_at: now,
+    })
+    .eq('member_id', memberId);
+  if (error) { console.error('publishCustomPlan failed', error); throw error; }
 }
 
-function resetCustomPlan (memberId) {
-  const blob = loadCustomBlob();
-  if (!blob.plans) return;
-  blob.plans[memberId] = defaultCustomPlan();
-  saveCustomBlob(blob);
+/* Revert — copy published back into draft. */
+async function revertCustomDraft (memberId) {
+  const entry = __customCache.plans[memberId];
+  if (!entry) throw new Error('Plan not loaded for member: ' + memberId);
+  const now = new Date().toISOString();
+  entry.draft = {
+    meta:     clone(entry.published.meta),
+    programs: clone(entry.published.programs),
+  };
+  entry.lastEdited = now;
+
+  const { error } = await sb
+    .from('custom_plans')
+    .update({
+      draft_meta:     entry.published.meta,
+      draft_programs: entry.published.programs,
+      last_edited:    now,
+    })
+    .eq('member_id', memberId);
+  if (error) { console.error('revertCustomDraft failed', error); throw error; }
+}
+
+/* Reset draft to PROGRAM_1 defaults — does NOT publish. */
+async function resetCustomPlan (memberId) {
+  const fresh = defaultCustomPlanContent();
+  await saveCustomPlan(memberId, { meta: fresh.meta, programs: fresh.programs });
 }
 
 /* ============================================================
