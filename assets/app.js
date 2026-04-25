@@ -13,7 +13,7 @@ const MOCK_MEMBER = {
   email: 'jakedibetta@gmail.com',
   plan: 'Progressive',        // 'Progressive' | 'Custom'
   discipline: 'Prone',        // 'Prone' | 'SUP' | 'Ski' | 'Outrigger'
-  currentProgram: 1,          // 1..4 for the 16-week block
+  currentProgram: 1,          // 1..3 for the 12-week block
   currentWeek: 1,             // 1..4 within the current program
   joinedAt: '2026-03-30',
 };

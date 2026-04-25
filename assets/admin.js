@@ -19,7 +19,7 @@ const PLAN_META = {
   sup:    { title: 'Stand Up Paddle Board Plan',  tier: 'Progressive', cadence: '4 weeks'  },
   oc:     { title: 'Outrigger Canoe Plan',        tier: 'Progressive', cadence: '4 weeks'  },
   ski:    { title: 'Surf Ski Plan',               tier: 'Progressive', cadence: '4 weeks'  },
-  custom: { title: 'Custom Season Race Plan',     tier: 'Custom',      cadence: '16 weeks' },
+  custom: { title: 'Custom Season Race Plan',     tier: 'Custom',      cadence: '12 weeks' },
 };
 const PROGRESSIVE_KEYS = ['prone', 'sup', 'oc', 'ski'];
 function isValidPlanKey (k) { return Object.prototype.hasOwnProperty.call(PLAN_META, k); }
@@ -361,7 +361,7 @@ function defaultCustomPlanContent () {
       name: 'Custom Season Race Plan · Block 1',
       subtitle: 'Base block — aerobic + threshold foundation',
       tier: 'Custom',
-      cadence: '16 weeks',
+      cadence: '12 weeks',
     },
     programs: source ? clone(source.weeks) : [],
   };
