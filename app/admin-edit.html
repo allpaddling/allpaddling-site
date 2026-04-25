@@ -251,36 +251,6 @@
   }
   .btn-danger:hover { background: #fef2f2; border-color: #fca5a5; }
 
-  /* Claude mini-panel in editor */
-  .claude-mini {
-    background: var(--surface);
-    border: 1px dashed var(--border-strong);
-    border-radius: var(--radius);
-    padding: 1.25rem 1.5rem;
-    margin-top: 1.5rem;
-  }
-  .claude-mini h3 { margin: 0 0 0.3rem; display: flex; align-items: center; gap: 0.5rem; }
-  .claude-mini .soon-tag {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em;
-    background: var(--surface-2); color: var(--text-3);
-    padding: 0.22rem 0.5rem; border-radius: 999px;
-  }
-  .claude-mini .sub { color: var(--text-3); font-size: 0.88rem; margin: 0 0 0.85rem; }
-  .claude-mini textarea {
-    width: 100%; box-sizing: border-box;
-    min-height: 80px; padding: 0.7rem 0.85rem;
-    border: 1px solid var(--border); border-radius: var(--radius-sm);
-    font-family: 'Inter', sans-serif; font-size: 0.92rem; line-height: 1.5;
-    background: var(--surface-2); resize: vertical;
-  }
-  .claude-mini textarea:focus { outline: none; border-color: var(--brand-700); background: var(--surface); }
-  .claude-mini .row {
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 0.75rem; flex-wrap: wrap; margin-top: 0.85rem;
-  }
-  .claude-mini .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
-
   /* Gate styles (reused) */
   .gate-wrap {
     min-height: 100vh;
@@ -405,17 +375,6 @@
       <div class="admin-week-tabs" id="week-tabs" role="tablist"></div>
 
       <div id="week-editor"></div>
-    </div>
-
-    <!-- Claude assist -->
-    <div class="app-card claude-mini">
-      <h3>Claude Assist <span class="soon-tag">COMING SOON</span></h3>
-      <p class="sub">Describe a change in plain English. Phase 2 will send this to Claude, have it propose an edit to this program, and show you a diff before saving.</p>
-      <textarea id="claude-mini-prompt" placeholder="e.g. 'Drop the VO2 intervals in Week 3 to 5 reps.' or 'Swap Session 3 for a longer distance paddle.'"></textarea>
-      <div class="row">
-        <span style="font-size: 0.82rem; color: var(--text-3);">Phase 2 — needs backend + Claude API wiring</span>
-        <button class="btn btn-primary" disabled>Apply to this program →</button>
-      </div>
     </div>
 
     <!-- Danger zone -->
@@ -643,12 +602,6 @@
       alert('Revert failed — please refresh and try again.');
     }
   });
-
-  /* ---- Claude mini-prompt persistence ---- */
-  const claudeTa = document.getElementById('claude-mini-prompt');
-  const draftKey = 'admin_claude_draft_' + planKey;
-  claudeTa.value = localStorage.getItem(draftKey) || '';
-  claudeTa.addEventListener('input', () => localStorage.setItem(draftKey, claudeTa.value));
 
   /* ============================================================
      Rendering
