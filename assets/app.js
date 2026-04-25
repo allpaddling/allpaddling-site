@@ -169,6 +169,45 @@ function loadMemberState() {
   }
 }
 
+/* One-shot migration: session-completion keys went from legacy
+   "p1w2s3" (no discipline) to "{planKey}-w{n}s{n}" in Phase B.
+   We wipe the legacy keys rather than guessing which discipline
+   they belonged to — these were pre-launch test stamps. */
+(function migrateLegacySessionKeys () {
+  const FLAG = 'ap.sessionKeysMigrated_v2';
+  try {
+    if (localStorage.getItem(FLAG)) return;
+    const state = loadMemberState();
+    const legacyRe = /^p\d+w\d+s\d+$/;
+    let touched = false;
+    if (state.completedSessions) {
+      Object.keys(state.completedSessions).forEach(k => {
+        if (legacyRe.test(k)) {
+          delete state.completedSessions[k];
+          if (state.sessionNotes && state.sessionNotes[k]) delete state.sessionNotes[k];
+          touched = true;
+        }
+      });
+    }
+    if (touched) saveMemberState(state);
+    localStorage.setItem(FLAG, '1');
+  } catch (e) { /* best-effort; never break the page on this */ }
+})();
+
+/* Convert a stored discipline label to the plan key format used in
+   session keys. Mirrors disciplineToPlanKey in published-plans.js so
+   we can compute the key without depending on that file's load order. */
+function disciplinePlanKey (d) {
+  switch ((d || '').toString().toLowerCase()) {
+    case 'sup':       return 'sup';
+    case 'ski':       return 'ski';
+    case 'oc':
+    case 'outrigger': return 'oc';
+    case 'prone':     return 'prone';
+    default:          return 'prone';
+  }
+}
+
 function saveMemberState(state) {
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify(state));

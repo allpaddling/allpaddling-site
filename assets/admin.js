@@ -76,7 +76,18 @@ async function signOut () {
 }
 
 /* ============================================================
-   Progressive plans — Supabase-backed with in-memory cache
+   Progressive plans — Supabase-backed with in-memory cache.
+
+   Phase B: each plan has a draft + published version. The editor
+   reads/writes draft. Members read published. Mick clicks Publish
+   to copy draft → published. Cache entry shape:
+
+     {
+       draft:     { meta, programs },
+       published: { meta, programs },
+       lastEdited:  ISO,           // last draft save
+       publishedAt: ISO|null,      // last publish
+     }
    ============================================================ */
 
 let __cache = {
@@ -85,14 +96,27 @@ let __cache = {
 };
 let __progressiveLoaded = false;
 
-function rowToPlan (row, planKey) {
+function rowToCacheEntry (row, planKey) {
   if (!row) {
-    return defaultProgressivePlan(planKey);
+    const fresh = defaultProgressivePlan(planKey);
+    return {
+      draft:     { meta: fresh.meta, programs: fresh.programs },
+      published: { meta: fresh.meta, programs: fresh.programs },
+      lastEdited:  null,
+      publishedAt: null,
+    };
   }
+  const draftMeta = (row.draft_meta && Object.keys(row.draft_meta).length)
+    ? row.draft_meta : defaultProgressiveMeta(planKey);
+  const draftPrograms = Array.isArray(row.draft_programs) ? row.draft_programs : [];
+  const publishedMeta = (row.meta && Object.keys(row.meta).length)
+    ? row.meta : defaultProgressiveMeta(planKey);
+  const publishedPrograms = Array.isArray(row.programs) ? row.programs : [];
   return {
-    meta: row.meta && Object.keys(row.meta).length ? row.meta : defaultProgressiveMeta(planKey),
-    programs: Array.isArray(row.programs) ? row.programs : [],
-    lastEdited: row.last_edited || null,
+    draft:     { meta: draftMeta,     programs: draftPrograms     },
+    published: { meta: publishedMeta, programs: publishedPrograms },
+    lastEdited:  row.last_edited  || null,
+    publishedAt: row.published_at || null,
   };
 }
 
@@ -102,39 +126,79 @@ async function loadProgressivePlans () {
     .select('*');
   if (error) {
     console.error('admin.js — failed to load progressive_plans', error);
-    PROGRESSIVE_KEYS.forEach(k => { __cache[k] = defaultProgressivePlan(k); });
+    PROGRESSIVE_KEYS.forEach(k => { __cache[k] = rowToCacheEntry(null, k); });
     __progressiveLoaded = true;
     return;
   }
   PROGRESSIVE_KEYS.forEach(k => {
     const row = data.find(r => r.key === k);
-    __cache[k] = rowToPlan(row, k);
+    __cache[k] = rowToCacheEntry(row, k);
   });
   __progressiveLoaded = true;
 }
 
-/* Synchronous read after loadProgressivePlans() has resolved. */
-function getProgressivePlan (planKey) {
+/* ---------- Draft (editor) reads ---------- */
+function getProgressiveDraft (planKey) {
   if (!__progressiveLoaded) {
-    console.warn('admin.js — getProgressivePlan called before load');
+    console.warn('admin.js — getProgressiveDraft called before load');
   }
-  return __cache[planKey] || defaultProgressivePlan(planKey);
+  const entry = __cache[planKey];
+  if (!entry) return defaultProgressivePlan(planKey);
+  return {
+    meta: entry.draft.meta,
+    programs: entry.draft.programs,
+    lastEdited: entry.lastEdited,
+  };
 }
 
-/* Write-through: update cache + persist to Supabase. */
+/* Older shorthand used across the editor — still returns the draft view. */
+function getProgressivePlan (planKey) {
+  return getProgressiveDraft(planKey);
+}
+
+/* ---------- Published reads ---------- */
+function getProgressivePublished (planKey) {
+  const entry = __cache[planKey];
+  if (!entry) return null;
+  return {
+    meta: entry.published.meta,
+    programs: entry.published.programs,
+    publishedAt: entry.publishedAt,
+  };
+}
+
+function getPublishedAt (planKey) {
+  const entry = __cache[planKey];
+  return entry ? entry.publishedAt : null;
+}
+
+/* Diff check — does the draft differ from the published version? */
+function hasUnpublishedChanges (planKey) {
+  const entry = __cache[planKey];
+  if (!entry) return false;
+  return JSON.stringify(entry.draft.meta)     !== JSON.stringify(entry.published.meta) ||
+         JSON.stringify(entry.draft.programs) !== JSON.stringify(entry.published.programs);
+}
+
+/* ---------- Writes ---------- */
+
+/* Auto-save target. Writes ONLY to draft columns; members never see this
+   until publishProgressivePlan() is called. */
 async function saveProgressivePlan (planKey, planData) {
   if (!isValidPlanKey(planKey) || planKey === 'custom') {
     throw new Error('saveProgressivePlan called with invalid key: ' + planKey);
   }
-  planData.lastEdited = new Date().toISOString();
-  __cache[planKey] = planData;
+  const now = new Date().toISOString();
+  if (!__cache[planKey]) __cache[planKey] = rowToCacheEntry(null, planKey);
+  __cache[planKey].draft      = { meta: planData.meta, programs: planData.programs };
+  __cache[planKey].lastEdited = now;
 
   const { error } = await sb
     .from('progressive_plans')
     .update({
-      meta: planData.meta,
-      programs: planData.programs,
-      last_edited: planData.lastEdited,
+      draft_meta:     planData.meta,
+      draft_programs: planData.programs,
+      last_edited:    now,
     })
     .eq('key', planKey);
 
@@ -144,10 +208,64 @@ async function saveProgressivePlan (planKey, planData) {
   }
 }
 
+/* Publish — copy draft into the live (member-facing) columns. */
+async function publishProgressivePlan (planKey) {
+  if (!isValidPlanKey(planKey) || planKey === 'custom') {
+    throw new Error('publishProgressivePlan called with invalid key: ' + planKey);
+  }
+  const entry = __cache[planKey];
+  if (!entry) throw new Error('Plan not loaded: ' + planKey);
+  const now = new Date().toISOString();
+  entry.published   = { meta: entry.draft.meta, programs: entry.draft.programs };
+  entry.publishedAt = now;
+
+  const { error } = await sb
+    .from('progressive_plans')
+    .update({
+      meta:         entry.draft.meta,
+      programs:     entry.draft.programs,
+      published_at: now,
+    })
+    .eq('key', planKey);
+
+  if (error) {
+    console.error('admin.js — publishProgressivePlan failed', error);
+    throw error;
+  }
+}
+
+/* Revert — copy published back into draft, throwing away in-progress edits. */
+async function revertProgressiveDraft (planKey) {
+  if (!isValidPlanKey(planKey) || planKey === 'custom') {
+    throw new Error('revertProgressiveDraft called with invalid key: ' + planKey);
+  }
+  const entry = __cache[planKey];
+  if (!entry) throw new Error('Plan not loaded: ' + planKey);
+  const now = new Date().toISOString();
+  entry.draft      = { meta: entry.published.meta, programs: entry.published.programs };
+  entry.lastEdited = now;
+
+  const { error } = await sb
+    .from('progressive_plans')
+    .update({
+      draft_meta:     entry.published.meta,
+      draft_programs: entry.published.programs,
+      last_edited:    now,
+    })
+    .eq('key', planKey);
+
+  if (error) {
+    console.error('admin.js — revertProgressiveDraft failed', error);
+    throw error;
+  }
+}
+
+/* Reset draft to PROGRAM_1 defaults. Does NOT publish — members keep
+   seeing whatever was last published until Mick reviews and publishes. */
 async function resetProgressivePlan (planKey) {
   const fresh = defaultProgressivePlan(planKey);
-  await saveProgressivePlan(planKey, fresh);
-  return fresh;
+  await saveProgressivePlan(planKey, { meta: fresh.meta, programs: fresh.programs });
+  return getProgressiveDraft(planKey);
 }
 
 function defaultProgressiveMeta (planKey) {
@@ -173,15 +291,16 @@ function defaultProgressivePlan (planKey) {
    Compatibility shims — older callers used loadAdminData()
    ============================================================ */
 
-/* Returns the same flat shape the prototype used so the rest of
-   the admin pages can keep their existing calls. Progressive
-   plans come from the cache; Custom comes from localStorage. */
+/* Returns the same flat shape the prototype used. For Progressive
+   plans we return the *draft* view, since this shim is consumed by
+   admin pages that operate on what Mick is editing — not what's live
+   to members. */
 function loadAdminData () {
   return {
-    prone:  __cache.prone  || defaultProgressivePlan('prone'),
-    sup:    __cache.sup    || defaultProgressivePlan('sup'),
-    oc:     __cache.oc     || defaultProgressivePlan('oc'),
-    ski:    __cache.ski    || defaultProgressivePlan('ski'),
+    prone:  getProgressiveDraft('prone'),
+    sup:    getProgressiveDraft('sup'),
+    oc:     getProgressiveDraft('oc'),
+    ski:    getProgressiveDraft('ski'),
     custom: loadCustomBlob(),
   };
 }

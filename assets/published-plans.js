@@ -52,10 +52,11 @@ function rowToProgram (row) {
     name: meta.name || 'Program 1',
     subtitle: meta.subtitle || '',
     weeks: weeks,
-    lastEdited: row.last_edited || null,
+    lastEdited:  row.last_edited  || null,
+    publishedAt: row.published_at || null,
     /* Flag so member pages can show an empty state when Mick
-       hasn't seeded the plan yet. */
-    isEmpty: weeks.length === 0,
+       hasn't seeded/published the plan yet. */
+    isEmpty: weeks.length === 0 || !row.published_at,
   };
 }
 
@@ -72,9 +73,11 @@ async function loadPublishedPlan (planKey) {
     return null;
   }
 
+  /* Explicit column list — we deliberately do NOT pull draft_meta or
+     draft_programs, so members never see Mick's in-progress edits. */
   const { data, error } = await sb
     .from('progressive_plans')
-    .select('*')
+    .select('key, meta, programs, published_at, last_edited')
     .eq('key', planKey)
     .maybeSingle();
 
@@ -97,4 +100,11 @@ async function loadCurrentPlan () {
 async function reloadPublishedPlan (planKey) {
   delete __publishedCache[planKey];
   return await loadPublishedPlan(planKey);
+}
+
+/* Per-discipline session completion key.
+   Format: "{planKey}-w{weekNum}s{sessionNum}" e.g. "prone-w2s3".
+   Replaces the legacy "p1w2s3" format which didn't track discipline. */
+function memberSessionKey (planKey, weekNum, sessionNum) {
+  return planKey + '-w' + weekNum + 's' + sessionNum;
 }
