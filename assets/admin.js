@@ -208,7 +208,11 @@ async function saveProgressivePlan (planKey, planData) {
   }
 }
 
-/* Publish — copy draft into the live (member-facing) columns. */
+/* Publish — copy draft into the live (member-facing) columns.
+   IMPORTANT: deep-clone when copying so the editor's subsequent
+   mutations of `draft` don't silently bleed into `published`.
+   The same nested object reference would otherwise alias both views
+   and break hasUnpublishedChanges() until the next page load. */
 async function publishProgressivePlan (planKey) {
   if (!isValidPlanKey(planKey) || planKey === 'custom') {
     throw new Error('publishProgressivePlan called with invalid key: ' + planKey);
@@ -216,7 +220,10 @@ async function publishProgressivePlan (planKey) {
   const entry = __cache[planKey];
   if (!entry) throw new Error('Plan not loaded: ' + planKey);
   const now = new Date().toISOString();
-  entry.published   = { meta: entry.draft.meta, programs: entry.draft.programs };
+  entry.published = {
+    meta:     clone(entry.draft.meta),
+    programs: clone(entry.draft.programs),
+  };
   entry.publishedAt = now;
 
   const { error } = await sb
@@ -234,7 +241,8 @@ async function publishProgressivePlan (planKey) {
   }
 }
 
-/* Revert — copy published back into draft, throwing away in-progress edits. */
+/* Revert — copy published back into draft, throwing away in-progress edits.
+   Same deep-clone requirement as publish. */
 async function revertProgressiveDraft (planKey) {
   if (!isValidPlanKey(planKey) || planKey === 'custom') {
     throw new Error('revertProgressiveDraft called with invalid key: ' + planKey);
@@ -242,7 +250,10 @@ async function revertProgressiveDraft (planKey) {
   const entry = __cache[planKey];
   if (!entry) throw new Error('Plan not loaded: ' + planKey);
   const now = new Date().toISOString();
-  entry.draft      = { meta: entry.published.meta, programs: entry.published.programs };
+  entry.draft = {
+    meta:     clone(entry.published.meta),
+    programs: clone(entry.published.programs),
+  };
   entry.lastEdited = now;
 
   const { error } = await sb
