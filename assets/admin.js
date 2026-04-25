@@ -621,6 +621,183 @@ async function resetCustomPlan (memberId) {
 }
 
 /* ============================================================
+   Progressive plan members — Supabase-backed (Phase D.1).
+
+   Each Progressive member is locked to one of the four
+   disciplines (prone/sup/oc/ski). The plan_key is set by the
+   coach when adding the member; the member can't change it
+   themselves. Admin uses these helpers to manage the roster.
+
+   Cache shape:
+     __progressiveMembersCache = {
+       loaded: true,
+       members: [ { id, email, name, planKey, notes, createdAt }, ... ]
+     }
+   ============================================================ */
+
+let __progressiveMembersCache = { loaded: false, members: [] };
+
+const PROGRESSIVE_PLAN_KEYS = ['prone', 'sup', 'oc', 'ski'];
+
+function defaultProgressiveMember () {
+  return {
+    id: '',
+    email: '',
+    name: '',
+    planKey: 'prone',
+    notes: '',
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function progressiveMemberRowToCache (row) {
+  if (!row) return null;
+  return {
+    id:        row.id,
+    email:     row.email     || '',
+    name:      row.name      || '',
+    planKey:   row.plan_key  || 'prone',
+    notes:     row.notes     || '',
+    createdAt: row.created_at || null,
+  };
+}
+
+async function loadProgressiveMembers () {
+  const { data, error } = await sb
+    .from('progressive_members')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('admin.js — failed to load progressive_members', error);
+    __progressiveMembersCache = { loaded: true, members: [] };
+    return;
+  }
+  __progressiveMembersCache = {
+    loaded: true,
+    members: (data || []).map(progressiveMemberRowToCache),
+  };
+}
+
+function getProgressiveMembers () { return __progressiveMembersCache.members.slice(); }
+function getProgressiveMember (id) {
+  return __progressiveMembersCache.members.find(m => m.id === id) || null;
+}
+
+/* Group helper for showing member counts per discipline. */
+function getProgressiveMembersByPlan (planKey) {
+  return __progressiveMembersCache.members.filter(m => m.planKey === planKey);
+}
+
+async function addProgressiveMember (partial) {
+  const p = partial || {};
+  if (!PROGRESSIVE_PLAN_KEYS.includes(p.planKey)) {
+    throw new Error('Invalid plan_key: must be prone/sup/oc/ski');
+  }
+  const insertRow = {
+    email:    (p.email || '').trim().toLowerCase(),
+    name:     (p.name  || '').trim(),
+    plan_key: p.planKey,
+    notes:    (p.notes || '').trim() || null,
+  };
+  if (!insertRow.email) throw new Error('Email is required');
+  if (!insertRow.name)  throw new Error('Name is required');
+
+  const { data, error } = await sb
+    .from('progressive_members')
+    .insert(insertRow)
+    .select()
+    .single();
+  if (error) { console.error('addProgressiveMember failed', error); throw error; }
+
+  const member = progressiveMemberRowToCache(data);
+  __progressiveMembersCache.members.unshift(member);
+  return member;
+}
+
+async function updateProgressiveMember (id, patch) {
+  const p = patch || {};
+  const updateRow = {};
+  if ('email'    in p) updateRow.email    = (p.email || '').trim().toLowerCase();
+  if ('name'     in p) updateRow.name     = (p.name  || '').trim();
+  if ('planKey'  in p) {
+    if (!PROGRESSIVE_PLAN_KEYS.includes(p.planKey)) {
+      throw new Error('Invalid plan_key: must be prone/sup/oc/ski');
+    }
+    updateRow.plan_key = p.planKey;
+  }
+  if ('notes'    in p) updateRow.notes    = (p.notes || '').trim() || null;
+
+  const { data, error } = await sb
+    .from('progressive_members')
+    .update(updateRow)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) { console.error('updateProgressiveMember failed', error); throw error; }
+
+  const idx = __progressiveMembersCache.members.findIndex(m => m.id === id);
+  if (idx !== -1) __progressiveMembersCache.members[idx] = progressiveMemberRowToCache(data);
+  return progressiveMemberRowToCache(data);
+}
+
+async function removeProgressiveMember (id) {
+  const { error } = await sb
+    .from('progressive_members')
+    .delete()
+    .eq('id', id);
+  if (error) { console.error('removeProgressiveMember failed', error); throw error; }
+  __progressiveMembersCache.members = __progressiveMembersCache.members.filter(m => m.id !== id);
+}
+
+/* ============================================================
+   Member-side helpers (used by login.html + /app/* pages)
+
+   Determines which discipline an authenticated member is entitled
+   to. Reads from progressive_members keyed on the JWT email.
+   Returns null if the user isn't a Progressive member.
+   ============================================================ */
+
+async function getCurrentMemberProfile () {
+  const session = await getCurrentSession();
+  if (!session || !session.user || !session.user.email) return null;
+  const email = session.user.email.toLowerCase();
+
+  // Try progressive_members first (each member can read only their own row via RLS)
+  const { data: pm, error: pmErr } = await sb
+    .from('progressive_members')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle();
+  if (!pmErr && pm) {
+    return {
+      type: 'progressive',
+      id: pm.id,
+      email: pm.email,
+      name: pm.name,
+      planKey: pm.plan_key,
+    };
+  }
+
+  // Fall back to custom_members (still localStorage-side for plan_key concept,
+  // but membership check works the same)
+  const { data: cm, error: cmErr } = await sb
+    .from('custom_members')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle();
+  if (!cmErr && cm) {
+    return {
+      type: 'custom',
+      id: cm.id,
+      email: cm.email,
+      name: cm.name,
+    };
+  }
+
+  return null;
+}
+
+/* ============================================================
    Small shared helpers
    ============================================================ */
 

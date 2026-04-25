@@ -32,10 +32,24 @@ function disciplineToPlanKey (d) {
   }
 }
 
+/* Session-scoped plan-key override.
+   When an authenticated Progressive member loads a page, the auth
+   gate calls setSessionPlanKey() with the server-locked plan_key
+   from progressive_members. That value wins over anything in
+   localStorage — so members can't change their discipline by
+   tampering with localStorage. */
+let __sessionPlanKey = null;
+function setSessionPlanKey (planKey) {
+  if (typeof planKey === 'string' && VALID_PLAN_KEYS.includes(planKey)) {
+    __sessionPlanKey = planKey;
+  }
+}
+
 /* What plan key is the current member on?
-   Reads `state.discipline` from the localStorage helpers in
-   app.js, so pages should load app.js first. */
+   Priority: server-locked entitlement > localStorage discipline.
+   For unauthenticated/test contexts, falls back to localStorage. */
 function getCurrentPlanKey () {
+  if (__sessionPlanKey) return __sessionPlanKey;
   if (typeof loadMemberState !== 'function') return 'prone';
   const s = loadMemberState();
   return disciplineToPlanKey(s && s.discipline);
