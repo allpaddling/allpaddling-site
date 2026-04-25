@@ -87,54 +87,6 @@
   }
   .program-tile.custom .tile-meta .edit-arrow { color: white; }
 
-  /* Claude assist */
-  .claude-panel {
-    background: var(--surface);
-    border: 1px dashed var(--border-strong);
-    border-radius: var(--radius);
-    padding: 1.5rem 1.75rem;
-  }
-  .claude-panel h2 {
-    display: flex; align-items: center; gap: 0.6rem;
-    margin: 0 0 0.3rem;
-  }
-  .claude-panel h2 .soon-tag {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
-    background: var(--surface-2); color: var(--text-3);
-    padding: 0.25rem 0.55rem; border-radius: 999px;
-  }
-  .claude-panel .sub { color: var(--text-3); margin: 0 0 1.25rem; }
-  .claude-panel textarea {
-    width: 100%; box-sizing: border-box;
-    min-height: 110px; padding: 0.9rem 1rem;
-    border: 1px solid var(--border); border-radius: var(--radius-sm);
-    font-family: 'Inter', sans-serif; font-size: 0.95rem; line-height: 1.5;
-    resize: vertical; background: var(--surface-2);
-    color: var(--text);
-  }
-  .claude-panel textarea:focus {
-    outline: none; border-color: var(--brand-700);
-    background: var(--surface);
-  }
-  .claude-panel .claude-controls {
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 1rem; flex-wrap: wrap; margin-top: 1rem;
-  }
-  .claude-panel .btn[disabled] {
-    opacity: 0.55; cursor: not-allowed;
-  }
-  .claude-panel .example-prompts {
-    display: flex; flex-wrap: wrap; gap: 0.4rem;
-    margin-top: 0.85rem;
-  }
-  .example-chip {
-    font-size: 0.82rem; padding: 0.3rem 0.7rem;
-    background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 999px; color: var(--text-2); cursor: pointer;
-  }
-  .example-chip:hover { background: var(--brand-50); color: var(--brand-700); border-color: var(--brand-100); }
-
   /* ========= Login gate ========= */
   .gate-wrap {
     min-height: 100vh;
@@ -331,63 +283,6 @@
       </div>
     </div>
 
-    <!-- Progressive plan members -->
-    <div class="app-card">
-      <h2>Progressive Plan Members</h2>
-      <p class="card-sub">Each Progressive subscriber is locked to one of the four disciplines. They can only see the plan they paid for.</p>
-
-      <div class="program-grid" style="grid-template-columns: 1fr;">
-        <a class="program-tile" href="admin-progressive.html">
-          <div class="tile-eyebrow">Members · entitlements</div>
-          <h3>Manage Progressive plan members</h3>
-          <p class="tile-sub">Add a member, pick which discipline they paid for. They sign in with their email and only see that plan.</p>
-          <div class="tile-meta">
-            <span id="meta-progressive-members">No members yet</span>
-            <span class="edit-arrow">Open →</span>
-          </div>
-        </a>
-      </div>
-    </div>
-
-    <!-- Custom Plan -->
-    <div class="app-card">
-      <h2>Custom Season Race Plans</h2>
-      <p class="card-sub">The premium $140 / 4-week plan. Bespoke programming per member — each Custom subscriber has their own 12-week plan tailored to their race.</p>
-
-      <div class="program-grid" style="grid-template-columns: 1fr;">
-        <a class="program-tile custom" href="admin-custom.html">
-          <div class="tile-eyebrow">Premium · per-member plans</div>
-          <h3>Manage Custom plan members</h3>
-          <p class="tile-sub">Pick a member to open their 12-week plan — base → build → peak, tuned to their race date.</p>
-          <div class="tile-meta">
-            <span id="meta-custom">No members yet</span>
-            <span class="edit-arrow">Open →</span>
-          </div>
-        </a>
-      </div>
-    </div>
-
-    <!-- Claude assist panel (disabled prototype) -->
-    <div class="app-card claude-panel">
-      <h2>Claude Assist <span class="soon-tag">COMING SOON</span></h2>
-      <p class="sub">Describe the change in plain English and Claude will update the program for you. Wiring this up needs a backend — for now, try the regular editor. Your prompt text will save locally so you can come back to it.</p>
-
-      <textarea id="claude-prompt" placeholder="Try: 'Make Week 3 of the Prone plan easier — drop the VO2 intervals to 4 reps instead of 6.'&#10;Or: 'Add a recovery week to the Custom Plan after week 8.'"></textarea>
-
-      <div class="example-prompts">
-        <button type="button" class="example-chip" data-example="Make Week 3 of the Prone plan easier — drop the VO2 intervals to 4 reps instead of 6.">Make Week 3 easier</button>
-        <button type="button" class="example-chip" data-example="Add a recovery session to Week 2 of the SUP plan.">Add recovery session</button>
-        <button type="button" class="example-chip" data-example="Swap the distance session in Week 4 for another threshold block.">Swap distance → threshold</button>
-      </div>
-
-      <div class="claude-controls">
-        <span style="font-size: 0.82rem; color: var(--text-3);">
-          Phase 2 — needs backend + Claude API wiring
-        </span>
-        <button class="btn btn-primary" disabled>Apply with Claude →</button>
-      </div>
-    </div>
-
   </main>
 </div>
 
@@ -506,67 +401,12 @@
       }
     });
 
-    // Custom tile shows member count + most recent edit across all members
-    const customEl = document.getElementById('meta-custom');
-    if (customEl) {
-      const blob = loadCustomBlob();
-      const members = blob.members || [];
-      const plans = blob.plans || {};
-      if (!members.length) {
-        customEl.textContent = 'No members yet';
-      } else {
-        let mostRecent = null;
-        Object.values(plans).forEach(p => {
-          if (p && p.lastEdited) {
-            const t = new Date(p.lastEdited).getTime();
-            if (!mostRecent || t > mostRecent) mostRecent = t;
-          }
-        });
-        const mCount = members.length + ' member' + (members.length === 1 ? '' : 's');
-        customEl.textContent = mostRecent
-          ? (mCount + ' · edited ' + relativeTime(new Date(mostRecent)))
-          : (mCount + ' · no edits yet');
-      }
-    }
-
-    // Progressive members tile — count + per-discipline breakdown
-    const progEl = document.getElementById('meta-progressive-members');
-    if (progEl) {
-      // Fire-and-forget load; we update the tile when data arrives
-      loadProgressiveMembers().then(() => {
-        const all = getProgressiveMembers();
-        if (!all.length) {
-          progEl.textContent = 'No members yet';
-          return;
-        }
-        const counts = {};
-        all.forEach(m => { counts[m.planKey] = (counts[m.planKey] || 0) + 1; });
-        const parts = [];
-        ['prone','sup','oc','ski'].forEach(k => {
-          if (counts[k]) parts.push(counts[k] + ' ' + ({prone:'Prone',sup:'SUP',oc:'OC',ski:'Ski'}[k]));
-        });
-        const total = all.length + ' member' + (all.length === 1 ? '' : 's');
-        progEl.textContent = total + ' · ' + parts.join(', ');
-      }).catch(() => { progEl.textContent = 'Couldn\'t load member count'; });
-    }
 
     // Sign out
     document.getElementById('signout-btn').addEventListener('click', async function (e) {
       e.preventDefault();
       await signOut();
       location.reload();
-    });
-
-    // Claude textarea persistence
-    const ta = document.getElementById('claude-prompt');
-    ta.value = localStorage.getItem('admin_claude_draft') || '';
-    ta.addEventListener('input', () => localStorage.setItem('admin_claude_draft', ta.value));
-    document.querySelectorAll('.example-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        ta.value = btn.dataset.example;
-        localStorage.setItem('admin_claude_draft', ta.value);
-        ta.focus();
-      });
     });
   }
 
