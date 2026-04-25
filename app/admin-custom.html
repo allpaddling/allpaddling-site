@@ -101,118 +101,6 @@
     border-top: 1px solid var(--border);
   }
 
-  /* Members list */
-  .members-empty {
-    text-align: center;
-    padding: 3rem 1.5rem;
-    background: var(--surface);
-    border: 2px dashed var(--border);
-    border-radius: var(--radius);
-    color: var(--text-3);
-  }
-  .members-empty h3 { margin: 0 0 0.4rem; color: var(--text-2); font-size: 1.05rem; }
-  .members-empty p { margin: 0; font-size: 0.92rem; }
-
-  .members-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1rem;
-  }
-
-  .member-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.1rem 1.2rem 1.2rem;
-    box-shadow: var(--shadow-sm);
-    display: flex; flex-direction: column;
-    gap: 0.7rem;
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
-  }
-  .member-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
-  }
-
-  .member-card h3 {
-    margin: 0; font-size: 1.05rem;
-    display: flex; align-items: center; gap: 0.5rem;
-  }
-  .member-avatar-sm {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: var(--brand-700); color: white;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 0.78rem; font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .member-email {
-    font-size: 0.85rem; color: var(--text-3);
-    margin: 0;
-    word-break: break-all;
-  }
-
-  .member-tags {
-    display: flex; flex-wrap: wrap; gap: 0.35rem;
-  }
-  .member-tag {
-    display: inline-flex; align-items: center; gap: 0.3rem;
-    font-size: 0.78rem; font-weight: 600;
-    padding: 0.28rem 0.6rem; border-radius: 999px;
-    background: var(--surface-2); color: var(--text-2);
-  }
-  .member-tag svg { width: 13px; height: 13px; }
-  .member-tag.race-goal { background: var(--brand-50); color: var(--brand-700); }
-
-  .member-notes {
-    font-size: 0.85rem; color: var(--text-2);
-    line-height: 1.45;
-    margin: 0;
-    padding: 0.65rem 0.8rem;
-    background: var(--surface-2);
-    border-radius: 8px;
-    border-left: 3px solid var(--border-strong);
-    max-height: 4.4em; overflow: hidden;
-    position: relative;
-  }
-
-  .member-footer {
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 0.5rem; flex-wrap: wrap;
-    margin-top: auto;
-    padding-top: 0.7rem;
-    border-top: 1px solid var(--border);
-  }
-  .member-stamp {
-    font-size: 0.78rem; color: var(--text-3);
-  }
-  .member-actions {
-    display: flex; gap: 0.3rem;
-  }
-  .icon-btn {
-    background: transparent; border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.35rem 0.5rem;
-    cursor: pointer;
-    color: var(--text-2);
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  .icon-btn svg { width: 15px; height: 15px; }
-  .icon-btn:hover { background: var(--surface-2); color: var(--text-1); }
-  .icon-btn.danger:hover { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
-
-  .edit-plan-btn {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700; font-size: 0.88rem;
-    color: var(--brand-700);
-    padding: 0.4rem 0.8rem;
-    border: 1px solid var(--brand-100);
-    border-radius: 8px;
-    background: var(--brand-50);
-    text-decoration: none;
-    display: inline-flex; align-items: center; gap: 0.3rem;
-  }
-  .edit-plan-btn:hover { background: var(--brand-700); color: white; border-color: var(--brand-700); }
-
   /* Gate styles reused */
   .gate-wrap {
     min-height: 100vh;
@@ -286,18 +174,18 @@
 
   <main class="app-main">
     <div class="app-page-header">
-      <div class="breadcrumb"><a href="admin-members.html">Members</a> / <span>Add Custom member</span></div>
+      <div class="breadcrumb"><a href="admin-members.html">Members</a> / <span id="bc-tail">Add Custom member</span></div>
       <div class="admin-header-row">
         <div>
-          <h1 style="margin-bottom:0.15rem;">Custom Season Race Plans</h1>
-          <p class="lead" style="margin:0;">Each paying Custom member has their own 12-week plan. Add a member, then open their plan to edit.</p>
+          <h1 id="page-h1" style="margin-bottom:0.15rem;">Add a Custom plan member</h1>
+          <p class="lead" id="page-lead" style="margin:0;">Each paying Custom member gets their own 12-week plan. Add the member here, then open their plan from the Members list to edit.</p>
         </div>
       </div>
 
       <div class="admin-banner">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
-          <strong>Heads up —</strong> members are added manually here for now. Once Stripe billing is wired up (Phase D), new Custom subscribers will appear in this list automatically. Edits to a member's plan auto-save as drafts and only go live when you click <strong>Publish</strong>.
+          <strong>Heads up —</strong> members are added manually here for now. Once Stripe billing is wired up, new Custom subscribers will appear automatically. Edits to a member's plan auto-save as drafts and only go live when you click <strong>Publish</strong>.
         </div>
       </div>
     </div>
@@ -305,7 +193,7 @@
     <!-- Add/edit member form -->
     <div class="member-form-card" id="member-form-card">
       <div class="member-form-head">
-        <h2 id="mf-heading">Add a new Custom plan member</h2>
+        <h2 id="mf-heading">Member details</h2>
         <span class="mode-tag" id="mf-mode">NEW</span>
       </div>
 
@@ -335,13 +223,10 @@
 
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" id="mf-submit">Add member</button>
-          <button type="button" class="btn btn-ghost" id="mf-cancel" style="display:none;">Cancel</button>
+          <button type="button" class="btn btn-ghost" id="mf-cancel">Cancel</button>
         </div>
       </form>
     </div>
-
-    <!-- Members roster -->
-    <div id="members-list"></div>
 
   </main>
 </div>
@@ -381,11 +266,13 @@
   });
 
   /* ---- Form state ---- */
-  let editingId = null; // null = add mode, string = edit mode for that member ID
+  let editingId = null;
 
   const form = document.getElementById('member-form');
   const formCard = document.getElementById('member-form-card');
-  const heading = document.getElementById('mf-heading');
+  const pageH1 = document.getElementById('page-h1');
+  const pageLead = document.getElementById('page-lead');
+  const bcTail = document.getElementById('bc-tail');
   const modeTag = document.getElementById('mf-mode');
   const submitBtn = document.getElementById('mf-submit');
   const cancelBtn = document.getElementById('mf-cancel');
@@ -396,33 +283,25 @@
   const dateEl  = document.getElementById('mf-race-date');
   const notesEl = document.getElementById('mf-notes');
 
-  function setMode (mode, member) {
-    if (mode === 'edit' && member) {
-      editingId = member.id;
-      heading.textContent = 'Edit member details — ' + (member.name || 'Unnamed');
-      modeTag.textContent = 'EDITING';
-      submitBtn.textContent = 'Save changes';
-      cancelBtn.style.display = '';
-      formCard.classList.add('editing');
-      nameEl.value  = member.name || '';
-      emailEl.value = member.email || '';
-      goalEl.value  = member.raceGoal || '';
-      dateEl.value  = member.raceDate || '';
-      notesEl.value = member.notes || '';
-      formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      nameEl.focus();
-    } else {
-      editingId = null;
-      heading.textContent = 'Add a new Custom plan member';
-      modeTag.textContent = 'NEW';
-      submitBtn.textContent = 'Add member';
-      cancelBtn.style.display = 'none';
-      formCard.classList.remove('editing');
-      form.reset();
-    }
+  function setEditMode (member) {
+    editingId = member.id;
+    pageH1.textContent  = 'Edit Custom plan member';
+    pageLead.textContent = `Update ${member.name || 'this member'}'s details. Edits to their training plan happen separately via Open plan from the Members list.`;
+    bcTail.textContent  = `Edit ${member.name || 'member'}`;
+    modeTag.textContent = 'EDITING';
+    submitBtn.textContent = 'Save changes';
+    formCard.classList.add('editing');
+    nameEl.value  = member.name || '';
+    emailEl.value = member.email || '';
+    goalEl.value  = member.raceGoal || '';
+    dateEl.value  = member.raceDate || '';
+    notesEl.value = member.notes || '';
+    nameEl.focus();
   }
 
-  cancelBtn.addEventListener('click', () => setMode('add'));
+  cancelBtn.addEventListener('click', () => {
+    location.href = 'admin-members.html';
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -444,145 +323,36 @@
       } else {
         await addCustomMember(payload);
       }
-      setMode('add');
-      renderMembers();
+      // Send the coach back to the unified Members view.
+      location.href = 'admin-members.html';
     } catch (err) {
       console.error('member save failed', err);
       alert('Save failed — please check your connection and try again.');
-    } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = originalLabel;
     }
   });
 
-  /* ---- Render list ---- */
-  function renderMembers () {
-    const members = getCustomMembers();
-    const list = document.getElementById('members-list');
-    if (!members.length) {
-      list.innerHTML = `
-        <div class="members-empty">
-          <h3>No Custom plan members yet</h3>
-          <p>Add your first member above to create their 12-week plan.</p>
-        </div>`;
+  /* ---- First paint: read ?edit=<id> from URL and prefill if present ---- */
+  const params = new URLSearchParams(location.search);
+  const editId = params.get('edit');
+  if (editId) {
+    try {
+      await loadCustomData();
+      const m = getCustomMember(editId);
+      if (m) {
+        setEditMode(m);
+      } else {
+        alert('That member could not be found — they may have been removed. Returning to the Members list.');
+        location.href = 'admin-members.html';
+        return;
+      }
+    } catch (err) {
+      console.error('failed to load member for editing', err);
+      alert('Could not load member details. Returning to the Members list.');
+      location.href = 'admin-members.html';
       return;
     }
-
-    list.innerHTML = `<div class="members-grid">${members.map(renderMemberCard).join('')}</div>`;
-
-    list.querySelectorAll('[data-edit]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const m = getCustomMember(btn.dataset.edit);
-        if (m) setMode('edit', m);
-      });
-    });
-    list.querySelectorAll('[data-remove]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const m = getCustomMember(btn.dataset.remove);
-        if (!m) return;
-        if (!confirm(`Remove ${m.name}? Their Custom plan and all edits will be deleted. This cannot be undone.`)) return;
-        try {
-          await removeCustomMember(m.id);
-          if (editingId === m.id) setMode('add');
-          renderMembers();
-        } catch (err) {
-          console.error('removeCustomMember failed', err);
-          alert('Could not remove member — please try again.');
-        }
-      });
-    });
-  }
-
-  function renderMemberCard (m) {
-    // Stamp now reflects publish status (matches Progressive tiles)
-    const publishedAt = getCustomPublishedAt(m.id);
-    const pending = hasCustomUnpublishedChanges(m.id);
-    let stamp;
-    if (pending && publishedAt)      stamp = 'Pending publish · last published ' + relativeTime(new Date(publishedAt));
-    else if (pending)                stamp = 'Pending publish · never published';
-    else if (publishedAt)            stamp = 'Published ' + relativeTime(new Date(publishedAt));
-    else                             stamp = 'Never published';
-    const initials = (m.name || '').split(/\s+/).filter(Boolean).map(p => p[0]).join('').slice(0, 2).toUpperCase() || '?';
-    const dateLabel = m.raceDate ? formatRaceDate(m.raceDate) : '';
-
-    const tags = [];
-    if (m.raceGoal) tags.push(`<span class="member-tag race-goal">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      ${escapeHtml(m.raceGoal)}
-    </span>`);
-    if (dateLabel) tags.push(`<span class="member-tag">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      ${escapeHtml(dateLabel)}
-    </span>`);
-
-    const notesBlock = m.notes
-      ? `<p class="member-notes">${escapeHtml(m.notes)}</p>`
-      : '';
-
-    return `
-      <div class="member-card">
-        <h3>
-          <span class="member-avatar-sm">${initials}</span>
-          <span>${escapeHtml(m.name)}</span>
-        </h3>
-        ${m.email ? `<p class="member-email">${escapeHtml(m.email)}</p>` : ''}
-        ${tags.length ? `<div class="member-tags">${tags.join('')}</div>` : ''}
-        ${notesBlock}
-        <div class="member-footer">
-          <span class="member-stamp">${stamp}</span>
-          <div class="member-actions">
-            <button class="icon-btn" data-edit="${m.id}" title="Edit details">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button class="icon-btn danger" data-remove="${m.id}" title="Remove member">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
-            </button>
-            <a class="edit-plan-btn" href="admin-edit.html?plan=custom&member=${encodeURIComponent(m.id)}">Edit plan →</a>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function formatRaceDate (iso) {
-    // Input is YYYY-MM-DD from the date input. Show "30 Nov 2026".
-    const parts = iso.split('-');
-    if (parts.length !== 3) return iso;
-    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    if (isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-
-  function relativeTime (date) {
-    const diffMs = Date.now() - date.getTime();
-    const mins = Math.round(diffMs / 60000);
-    if (mins < 1)   return 'just now';
-    if (mins < 60)  return mins + ' min ago';
-    const hours = Math.round(mins / 60);
-    if (hours < 24) return hours + ' hr ago';
-    const days = Math.round(hours / 24);
-    if (days < 7)   return days + ' day' + (days === 1 ? '' : 's') + ' ago';
-    return date.toLocaleDateString();
-  }
-
-  function escapeHtml (s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  /* ---- First paint: hydrate from Supabase, then render ---- */
-  document.getElementById('members-list').innerHTML =
-    '<div class="members-empty"><p>Loading members…</p></div>';
-  try {
-    await loadCustomData();
-    renderMembers();
-  } catch (err) {
-    console.error('loadCustomData failed', err);
-    document.getElementById('members-list').innerHTML =
-      '<div class="members-empty"><h3>Couldn\'t load members</h3><p>Check your connection and refresh.</p></div>';
   }
 })();
 </script>

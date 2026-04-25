@@ -373,7 +373,7 @@
       discipline: PROGRESSIVE_LABELS[m.planKey] || m.planKey || '',
       notes:      m.notes     || '',
       createdAt:  m.createdAt || null,
-      editHref:   'admin-progressive.html',
+      editHref:   'admin-progressive.html?edit=' + encodeURIComponent(m.id),
     })),
     ...getCustomMembers().map(m => ({
       id:         m.id,
@@ -383,7 +383,7 @@
       discipline: '',  // not tracked on custom_members today
       notes:      m.notes     || '',
       createdAt:  m.createdAt || m.created_at || null,
-      editHref:   'admin-custom.html',
+      editHref:   'admin-custom.html?edit=' + encodeURIComponent(m.id),
       planHref:   'admin-edit.html?plan=custom&member=' + encodeURIComponent(m.id),
     })),
   ];
