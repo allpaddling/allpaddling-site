@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Overview — All Paddling Admin</title>
+<meta name="description" content="At-a-glance view of new signups, onboarding state, and (once Stripe is live) subscription health." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  .admin-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem; border-radius: 5px;
+    margin-left: 0.35rem;
+  }
+
+  /* Section header */
+  .ov-section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 1rem; margin: 1.75rem 0 0.85rem;
+  }
+  .ov-section-head:first-of-type { margin-top: 0.5rem; }
+  .ov-section-head h2 {
+    font-size: 1rem; font-weight: 700; margin: 0;
+    color: var(--text);
+  }
+  .ov-section-head .hint {
+    font-size: 0.82rem; color: var(--text-3);
+  }
+  .ov-soon-tag {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em;
+    background: var(--surface-2); color: var(--text-3);
+    padding: 0.2rem 0.5rem; border-radius: 999px;
+    text-transform: uppercase;
+  }
+
+  /* Tiles */
+  .ov-tile-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem;
+  }
+  @media (max-width: 880px) { .ov-tile-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .ov-tile-row { grid-template-columns: 1fr; } }
+
+  .ov-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.1rem;
+  }
+  .ov-tile .label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 0.35rem;
+  }
+  .ov-tile .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.7rem; font-weight: 700; color: var(--text); line-height: 1;
+  }
+  .ov-tile .breakdown {
+    margin-top: 0.55rem;
+    font-size: 0.78rem; color: var(--text-3);
+    line-height: 1.4;
+  }
+  .ov-tile .breakdown span { display: inline-block; margin-right: 0.65rem; }
+  .ov-tile .breakdown b { color: var(--text-2); font-weight: 600; }
+
+  .ov-tile.placeholder {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--surface) 0 8px,
+      var(--surface-2) 8px 9px
+    );
+    border-style: dashed;
+  }
+  .ov-tile.placeholder .value { color: var(--text-3); }
+  .ov-tile.placeholder .breakdown { color: var(--text-3); }
+
+  /* Recent signups feed */
+  .ov-feed {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .ov-feed-row {
+    display: grid; grid-template-columns: 30px 1fr auto; gap: 0.85rem;
+    align-items: center;
+    padding: 0.75rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.92rem;
+  }
+  .ov-feed-row:last-child { border-bottom: 0; }
+  .ov-feed-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--brand-50); color: var(--brand-700);
+    display: grid; place-items: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 0.7rem;
+  }
+  .ov-feed-name { font-weight: 600; color: var(--text); }
+  .ov-feed-email { font-size: 0.78rem; color: var(--text-3); margin-top: 0.05rem; }
+  .ov-feed-meta {
+    text-align: right;
+    font-size: 0.78rem; color: var(--text-3);
+    white-space: nowrap;
+  }
+  .ov-feed-meta .pill {
+    display: inline-block; padding: 0.18rem 0.5rem; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+    margin-left: 0.4rem;
+  }
+  .ov-feed-meta .pill.progressive { background: #e0f2fe; color: #075985; }
+  .ov-feed-meta .pill.custom      { background: #fef3c7; color: #92400e; }
+
+  .ov-feed-empty {
+    padding: 2rem 1.5rem; text-align: center;
+    color: var(--text-3); font-size: 0.92rem;
+  }
+
+  /* Login gate (mirrors admin.html) */
+  .gate-wrap {
+    min-height: 100vh; display: grid; place-items: center;
+    padding: 2rem 1rem; background: var(--surface-2);
+  }
+  .gate-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2.25rem 2.5rem;
+    max-width: 420px; width: 100%; box-shadow: var(--shadow-lg);
+  }
+  .gate-card .gate-eyebrow {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-700); margin-bottom: 0.4rem;
+  }
+  .gate-card h1 { font-size: 1.4rem; margin: 0 0 0.4rem; }
+  .gate-card p  { color: var(--text-3); font-size: 0.93rem; margin: 0 0 1.5rem; }
+</style>
+</head>
+<body>
+
+<!-- Login gate -->
+<div id="login-gate" class="gate-wrap" style="display:none;">
+  <div class="gate-card">
+    <div class="gate-eyebrow">Coach Admin</div>
+    <h1>Coach access only</h1>
+    <p>Sign in via the main admin page first.</p>
+    <a href="admin.html" class="btn btn-primary" style="width:100%; box-sizing:border-box; justify-content:center; display:inline-flex;">Go to admin sign-in →</a>
+  </div>
+</div>
+
+<!-- Main shell -->
+<div class="app-shell" id="admin-shell" style="display:none;">
+  <aside class="app-sidebar" aria-label="Admin navigation">
+    <div class="app-sidebar-brand">
+      <span class="brand-mark-sm" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" fill="currentColor" stroke="none"/>
+          <polyline points="3,13 8,13 10,9 14,17 16,13 21,13" stroke="white" stroke-width="1.8" fill="none"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        All Paddling<span class="admin-badge">ADMIN</span>
+        <small>Coach dashboard</small>
+      </span>
+    </div>
+    <nav class="app-sidebar-nav">
+      <a href="admin-overview.html" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg>
+        <span>Overview</span>
+      </a>
+      <a href="admin.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span>Programs</span>
+      </a>
+      <a href="admin-members.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Members</span>
+      </a>
+    </nav>
+    <div class="app-sidebar-footer">
+      <div class="app-member-chip">
+        <div class="app-member-avatar" id="admin-avatar">CO</div>
+        <div class="app-member-meta">
+          <div class="name" id="admin-name">Coach</div>
+          <div class="plan" id="admin-email">—</div>
+        </div>
+      </div>
+      <a href="#" id="signout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign out</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="app-main">
+    <div class="app-page-header">
+      <h1 style="margin-bottom:0.15rem;">Overview</h1>
+      <p class="lead" style="margin:0;">At-a-glance numbers across signups, onboarding, and (when Stripe is live) subscriptions.</p>
+    </div>
+
+    <!-- ============ Live tiles ============ -->
+    <div class="ov-section-head">
+      <h2>Members</h2>
+      <span class="hint">From <a href="admin-members.html">progressive_members + custom_members</a></span>
+    </div>
+    <div class="ov-tile-row" id="member-tiles">
+      <div class="ov-tile">
+        <div class="label">Total members</div>
+        <div class="value" id="t-total">—</div>
+        <div class="breakdown" id="t-total-sub">&nbsp;</div>
+      </div>
+      <div class="ov-tile">
+        <div class="label">Joined last 7 days</div>
+        <div class="value" id="t-7d">—</div>
+        <div class="breakdown" id="t-7d-sub">&nbsp;</div>
+      </div>
+      <div class="ov-tile">
+        <div class="label">Joined last 30 days</div>
+        <div class="value" id="t-30d">—</div>
+        <div class="breakdown" id="t-30d-sub">&nbsp;</div>
+      </div>
+      <div class="ov-tile">
+        <div class="label">Onboarding pending</div>
+        <div class="value" id="t-pending">—</div>
+        <div class="breakdown" id="t-pending-sub">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- ============ Subscription tiles (placeholder until Stripe is live) ============ -->
+    <div class="ov-section-head">
+      <h2>Subscriptions <span class="ov-soon-tag">live when Stripe is wired</span></h2>
+      <span class="hint">Backed by the <code>subscriptions</code> table</span>
+    </div>
+    <div class="ov-tile-row" id="sub-tiles">
+      <div class="ov-tile" id="t-active-tile">
+        <div class="label">Active subscriptions</div>
+        <div class="value" id="t-active">—</div>
+        <div class="breakdown" id="t-active-sub">No data yet</div>
+      </div>
+      <div class="ov-tile" id="t-mrr-tile">
+        <div class="label">Monthly recurring revenue</div>
+        <div class="value" id="t-mrr">—</div>
+        <div class="breakdown" id="t-mrr-sub">No data yet</div>
+      </div>
+      <div class="ov-tile" id="t-past-due-tile">
+        <div class="label">Past-due subscriptions</div>
+        <div class="value" id="t-past-due">—</div>
+        <div class="breakdown" id="t-past-due-sub">No data yet</div>
+      </div>
+      <div class="ov-tile" id="t-churn-tile">
+        <div class="label">Churn last 30 days</div>
+        <div class="value" id="t-churn">—</div>
+        <div class="breakdown" id="t-churn-sub">No data yet</div>
+      </div>
+    </div>
+
+    <!-- ============ Recent signups feed ============ -->
+    <div class="ov-section-head">
+      <h2>Recent signups</h2>
+      <span class="hint">Last 10 members to join</span>
+    </div>
+    <div class="ov-feed" id="signups-feed">
+      <div class="ov-feed-empty">Loading…</div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script>
+(async function () {
+  const gateEl  = document.getElementById('login-gate');
+  const shellEl = document.getElementById('admin-shell');
+  function showOnly (el) { [gateEl, shellEl].forEach(x => x.style.display = (x === el) ? '' : 'none'); }
+
+  // ---- Auth gate ----
+  const session = await getCurrentSession();
+  if (!session) { showOnly(gateEl); return; }
+  const isCoach = await isCurrentUserCoach();
+  if (!isCoach) { showOnly(gateEl); return; }
+  showOnly(shellEl);
+
+  // ---- Sidebar chip ----
+  const adminEmail = (session.user.email || '').toLowerCase();
+  document.getElementById('admin-email').textContent = adminEmail || '—';
+  const initials = adminEmail.split('@')[0].replace(/[._-]+/g, ' ')
+    .split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  if (initials) document.getElementById('admin-avatar').textContent = initials;
+  document.getElementById('admin-name').textContent = adminEmail.split('@')[0] || 'Coach';
+  document.getElementById('signout-btn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    await sb.auth.signOut();
+    location.href = '../login.html';
+  });
+
+  // ---- Helpers ----
+  function fmtDate (iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function relTime (iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const diff = Date.now() - d.getTime();
+    const mins = Math.round(diff / 60000);
+    if (mins < 1)   return 'just now';
+    if (mins < 60)  return mins + ' min ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24)   return hrs + ' hr ago';
+    const days = Math.round(hrs / 24);
+    if (days < 7)   return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  }
+  function escapeHtml (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+  }
+  function initialsOf (name, email) {
+    const src = (name && name.trim()) || (email || '').split('@')[0] || '?';
+    return src.replace(/[._-]+/g, ' ').trim().split(/\s+/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  }
+  function placeholderTile (id) {
+    document.getElementById(id + '-tile').classList.add('placeholder');
+  }
+
+  // ---- Load data in parallel ----
+  const [, , profilesRes, subsRes] = await Promise.all([
+    loadProgressiveMembers(),
+    loadCustomData(),
+    sb.from('member_profiles').select('user_id, completed_onboarding_at'),
+    sb.from('subscriptions').select('user_id, status, current_period_end, canceled_at, stripe_price_id'),
+  ]);
+
+  const progMembers   = getProgressiveMembers();
+  const customMembers = getCustomMembers();
+  const allMembers = [
+    ...progMembers.map(m => ({ ...m, type: 'progressive' })),
+    ...customMembers.map(m => ({ ...m, type: 'custom' })),
+  ];
+
+  // Build sets / counts
+  const profiles = (profilesRes.data || []);
+  const subs     = (subsRes.data || []);
+
+  // ---- Member tiles (always populated from member tables) ----
+  const total = allMembers.length;
+  const progCount   = progMembers.length;
+  const customCount = customMembers.length;
+
+  const now = Date.now();
+  const _7d  = now - 7  * 24 * 60 * 60 * 1000;
+  const _30d = now - 30 * 24 * 60 * 60 * 1000;
+  const last7  = allMembers.filter(m => m.createdAt && Date.parse(m.createdAt) >= _7d).length;
+  const last30 = allMembers.filter(m => m.createdAt && Date.parse(m.createdAt) >= _30d).length;
+  const last7Prog   = progMembers.filter(m => m.createdAt   && Date.parse(m.createdAt) >= _7d).length;
+  const last7Custom = customMembers.filter(m => m.createdAt && Date.parse(m.createdAt) >= _7d).length;
+  const last30Prog   = progMembers.filter(m => m.createdAt   && Date.parse(m.createdAt) >= _30d).length;
+  const last30Custom = customMembers.filter(m => m.createdAt && Date.parse(m.createdAt) >= _30d).length;
+
+  const onboardingPending = profiles.filter(p => !p.completed_onboarding_at).length;
+  const onboardingDone    = profiles.filter(p =>  p.completed_onboarding_at).length;
+
+  document.getElementById('t-total').textContent = total;
+  document.getElementById('t-total-sub').innerHTML =
+    total > 0 ? `<span><b>${progCount}</b> Progressive</span><span><b>${customCount}</b> Custom</span>`
+              : `<span>None yet</span>`;
+
+  document.getElementById('t-7d').textContent = last7;
+  document.getElementById('t-7d-sub').innerHTML =
+    last7 > 0 ? `<span><b>${last7Prog}</b> Progressive</span><span><b>${last7Custom}</b> Custom</span>`
+              : `<span>No new signups</span>`;
+
+  document.getElementById('t-30d').textContent = last30;
+  document.getElementById('t-30d-sub').innerHTML =
+    last30 > 0 ? `<span><b>${last30Prog}</b> Progressive</span><span><b>${last30Custom}</b> Custom</span>`
+               : `<span>No new signups</span>`;
+
+  document.getElementById('t-pending').textContent = onboardingPending;
+  if (onboardingPending > 0) {
+    document.getElementById('t-pending-sub').innerHTML =
+      `<span><b>${onboardingDone}</b> completed</span>`;
+  } else if (onboardingDone > 0) {
+    document.getElementById('t-pending-sub').innerHTML = `<span>All caught up</span>`;
+  } else {
+    document.getElementById('t-pending-sub').innerHTML = `<span>No members signed in yet</span>`;
+  }
+
+  // ---- Subscription tiles ----
+  // If the subscriptions table is empty, mark all four as placeholders so it's
+  // visually obvious they're awaiting Stripe wiring. As soon as a single row
+  // exists, swap to live numbers.
+  const hasSubs = subs.length > 0;
+  if (!hasSubs) {
+    ['t-active', 't-mrr', 't-past-due', 't-churn'].forEach(placeholderTile);
+  } else {
+    const active   = subs.filter(s => s.status === 'active').length;
+    const pastDue  = subs.filter(s => s.status === 'past_due').length;
+    const canceled30d = subs.filter(s => s.canceled_at && Date.parse(s.canceled_at) >= _30d).length;
+    document.getElementById('t-active').textContent  = active;
+    document.getElementById('t-active-sub').textContent = active > 0 ? `${subs.length} total ever` : 'None yet';
+    document.getElementById('t-past-due').textContent = pastDue;
+    document.getElementById('t-past-due-sub').textContent = pastDue > 0 ? 'Cards declined this period' : 'All payments current';
+    document.getElementById('t-churn').textContent = canceled30d;
+    document.getElementById('t-churn-sub').textContent = canceled30d > 0 ? 'Subscriptions ended in last 30 days' : 'No churn last 30 days';
+    // MRR — best-effort estimate. We don't know each price reliably yet
+    // (price_id is on the row but we'd need a name+amount lookup); for a
+    // first pass, count $80 for Progressive members and $140 for Custom
+    // members with active subs. Refine later when we have the price catalog.
+    const activeProgressive = subs.filter(s => s.status === 'active' && s.stripe_price_id && /prog/i.test(s.stripe_price_id)).length;
+    const activeCustom      = subs.filter(s => s.status === 'active').length - activeProgressive;
+    const weeklyRev = activeProgressive * 80/4 + activeCustom * 140/4;
+    const monthlyRev = Math.round(weeklyRev * 52 / 12);
+    document.getElementById('t-mrr').textContent = `$${monthlyRev.toLocaleString('en-AU')}`;
+    document.getElementById('t-mrr-sub').textContent = `Estimated · ${active} active subs`;
+  }
+
+  // ---- Recent signups feed ----
+  const sorted = allMembers
+    .filter(m => m.createdAt)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, 10);
+  const feedEl = document.getElementById('signups-feed');
+  if (sorted.length === 0) {
+    feedEl.innerHTML = `<div class="ov-feed-empty">No signups recorded yet.</div>`;
+  } else {
+    feedEl.innerHTML = sorted.map(m => {
+      const name = m.name || '(no name)';
+      const pill = m.type === 'progressive'
+        ? '<span class="pill progressive">Progressive</span>'
+        : '<span class="pill custom">Custom</span>';
+      return `
+        <div class="ov-feed-row">
+          <div class="ov-feed-avatar">${escapeHtml(initialsOf(name, m.email))}</div>
+          <div>
+            <div class="ov-feed-name">${escapeHtml(name)}</div>
+            <div class="ov-feed-email">${escapeHtml(m.email || '')}</div>
+          </div>
+          <div class="ov-feed-meta">
+            ${escapeHtml(relTime(m.createdAt))}
+            ${pill}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+})();
+</script>
+</body>
+</html>
