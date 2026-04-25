@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Getting started — All Paddling</title>
+<meta name="description" content="How RPE and threshold pace work together — the framework behind every session in your plan." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* ==== Training Zones table ==== */
+  .gs-zones-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 1rem;
+    font-size: 0.88rem;
+  }
+  .gs-zones-table th {
+    text-align: left;
+    padding: 0.7rem 0.85rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--text-3);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    vertical-align: bottom;
+  }
+  .gs-zones-table td {
+    padding: 0.7rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+    line-height: 1.45;
+  }
+  .gs-zones-table tr:last-child td { border-bottom: 0; }
+  .gs-zones-table .tz-cell {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 0.95rem;
+    text-align: center;
+    width: 56px; min-width: 56px;
+    color: white;
+  }
+  .gs-zones-table tr.tz1 .tz-cell { background: var(--tz1); }
+  .gs-zones-table tr.tz2 .tz-cell { background: var(--tz2); }
+  .gs-zones-table tr.tz3 .tz-cell { background: var(--tz3); }
+  .gs-zones-table tr.tz4 .tz-cell { background: var(--tz4); }
+  .gs-zones-table tr.tz5 .tz-cell { background: var(--tz5); }
+  .gs-zones-table tr.tz1 td:not(.tz-cell) { background: var(--tz1-bg); }
+  .gs-zones-table tr.tz2 td:not(.tz-cell) { background: var(--tz2-bg); }
+  .gs-zones-table tr.tz3 td:not(.tz-cell) { background: var(--tz3-bg); }
+  .gs-zones-table tr.tz4 td:not(.tz-cell) { background: var(--tz4-bg); }
+  .gs-zones-table tr.tz5 td:not(.tz-cell) { background: var(--tz5-bg); }
+  .gs-zones-table .pct {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600; white-space: nowrap;
+    color: var(--text-2);
+  }
+  .gs-zones-wrap { overflow-x: auto; }
+
+  /* Next-step CTA box */
+  .next-step-card {
+    background: linear-gradient(135deg, var(--brand-50), var(--surface));
+    border: 1px solid var(--brand-100);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+    margin-top: 1.75rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1.5rem; flex-wrap: wrap;
+  }
+  .next-step-card h2 { margin: 0 0 0.3rem; font-size: 1.1rem; }
+  .next-step-card p  { margin: 0; color: var(--text-2); font-size: 0.92rem; max-width: 520px; }
+  .next-step-card .btn { white-space: nowrap; }
+
+  .gs-callout {
+    background: var(--brand-50);
+    border-left: 4px solid var(--brand-700);
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    font-size: 0.92rem; line-height: 1.55;
+    margin: 1rem 0 0;
+  }
+  .gs-callout strong { color: var(--brand-700); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+
+  <main class="app-main">
+    <div id="app-mobile-header"></div>
+
+    <div class="app-page-header">
+      <div class="breadcrumb"><a href="dashboard.html">Dashboard</a> / Getting started</div>
+      <h1>Getting started</h1>
+      <p class="lead">Welcome aboard. Before you dive into your first session, here's the short version of how training zones work — every interval in your plan refers back to this.</p>
+    </div>
+
+    <!-- ==================== Intro ==================== -->
+    <div class="app-card">
+      <h2>RPE meets threshold pace</h2>
+      <p class="card-sub">The two numbers every All Paddling session is built around.</p>
+
+      <p>From a simple field test we can determine your <strong>FTP — Functional Threshold pace</strong>. Once you've found this measure of your current paddling capability, every other training zone is calculated as a percentage of it.</p>
+
+      <p>The pairing of RPE (Rate of Perceived Exertion) with FTP is a balancing act between data from your GPS watch and how you personally feel during a session. The chart below shows the collation between RPE and FTP, along with the signs you can use to dial in each zone, plus the purpose and physiological adaptations that come from training at that intensity.</p>
+
+      <div class="gs-callout">
+        <strong>Conditions matter.</strong> The accuracy of your training intensities depends on consistency in how you test. For the highest consistency, paddle in calm water and wind, and split each interval session in two — half in one direction, half in the other — so tide and current cancel out across the data.
+      </div>
+    </div>
+
+    <!-- ==================== Training intensity chart ==================== -->
+    <div class="app-card">
+      <h2>Training intensity chart</h2>
+      <p class="card-sub">RPE on the left, FTP percentages in the middle, the why on the right. Skim it once now — you'll come back as your training progresses.</p>
+
+      <div class="gs-zones-wrap">
+        <table class="gs-zones-table">
+          <thead>
+            <tr>
+              <th style="text-align:center;">TZ</th>
+              <th>RPE · How you feel</th>
+              <th>Purpose</th>
+              <th>% FTP</th>
+              <th>Physiological adaptations</th>
+              <th>Race fitness</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="tz1">
+              <td class="tz-cell">TZ1</td>
+              <td><strong>2–3</strong> · Very relaxed. Able to carry on a conversation.</td>
+              <td>Regeneration, recovery, base endurance (low aerobic).</td>
+              <td class="pct">&lt; 77%</td>
+              <td>Increases blood flow, flushes waste, improves fat metabolism.</td>
+              <td>Promotes recovery; prepares body for harder training; technique work.</td>
+            </tr>
+            <tr class="tz2">
+              <td class="tz-cell">TZ2</td>
+              <td><strong>4–5</strong> · Working. Feel warmer. HR and breathing up. May sweat.</td>
+              <td>Improve efficiency (aerobic threshold).</td>
+              <td class="pct">88–94%</td>
+              <td>Improves oxygen use, power output and efficiency.</td>
+              <td>More power at the same effort; technique &amp; skill work.</td>
+            </tr>
+            <tr class="tz3">
+              <td class="tz-cell">TZ3</td>
+              <td><strong>5–7</strong> · Hard work. HR up. CO₂ build-up. Sweating. Breathing hard.</td>
+              <td>Improve sustainable aerobic power (anaerobic threshold / FTP).</td>
+              <td class="pct">100–103%</td>
+              <td>Improves carbohydrate metabolism; converts fast-twitch to slow-twitch fibres.</td>
+              <td>Improved sustainable power; works for all paddling events.</td>
+            </tr>
+            <tr class="tz4">
+              <td class="tz-cell">TZ4</td>
+              <td><strong>7–8</strong> · Stressed. Panting. Sweating freely. Gasping.</td>
+              <td>Push threshold up (VO₂ max / aerobic capacity).</td>
+              <td class="pct">104–111%</td>
+              <td>Develops cardiovascular system and VO₂max; improves anaerobic energy production.</td>
+              <td>Improved sustainable race pace; used in specific prep and competition.</td>
+            </tr>
+            <tr class="tz5">
+              <td class="tz-cell">TZ5</td>
+              <td><strong>9–10</strong> · Heavily stressed. Gasping. Sweating heavily.</td>
+              <td>Increase sprint power output (anaerobic capacity).</td>
+              <td class="pct">&gt; 111%</td>
+              <td>Increases maximum muscle power; develops neural control at specific stroke rate.</td>
+              <td>Race-specific: starting power, sprint speed, ability to break from the pack.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== Next step CTA ==================== -->
+    <div class="next-step-card">
+      <div>
+        <h2>Next up — find your threshold pace.</h2>
+        <p>Now that you know how the zones work, the next move is the 3-minute test that sets your TZ3 pace. Every session in your plan is calculated from that number, so it's worth doing properly before your first session.</p>
+      </div>
+      <a href="threshold.html" class="btn btn-primary">Open Threshold pace →</a>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script src="../assets/published-plans.js"></script>
+<script src="../assets/app.js"></script>
+<script>
+(async function () {
+  // Same auth gate every other member page uses.
+  const session = await getCurrentSession();
+  if (!session) { location.href = '../login.html'; return; }
+  const profile = await getCurrentMemberProfile();
+  const isCoachUser = await isCurrentUserCoach();
+  if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+  if (profile && profile.type === 'progressive') {
+    setSessionPlanKey(profile.planKey);
+    const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+    const _s = loadMemberState();
+    if (_s.discipline !== PLAN_KEY_TO_DISC[profile.planKey]) {
+      _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
+      saveMemberState(_s);
+    }
+    const _planEl = document.querySelector('.app-member-meta .plan');
+    if (_planEl) _planEl.textContent = 'Progressive · ' + PLAN_KEY_TO_DISC[profile.planKey];
+  }
+})();
+</script>
+</body>
+</html>
