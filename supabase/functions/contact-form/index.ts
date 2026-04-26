@@ -80,6 +80,14 @@ function escapeHtml (s: string): string {
   } as Record<string, string>)[c]);
 }
 
+// Resend tag values must be ASCII letters/numbers/underscores/dashes.
+// Anything else (spaces, punctuation) makes the whole send fail with
+// 422 validation_error. Squash bad chars to underscores; cap at 50.
+function sanitizeTagValue (s: string): string {
+  const cleaned = s.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+  return cleaned || 'unspecified';
+}
+
 interface ContactFormBody {
   name?:     unknown;
   email?:    unknown;
@@ -173,7 +181,7 @@ Deno.serve(async (req) => {
       text,
       tags: [
         { name: 'purpose',  value: 'contact-form' },
-        { name: 'interest', value: interest || 'unspecified' },
+        { name: 'interest', value: sanitizeTagValue(interest) },
       ],
     });
   } catch (err) {
