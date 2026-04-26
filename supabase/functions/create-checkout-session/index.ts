@@ -13,7 +13,9 @@
 //   SUPABASE_URL               https://<project>.supabase.co
 //   SUPABASE_ANON_KEY          anon key (for self-mode JWT verification)
 //   SUPABASE_SERVICE_ROLE_KEY  service-role key (for migrate-mode user lookup)
-//   APP_BASE_URL               e.g. "https://allpaddling.com"
+//   APP_BASE_URL               e.g. "https://allpaddling.online" (during the
+//                              migration window — flips to allpaddling.com after
+//                              cutover; .com still serves the Shopify store).
 //
 // Three callers, two modes — auth + body shape determines which:
 //
@@ -61,7 +63,7 @@ const STRIPE_SECRET_KEY     = Deno.env.get('STRIPE_SECRET_KEY')         ?? '';
 const SUPABASE_URL          = Deno.env.get('SUPABASE_URL')              ?? '';
 const SUPABASE_ANON_KEY     = Deno.env.get('SUPABASE_ANON_KEY')         ?? '';
 const SERVICE_ROLE_KEY      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const APP_BASE_URL          = Deno.env.get('APP_BASE_URL')              ?? 'https://allpaddling.com';
+const APP_BASE_URL          = Deno.env.get('APP_BASE_URL')              ?? 'https://allpaddling.online';
 
 if (!STRIPE_SECRET_KEY || !SUPABASE_URL || !SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
   console.error('create-checkout-session: missing required environment variable(s)');

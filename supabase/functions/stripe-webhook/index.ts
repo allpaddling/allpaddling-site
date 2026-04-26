@@ -14,7 +14,11 @@
 //   SUPABASE_URL               https://<project>.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY  service_role JWT (bypasses RLS)
 //   RESEND_API_KEY             passed through to _shared/email.ts
-//   APP_BASE_URL               e.g. "https://allpaddling.com" (defaults if unset)
+//   APP_BASE_URL               e.g. "https://allpaddling.online" (defaults if unset).
+//                              Eventual canonical domain is allpaddling.com once
+//                              the migration window closes — until then, all
+//                              member-facing URLs point at allpaddling.online so
+//                              the .com Shopify store stays untouched.
 //
 // Local invocation:
 //   supabase functions serve stripe-webhook --env-file ./supabase/.env.local
@@ -47,7 +51,7 @@ const STRIPE_SECRET_KEY      = Deno.env.get('STRIPE_SECRET_KEY')         ?? '';
 const STRIPE_WEBHOOK_SECRET  = Deno.env.get('STRIPE_WEBHOOK_SECRET')     ?? '';
 const SUPABASE_URL           = Deno.env.get('SUPABASE_URL')              ?? '';
 const SERVICE_ROLE_KEY       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const APP_BASE_URL           = Deno.env.get('APP_BASE_URL')              ?? 'https://allpaddling.com';
+const APP_BASE_URL           = Deno.env.get('APP_BASE_URL')              ?? 'https://allpaddling.online';
 
 if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET || !SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('stripe-webhook: missing required environment variable(s)');
