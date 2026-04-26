@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Contact — All Paddling</title>
-<meta name="description" content="Questions about training plans, ergos, or the Custom Season Race Plan? Get in touch — or call 0404 556 880." />
+<meta name="description" content="Questions about training plans, ergos, or the Custom Season Race Plan? Send a message — we reply within 24 hours." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -59,6 +59,20 @@
     margin-top: 1rem;
   }
   .form-success.show { display: block; }
+  .form-error-banner {
+    display: none;
+    background: #fef2f2; border: 1px solid #fecaca;
+    color: #991b1b; padding: 1rem 1.25rem;
+    border-radius: var(--radius-sm); font-size: 0.92rem;
+    margin-top: 1rem;
+  }
+  .form-error-banner.show { display: block; }
+  /* Honeypot — visually hidden but still in the DOM so bots fill it.
+     position:absolute keeps it out of the layout flow on every device. */
+  .hp-field {
+    position: absolute; left: -10000px; top: auto;
+    width: 1px; height: 1px; overflow: hidden;
+  }
 </style>
 </head>
 <body>
@@ -69,7 +83,7 @@
   <div class="container">
     <span class="eyebrow">Get in touch</span>
     <h1>We'd love to hear from you.</h1>
-    <p class="lead">Questions about which plan fits you, about the Custom Season Race Plan, or about the Ergos? Send a message or call directly — we'll get back to you quickly.</p>
+    <p class="lead">Questions about which plan fits you, about the Custom Season Race Plan, or about the Ergos? Send a message and we'll get back to you within 24 hours.</p>
   </div>
 </section>
 
@@ -79,18 +93,7 @@
 
       <!-- Contact details -->
       <div class="contact-details">
-        <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Direct contact</h2>
-
-        <div class="contact-item">
-          <div class="contact-item-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          </div>
-          <div class="contact-item-text">
-            <div class="label">Phone</div>
-            <div class="value"><a href="tel:+61404556880">0404 556 880</a></div>
-            <div class="desc">Australian Eastern time. Try a message first outside of normal hours.</div>
-          </div>
-        </div>
+        <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">How to reach us</h2>
 
         <div class="contact-item">
           <div class="contact-item-icon">
@@ -98,8 +101,8 @@
           </div>
           <div class="contact-item-text">
             <div class="label">Email</div>
-            <div class="value"><a href="mailto:dibetta1@gmail.com">dibetta1@gmail.com</a></div>
-            <div class="desc">Usually a reply within 24 hours.</div>
+            <div class="value"><a href="mailto:hello@allpaddling.online">hello@allpaddling.online</a></div>
+            <div class="desc">Or use the form — we read both.</div>
           </div>
         </div>
 
@@ -124,6 +127,17 @@
             <div class="desc">Coaching clients worldwide, online.</div>
           </div>
         </div>
+
+        <div class="contact-item">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-3"/><polyline points="9 11 9 6 12 3 15 6 15 11"/></svg>
+          </div>
+          <div class="contact-item-text">
+            <div class="label">Already a member?</div>
+            <div class="value"><a href="login.html">Sign in</a></div>
+            <div class="desc">Direct contact details are in your member dashboard.</div>
+          </div>
+        </div>
       </div>
 
       <!-- Contact form -->
@@ -131,7 +145,7 @@
         <h2>Send a message</h2>
         <p>Tell us about your paddling background and what you're looking for. We'll recommend the best plan.</p>
 
-        <form id="contact-form" onsubmit="handleContactSubmit(event)">
+        <form id="contact-form">
           <div class="form-row">
             <div class="form-field">
               <label for="c-name">Name</label>
@@ -166,13 +180,26 @@
             <p class="form-hint">What disciplines do you paddle? Any specific race goals? Current weekly training time?</p>
           </div>
 
-          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+          <!-- Honeypot — invisible to humans, irresistible to bots.
+               If anything is in this field on submit, the server returns
+               200 OK but never sends the email. -->
+          <div class="hp-field" aria-hidden="true">
+            <label for="c-website">Website (leave blank)</label>
+            <input type="text" id="c-website" name="_hp" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;" id="contact-submit">
             Send message
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg>
           </button>
 
           <div class="form-success" id="form-success">
             Thanks! Your message has been sent. We'll be in touch within 24 hours.
+          </div>
+          <div class="form-error-banner" id="form-error-banner">
+            <strong>Couldn't send your message.</strong>
+            <span id="form-error-detail"></span>
+            You can email us directly at <a href="mailto:hello@allpaddling.online">hello@allpaddling.online</a>.
           </div>
         </form>
       </div>
@@ -181,19 +208,97 @@
   </div>
 </section>
 
-<script>
-function handleContactSubmit(e) {
-  e.preventDefault();
-  // TODO: wire up real form handler (Formspree, Basin, or connector to email)
-  const success = document.getElementById('form-success');
-  success.classList.add('show');
-  success.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  e.target.reset();
-}
-</script>
-
 <div id="site-footer"></div>
 
 <script src="assets/site.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/supabase-config.js"></script>
+<script>
+/* ============================================================
+   Contact form submission
+   ----------------------------------------------------------------
+   POSTs JSON to the contact-form Edge Function. Config (SUPABASE_URL)
+   comes from supabase-config.js, which is loaded above so the global
+   is available here.
+
+   Fail-soft: if the function isn't deployed yet (404) or the network
+   blips, we show the inline error banner pointing the user at the
+   email address. The form fields stay populated so the user can
+   copy/paste into their email client.
+   ============================================================ */
+(function () {
+  const form = document.getElementById('contact-form');
+  const submitBtn = document.getElementById('contact-submit');
+  const successEl = document.getElementById('form-success');
+  const errorBanner = document.getElementById('form-error-banner');
+  const errorDetail = document.getElementById('form-error-detail');
+
+  const FN_URL = (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL)
+    ? SUPABASE_URL.replace(/\/+$/, '') + '/functions/v1/contact-form'
+    : null;
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    successEl.classList.remove('show');
+    errorBanner.classList.remove('show');
+
+    if (!FN_URL) {
+      errorDetail.textContent = ' Form delivery not configured yet.';
+      errorBanner.classList.add('show');
+      errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    const payload = {
+      name:     document.getElementById('c-name').value.trim(),
+      email:    document.getElementById('c-email').value.trim(),
+      phone:    document.getElementById('c-phone').value.trim(),
+      interest: document.getElementById('c-interest').value,
+      message:  document.getElementById('c-message').value.trim(),
+      _hp:      document.getElementById('c-website').value,
+    };
+
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.innerHTML;
+    submitBtn.innerHTML = 'Sending…';
+
+    try {
+      const res = await fetch(FN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          // Supabase Edge Functions require the apikey + bearer
+          // even on --no-verify-jwt functions — these route the
+          // request to the project, not authenticate the user.
+          'apikey':        SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const detail = data && data.error ? ' ' + data.error + '.' : ' (' + res.status + ').';
+        errorDetail.textContent = detail;
+        errorBanner.classList.add('show');
+        errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      successEl.classList.add('show');
+      successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      form.reset();
+    } catch (ex) {
+      console.error('contact form submit error', ex);
+      errorDetail.textContent = ' Network error.';
+      errorBanner.classList.add('show');
+      errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalLabel;
+    }
+  });
+})();
+</script>
 </body>
 </html>
