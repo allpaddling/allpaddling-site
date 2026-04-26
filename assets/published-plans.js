@@ -12,7 +12,12 @@
    as a fallback if Mick hasn't seeded a plan yet.
    ============================================================ */
 
-const VALID_PLAN_KEYS = ['prone', 'sup', 'oc', 'ski'];
+/* Plan keys valid in `progressive_plans.key`. Includes 'primer'
+   because the primer is stored as a row in the same table and the
+   load helpers below need to accept it. The four disciplines are
+   the keys a member can be ASSIGNED — primer is computed routing,
+   never set on `progressive_members.plan_key` directly. */
+const VALID_PLAN_KEYS = ['prone', 'sup', 'oc', 'ski', 'primer'];
 
 /* In-memory cache, keyed by plan key. Each entry is the
    normalised {name, subtitle, weeks, lastEdited} shape that
