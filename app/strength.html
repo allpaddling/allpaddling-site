@@ -26,20 +26,55 @@
   }
   .phase-banner small { color: var(--brand-700); font-weight: 500; opacity: 0.8; }
 
-  .lift-row {
-    display: grid; grid-template-columns: 1fr 120px 90px;
-    gap: 1rem; padding: 0.85rem 0;
-    border-bottom: 1px solid var(--border);
-    align-items: center;
+  /* Exercise grid — 4 columns at full width, collapses to 2 then 1
+     on smaller viewports. Layout mirrors Mick's docx (4×2 = 8 cards
+     per program) so members see the same shape they're used to. */
+  .ex-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.85rem;
+    margin-top: 1rem;
   }
-  .lift-row:last-child { border-bottom: 0; }
-  .lift-row .lift-name { font-weight: 600; color: var(--text); }
-  .lift-row .lift-cue  { color: var(--text-3); font-size: 0.85rem; margin-top: 0.15rem; }
-  .lift-row .lift-sets { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--text-2); font-size: 0.95rem; }
-  .lift-row .lift-tempo { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; color: var(--text-3); font-weight: 500; text-align: right; }
-  @media (max-width: 560px) {
-    .lift-row { grid-template-columns: 1fr auto; gap: 0.4rem; }
-    .lift-row .lift-tempo { grid-column: 1 / -1; text-align: left; }
+  @media (max-width: 960px) { .ex-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .ex-grid { grid-template-columns: 1fr; } }
+
+  .ex-card {
+    position: relative;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 0.95rem 0.85rem;
+    display: flex; flex-direction: column; gap: 0.35rem;
+    transition: border-color .12s, transform .12s;
+  }
+  .ex-card:hover {
+    border-color: var(--brand-700);
+    transform: translateY(-1px);
+  }
+  .ex-card .ex-num {
+    position: absolute;
+    top: -10px; left: 0.95rem;
+    width: 24px; height: 24px;
+    display: grid; place-items: center;
+    background: var(--brand-700); color: white;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+  .ex-card .ex-name {
+    font-weight: 600; color: var(--text);
+    font-size: 0.95rem;
+    line-height: 1.35;
+    margin-top: 0.4rem;
+  }
+  .ex-card .ex-reps {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 600;
+    color: var(--brand-700);
+    letter-spacing: 0.01em;
+    margin-top: auto;
+    padding-top: 0.4rem;
   }
 
   .upgrade-card {
@@ -95,90 +130,48 @@
     <div id="custom-content" style="display:none;">
       <div class="phase-banner">
         <div>
-          <div class="phase">Phase 1 · Foundation</div>
-          <small>Aligned with Program 1 — 4 weeks, 2 sessions / week.</small>
+          <div class="phase">Functional Strength</div>
+          <small>Two programs — alternate them across the week. 8 exercises each.</small>
         </div>
-        <div class="threshold-chip">45–60 min per session</div>
+        <div class="threshold-chip">2 sessions per week</div>
       </div>
 
+      <!-- Program 1 -->
       <div class="app-card">
-        <h2>Session A · Posterior chain + pull</h2>
-        <p class="card-sub">Lower-body strength and the pulling pattern that dominates paddling.</p>
+        <h2>Functional Strength Program 1</h2>
+        <p class="card-sub">Lower body, posterior chain, and pulling patterns.</p>
 
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Trap-bar deadlift</div>
-            <div class="lift-cue">Brace, neutral spine, drive through the heels.</div>
-          </div>
-          <div class="lift-sets">4 × 5</div>
-          <div class="lift-tempo">3-1-X</div>
-        </div>
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Single-arm dumbbell row</div>
-            <div class="lift-cue">Hip hinge, drive elbow back, don't shrug.</div>
-          </div>
-          <div class="lift-sets">3 × 8 / side</div>
-          <div class="lift-tempo">2-1-2</div>
-        </div>
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Bulgarian split squat</div>
-            <div class="lift-cue">Front-foot load, slow eccentric.</div>
-          </div>
-          <div class="lift-sets">3 × 8 / side</div>
-          <div class="lift-tempo">3-1-1</div>
-        </div>
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Pallof press</div>
-            <div class="lift-cue">Anti-rotation — paddle-specific trunk work.</div>
-          </div>
-          <div class="lift-sets">3 × 10 / side</div>
-          <div class="lift-tempo">Hold 2s</div>
+        <div class="ex-grid">
+          <div class="ex-card"><div class="ex-num">1</div><div class="ex-name">Terminal Knee Extension</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">2</div><div class="ex-name">Band Resisted Hip External Rotation Lunge</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">3</div><div class="ex-name">Walking Lunges</div><div class="ex-reps">3 sets · out and back</div></div>
+          <div class="ex-card"><div class="ex-num">4</div><div class="ex-name">Front Box Squat</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">5</div><div class="ex-name">Sled Push</div><div class="ex-reps">3 sets · out and back</div></div>
+          <div class="ex-card"><div class="ex-num">6</div><div class="ex-name">Incline Bench Press</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">7</div><div class="ex-name">One Arm Dumbbell Bench Row</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">8</div><div class="ex-name">Half Kneeling 1 Arm Lat Pulldown</div><div class="ex-reps">3 sets × 10 reps</div></div>
         </div>
       </div>
 
+      <!-- Program 2 -->
       <div class="app-card">
-        <h2>Session B · Push + shoulder stability</h2>
-        <p class="card-sub">Balance to the pulling work — keeps the shoulder healthy through high volume on the water.</p>
+        <h2>Functional Strength Program 2</h2>
+        <p class="card-sub">Core, isometric stability, push/pull balance.</p>
 
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Landmine press</div>
-            <div class="lift-cue">Shoulder-friendly overhead alternative.</div>
-          </div>
-          <div class="lift-sets">4 × 6 / side</div>
-          <div class="lift-tempo">2-0-1</div>
-        </div>
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Ring / TRX row</div>
-            <div class="lift-cue">Scapular retraction first, then elbow.</div>
-          </div>
-          <div class="lift-sets">3 × 10</div>
-          <div class="lift-tempo">2-1-2</div>
-        </div>
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Half-kneeling cable chop</div>
-            <div class="lift-cue">Rotate from the core, arms guide only.</div>
-          </div>
-          <div class="lift-sets">3 × 8 / side</div>
-          <div class="lift-tempo">2-1-2</div>
-        </div>
-        <div class="lift-row">
-          <div>
-            <div class="lift-name">Prone Y / T / W</div>
-            <div class="lift-cue">Rotator cuff &amp; mid-trap endurance.</div>
-          </div>
-          <div class="lift-sets">3 × 10 each</div>
-          <div class="lift-tempo">Controlled</div>
+        <div class="ex-grid">
+          <div class="ex-card"><div class="ex-num">1</div><div class="ex-name">Mini Band Over Head Retraction</div><div class="ex-reps">2 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">2</div><div class="ex-name">Overhead Plate Sit Up</div><div class="ex-reps">2 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">3</div><div class="ex-name">Isolated Lunge Hold</div><div class="ex-reps">2 sets × 5 second holds</div></div>
+          <div class="ex-card"><div class="ex-num">4</div><div class="ex-name">Copenhagen Isometric</div><div class="ex-reps">2 sets × 10 second holds</div></div>
+          <div class="ex-card"><div class="ex-num">5</div><div class="ex-name">Incline DB Bicep Curls</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">6</div><div class="ex-name">DB Chest Supported Reverse Fly</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">7</div><div class="ex-name">Pendlay Row</div><div class="ex-reps">3 sets × 8 reps</div></div>
+          <div class="ex-card"><div class="ex-num">8</div><div class="ex-name">Kettlebell Romanian Deadlift</div><div class="ex-reps">3 sets × 12 reps</div></div>
         </div>
       </div>
 
       <div class="app-placeholder-note">
-        <strong>Coming soon:</strong> video demos for each lift, phase 2 + 3 progressions, and mark-complete tracking.
+        <strong>Coming soon:</strong> video demos for each exercise, mark-complete tracking, and weekly load progression.
       </div>
     </div>
 
