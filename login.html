@@ -40,6 +40,38 @@
     font-size: 0.95rem; color: var(--text-2);
   }
 
+  /* Coach sign-in block — secondary path on the member login page. */
+  .coach-signin { margin-top: 1.6rem; }
+  .coach-signin-divider {
+    display: flex; align-items: center; gap: 0.8rem;
+    color: var(--text-3); font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+  }
+  .coach-signin-divider::before,
+  .coach-signin-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .coach-signin-btn {
+    display: flex; align-items: center; justify-content: center; gap: 0.55rem;
+    width: 100%; box-sizing: border-box;
+    padding: 0.75rem 1rem;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.95rem; font-weight: 600;
+    text-decoration: none;
+    transition: border-color .12s, background .12s, transform .12s;
+  }
+  .coach-signin-btn:hover {
+    border-color: var(--brand-700);
+    background: var(--brand-50);
+    color: var(--brand-700);
+    transform: translateY(-1px);
+  }
+  .coach-signin-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .coach-signin-btn .arrow { width: 14px; height: 14px; opacity: 0.7; }
+
   /* Right panel — marketing tile */
   .login-marketing {
     background: linear-gradient(135deg, var(--brand-700), #0891b2 70%, #06b6d4);
@@ -114,8 +146,20 @@
       </form>
 
       <div class="signup-prompt">
-        Not a member yet? <a href="plans.html">See training plans →</a><br/>
-        <a href="app/admin.html" style="font-size:0.85rem;">Coach sign-in instead</a>
+        Not a member yet? <a href="plans.html">See training plans →</a>
+      </div>
+
+      <!-- Coach sign-in path. Visually distinct from the member flow
+           so Mick (and other coaches) can find it without knowing the
+           /app/admin.html URL — but de-emphasised vs. the primary
+           member CTA so first-time athletes aren't confused. -->
+      <div class="coach-signin">
+        <div class="coach-signin-divider"><span>or</span></div>
+        <a href="app/admin.html" class="coach-signin-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span>Coach sign-in</span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+        </a>
       </div>
     </div>
 

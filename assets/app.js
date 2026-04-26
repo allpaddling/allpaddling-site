@@ -120,13 +120,17 @@ function renderSidebar(member) {
         ${APP_BRAND_MARK}
         <span class="brand-text">
           All Paddling
-          <small>Member area</small>
+          <small>Member area<span class="coach-mode-badge coach-only">Member view</span></small>
         </span>
       </div>
       <nav class="app-sidebar-nav">
         ${mainLinks}
       </nav>
       <div class="app-sidebar-footer">
+        <a href="admin.html" class="coach-link coach-only" aria-label="Switch to Coach Admin">
+          <span>Coach Admin</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+        </a>
         <div class="app-member-chip">
           <div class="app-member-avatar">${initials(member.name)}</div>
           <div class="app-member-meta">
@@ -279,6 +283,23 @@ if (document.readyState === 'loading') {
 } else {
   mountApp();
 }
+
+/* ---- Coach-mode chrome reveal ----
+   Member pages are public-by-default, but Mick (the coach) signs
+   in to the same site to preview the athlete experience. When the
+   logged-in user is also in the `coaches` table, we reveal:
+     * a "Coach Admin →" pill at the top of the sidebar footer
+     * a "(MEMBER VIEW)" badge in the brand area
+   Both are baked into the markup as .coach-only and hidden via CSS
+   until body.is-coach is added by the check below. Fail-quiet — a
+   network error here just leaves the page in normal member mode. */
+(async function revealCoachChromeIfApplicable () {
+  try {
+    if (typeof isCurrentUserCoach !== 'function') return;
+    const isCoach = await isCurrentUserCoach();
+    if (isCoach) document.body.classList.add('is-coach');
+  } catch { /* fail quiet */ }
+})();
 
 /* ---- Tiny toast (for "Saved" confirmations, etc.) ---- */
 function showToast(message) {
