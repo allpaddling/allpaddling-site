@@ -283,45 +283,18 @@
       </div>
     </div>
 
-    <!-- Primer blocks (first 4 weeks for new joiners) -->
+    <!-- Primer block (shared across all disciplines, first 4 weeks for new joiners) -->
     <div class="app-card">
-      <h2>Primer blocks · first 4 weeks for new joiners</h2>
-      <p class="card-sub">Members in their first 28 days see this instead of the current cohort block. A baseline that gets them on the same page before joining the calendar. Edit once per discipline; doesn't roll on the calendar.</p>
+      <h2>Primer block · shared settling-in plan</h2>
+      <p class="card-sub">Every new member starts here for their first 4 weeks, regardless of discipline. After 28 days they auto-graduate into the calendar cohort — or you can graduate any individual early from their member page if they ask to skip.</p>
 
-      <div class="program-grid">
-        <a class="program-tile" href="admin-edit.html?plan=prone_primer">
-          <div class="tile-eyebrow">Prone Primer</div>
-          <h3>Prone settling-in plan</h3>
-          <p class="tile-sub">First 4 weeks for new Prone joiners.</p>
+      <div class="program-grid" style="grid-template-columns: 1fr;">
+        <a class="program-tile" href="admin-edit.html?plan=primer">
+          <div class="tile-eyebrow">Primer</div>
+          <h3>Settling-in plan</h3>
+          <p class="tile-sub">One shared primer block. Doesn't roll on the calendar — edit once and it serves every new joiner across Prone, SUP, OC and Ski for their first 4 weeks.</p>
           <div class="tile-meta">
-            <span id="meta-prone-primer">Never edited</span>
-            <span class="edit-arrow">Edit →</span>
-          </div>
-        </a>
-        <a class="program-tile" href="admin-edit.html?plan=sup_primer">
-          <div class="tile-eyebrow">SUP Primer</div>
-          <h3>SUP settling-in plan</h3>
-          <p class="tile-sub">First 4 weeks for new SUP joiners.</p>
-          <div class="tile-meta">
-            <span id="meta-sup-primer">Never edited</span>
-            <span class="edit-arrow">Edit →</span>
-          </div>
-        </a>
-        <a class="program-tile" href="admin-edit.html?plan=oc_primer">
-          <div class="tile-eyebrow">OC Primer</div>
-          <h3>OC settling-in plan</h3>
-          <p class="tile-sub">First 4 weeks for new OC joiners.</p>
-          <div class="tile-meta">
-            <span id="meta-oc-primer">Never edited</span>
-            <span class="edit-arrow">Edit →</span>
-          </div>
-        </a>
-        <a class="program-tile" href="admin-edit.html?plan=ski_primer">
-          <div class="tile-eyebrow">Surf Ski Primer</div>
-          <h3>Surf Ski settling-in plan</h3>
-          <p class="tile-sub">First 4 weeks for new Surf Ski joiners.</p>
-          <div class="tile-meta">
-            <span id="meta-ski-primer">Never edited</span>
+            <span id="meta-primer">Never edited</span>
             <span class="edit-arrow">Edit →</span>
           </div>
         </a>
@@ -429,13 +402,9 @@
       avatarEl.textContent = initials || 'CO';
     }
 
-    // Publish-status stamp per Progressive plan + per Primer block.
-    // Tile DOM ids use a hyphenated form (meta-prone-primer) to keep CSS-friendly,
-    // while plan keys use an underscore (prone_primer) — translate between them.
-    const STATUS_KEYS = ['prone', 'sup', 'oc', 'ski', 'prone_primer', 'sup_primer', 'oc_primer', 'ski_primer'];
-    STATUS_KEYS.forEach(key => {
-      const elId = 'meta-' + key.replace(/_/g, '-');
-      const el = document.getElementById(elId);
+    // Publish-status stamp for each Progressive cohort plan + the shared primer.
+    ['prone', 'sup', 'oc', 'ski', 'primer'].forEach(key => {
+      const el = document.getElementById('meta-' + key);
       if (!el) return;
       const publishedAt = getPublishedAt(key);
       const pending = hasUnpublishedChanges(key);

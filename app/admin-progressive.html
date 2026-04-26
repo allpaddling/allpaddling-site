@@ -221,6 +221,21 @@
             <label for="mf-notes">Coach notes <span style="font-weight: 400; color: var(--text-3);">(private — not shown to the member)</span></label>
             <textarea id="mf-notes" class="mf-textarea" placeholder="e.g. 'Started Mar 12. Has previous SUP experience.'"></textarea>
           </div>
+
+          <!-- Primer status — only meaningful in edit mode. The 28-day window
+               handles most graduations automatically; this checkbox is for
+               when an experienced paddler asks to skip primer early. -->
+          <div class="full" id="mf-primer-row" style="display:none;">
+            <label style="display:flex; align-items:flex-start; gap:0.65rem; cursor:pointer;">
+              <input type="checkbox" id="mf-primer-completed" style="margin-top:0.25rem; width:16px; height:16px; flex-shrink:0;" />
+              <div>
+                <div style="font-weight:600; color:var(--text);">Skip primer block</div>
+                <div id="mf-primer-hint" style="font-size:0.85rem; color:var(--text-3); margin-top:0.2rem; line-height:1.45;">
+                  When ticked, this member sees the calendar cohort plan instead of the primer regardless of how recently they joined. Use this if an experienced paddler asks to skip the settling-in plan. Untick to put them back on primer.
+                </div>
+              </div>
+            </label>
+          </div>
         </div>
 
         <div class="form-actions">
@@ -279,10 +294,16 @@
   const submitBtn = document.getElementById('mf-submit');
   const cancelBtn = document.getElementById('mf-cancel');
 
-  const nameEl  = document.getElementById('mf-name');
-  const emailEl = document.getElementById('mf-email');
-  const planEl  = document.getElementById('mf-plan');
-  const notesEl = document.getElementById('mf-notes');
+  const nameEl    = document.getElementById('mf-name');
+  const emailEl   = document.getElementById('mf-email');
+  const planEl    = document.getElementById('mf-plan');
+  const notesEl   = document.getElementById('mf-notes');
+  const primerRow = document.getElementById('mf-primer-row');
+  const primerEl  = document.getElementById('mf-primer-completed');
+  const primerHint= document.getElementById('mf-primer-hint');
+
+  // 28-day window for the primer's auto-graduation.
+  const PRIMER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
 
   function setEditMode (member) {
     editingId = member.id;
@@ -296,6 +317,31 @@
     emailEl.value = member.email || '';
     planEl.value  = member.planKey || 'prone';
     notesEl.value = member.notes || '';
+
+    // Primer status — surface only in edit mode.
+    primerRow.style.display = '';
+    primerEl.checked = !!member.primerCompleted;
+
+    // Tell the coach what state the member is currently in so the
+    // checkbox semantics are concrete: are we overriding the auto
+    // window, or is the member already past it?
+    let stateLine = '';
+    const createdAt = member.createdAt ? Date.parse(member.createdAt) : NaN;
+    if (member.primerCompleted) {
+      stateLine = 'Currently graduated from primer (coach override). Untick to put them back on primer.';
+    } else if (!isNaN(createdAt)) {
+      const elapsedMs = Date.now() - createdAt;
+      if (elapsedMs >= PRIMER_WINDOW_MS) {
+        const days = Math.round(elapsedMs / (24 * 60 * 60 * 1000));
+        stateLine = `Auto-graduated from primer ${days} days after joining (the 28-day window has passed). The checkbox is informational here — they\'re already on the cohort plan.`;
+      } else {
+        const daysLeft = Math.max(1, Math.ceil((PRIMER_WINDOW_MS - elapsedMs) / (24 * 60 * 60 * 1000)));
+        stateLine = `Currently on primer · auto-graduates in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Tick to graduate them now.`;
+      }
+    }
+    primerHint.textContent = stateLine ||
+      'When ticked, this member sees the calendar cohort plan instead of the primer regardless of how recently they joined.';
+
     nameEl.focus();
   }
 
@@ -319,6 +365,14 @@
     try {
       if (editingId) {
         await updateProgressiveMember(editingId, payload);
+        // Persist the primer-skip override directly. The cache helper
+        // doesn't know about this column yet — small follow-up — so
+        // for now we update the row separately via the Supabase client.
+        const { error: primerErr } = await sb
+          .from('progressive_members')
+          .update({ primer_completed: !!primerEl.checked })
+          .eq('id', editingId);
+        if (primerErr) throw primerErr;
       } else {
         await addProgressiveMember(payload);
       }

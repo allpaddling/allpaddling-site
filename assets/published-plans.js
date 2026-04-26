@@ -107,28 +107,32 @@ async function loadPublishedPlan (planKey) {
 /* Convenience: load the plan for the current member's discipline.
  *
  * For Progressive members, this implements the calendar-cohort + primer
- * model:
- *   - Members in their first 28 days see the "<discipline>_primer"
- *     plan (a settling-in baseline that doesn't roll on the calendar).
- *   - After 28 days they merge into the cohort and see the regular
- *     "<discipline>" plan that everyone else sees.
+ * model with two ways out of primer:
+ *   - 28-day auto-graduation. Members joined < 28 days ago see the
+ *     shared primer plan; after 28 days they merge into the calendar
+ *     cohort.
+ *   - Coach override. Mick can flip primer_completed=true on a member
+ *     row to graduate them early. Passed in via the primerCompleted
+ *     arg.
  *
- * Coach previewing draft content uses loadDraftProgressivePlan directly,
- * not this function — so coach-side flows are unaffected.
+ * The primer is one shared plan ("primer" in progressive_plans) that
+ * applies regardless of discipline — every new member sees the same
+ * settling-in content for their first 4 weeks. After they exit primer,
+ * they see the calendar block for THEIR discipline.
  *
- * The 28-day boundary uses the member's `created_at` if available
- * (passed in via the `joinedAt` arg as ISO date or Date), falling back
- * to "treat as long-term member" if not provided. That's the safe
- * default — better to serve the cohort plan than the empty primer
- * shell when we can't tell when they joined.
+ * Coach previewing draft content uses loadDraftProgressivePlan
+ * directly, so coach-side flows are unaffected.
  *
- * If the primer is empty (member joined before Mick filled it in),
- * we transparently fall back to the regular cohort block so the
- * member never sees a blank plan.
+ * If the primer is empty (Mick hasn't filled it in yet), the loader
+ * transparently falls back to the regular cohort block so members
+ * never see a blank plan.
  */
-async function loadCurrentPlan (joinedAt) {
+async function loadCurrentPlan (joinedAt, primerCompleted) {
   const baseKey = getCurrentPlanKey();
   const PRIMER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
+
+  // Coach already graduated this member — straight to cohort.
+  if (primerCompleted) return await loadPublishedPlan(baseKey);
 
   let inPrimerWindow = false;
   if (joinedAt) {
@@ -139,7 +143,7 @@ async function loadCurrentPlan (joinedAt) {
   }
 
   if (inPrimerWindow) {
-    const primer = await loadPublishedPlan(baseKey + '_primer');
+    const primer = await loadPublishedPlan('primer');
     if (primer && !primer.isEmpty) {
       // Decorate so the dashboard can show the "settling-in" banner.
       primer.isPrimer = true;

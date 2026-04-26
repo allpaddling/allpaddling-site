@@ -19,18 +19,15 @@ const PLAN_META = {
   sup:    { title: 'Stand Up Paddle Board Plan',  tier: 'Progressive', cadence: '4 weeks'  },
   oc:     { title: 'Outrigger Canoe Plan',        tier: 'Progressive', cadence: '4 weeks'  },
   ski:    { title: 'Surf Ski Plan',               tier: 'Progressive', cadence: '4 weeks'  },
-  // Primer variants — what new joiners see for their first 4 weeks before
-  // joining the calendar cohort. Keyed as "<discipline>_primer" in
-  // progressive_plans, edited via admin-edit.html?plan=<key>_primer.
-  prone_primer: { title: 'Prone Primer (first 4 weeks)',          tier: 'Progressive', cadence: 'Settling-in plan' },
-  sup_primer:   { title: 'SUP Primer (first 4 weeks)',            tier: 'Progressive', cadence: 'Settling-in plan' },
-  oc_primer:    { title: 'OC Primer (first 4 weeks)',             tier: 'Progressive', cadence: 'Settling-in plan' },
-  ski_primer:   { title: 'Surf Ski Primer (first 4 weeks)',       tier: 'Progressive', cadence: 'Settling-in plan' },
+  // One shared primer across all disciplines — every new Progressive
+  // member sees this for their first 4 weeks (or until Mick flips
+  // primer_completed=true). Edited via admin-edit.html?plan=primer.
+  primer: { title: 'Primer (first 4 weeks)',      tier: 'Progressive', cadence: 'Settling-in plan' },
   custom: { title: 'Custom Season Race Plan',     tier: 'Custom',      cadence: '12 weeks' },
 };
-const PROGRESSIVE_KEYS = ['prone', 'sup', 'oc', 'ski', 'prone_primer', 'sup_primer', 'oc_primer', 'ski_primer'];
+const PROGRESSIVE_KEYS = ['prone', 'sup', 'oc', 'ski', 'primer'];
 function isValidPlanKey (k) { return Object.prototype.hasOwnProperty.call(PLAN_META, k); }
-function isPrimerKey (k) { return typeof k === 'string' && k.endsWith('_primer'); }
+function isPrimerKey (k) { return k === 'primer'; }
 
 /* ---------- localStorage keys (Custom plan only now) ---------- */
 const LEGACY_DATA_KEY  = 'admin_programs_v1';   // old unified store
@@ -662,13 +659,14 @@ function defaultProgressiveMember () {
 function progressiveMemberRowToCache (row) {
   if (!row) return null;
   return {
-    id:         row.id,
-    email:      row.email     || '',
-    name:       row.name      || '',
-    planKey:    row.plan_key  || 'prone',
-    notes:      row.notes     || '',
-    authUserId: row.auth_user_id || null,
-    createdAt:  row.created_at || null,
+    id:               row.id,
+    email:            row.email     || '',
+    name:             row.name      || '',
+    planKey:          row.plan_key  || 'prone',
+    notes:            row.notes     || '',
+    authUserId:       row.auth_user_id || null,
+    primerCompleted:  !!row.primer_completed,
+    createdAt:        row.created_at || null,
   };
 }
 
@@ -802,6 +800,7 @@ async function getCurrentMemberProfile () {
         name: pm.name,
         planKey: pm.plan_key,
         createdAt: pm.created_at || null,
+        primerCompleted: !!pm.primer_completed,
       };
     }
 

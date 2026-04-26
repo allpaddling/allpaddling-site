@@ -225,10 +225,11 @@
     }
     program = program || { name: 'Plan', subtitle: '', weeks: [], isEmpty: true };
   } else {
-    // Pass joinedAt so members in their first 28 days see the primer
-    // block (same logic as dashboard.html).
-    const memberJoinedAt = profile && profile.createdAt;
-    program = await loadCurrentPlan(memberJoinedAt) ||
+    // Pass joinedAt + primerCompleted so the primer/cohort routing
+    // matches dashboard.html exactly.
+    const memberJoinedAt    = profile && profile.createdAt;
+    const memberPrimerDone  = profile && profile.primerCompleted;
+    program = await loadCurrentPlan(memberJoinedAt, memberPrimerDone) ||
       { name: 'Program 1', subtitle: '', weeks: (typeof PROGRAM_1 !== 'undefined' ? PROGRAM_1.weeks : []), isEmpty: false };
   }
 
