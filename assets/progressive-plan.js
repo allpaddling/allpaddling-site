@@ -19,13 +19,13 @@
 const DISCIPLINE_COPY = {
   prone: {
     title:           'Prone Paddle Board Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for prone paddlers. Two paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for prone paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
     h1:              'Prone Paddle Board Plan',
-    lead:            'A self-guided 4-week training block built for the prone stroke. Two paddle-specific sessions a week, 5-zone pace targets, and week-over-week progression. No race required.',
+    lead:            'A self-guided 4-week training block built for the prone stroke. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. No race required.',
     subscribeHeading: 'Start your Prone block',
     week1Desc:       'Establish aerobic rhythm on the prone board. Introduce threshold-zone intervals at controlled volume.',
     week2Desc:       'More reps at threshold, longer distance session. Teach your prone stroke to hold form under load.',
-    sessionTitle:    'Two sessions, built around the prone stroke.',
+    sessionTitle:    'Sessions built around the prone stroke.',
     session1Desc:    'Structured reps in TZ3–TZ4 with measured recovery. Every interval has a prescribed pace range calculated from your threshold pace — no guesswork on the board.',
     session2Desc:    'A longer TZ2 session to build aerobic capacity and groove your prone stroke under fatigue. The work that makes everything else stick.',
     fitH3:           'Progressive Prone Plan fits if…',
@@ -33,13 +33,13 @@ const DISCIPLINE_COPY = {
   },
   sup: {
     title:           'Stand Up Paddle Board Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for stand up paddlers. Two paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for stand up paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
     h1:              'Stand Up Paddle Board Plan',
-    lead:            'A self-guided 4-week training block built for SUP. Two paddle-specific sessions a week, 5-zone pace targets, and week-over-week progression. Balance, stroke efficiency, and aerobic engine — all sharpened.',
+    lead:            'A self-guided 4-week training block built for SUP. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. Balance, stroke efficiency, and aerobic engine — all sharpened.',
     subscribeHeading: 'Start your SUP block',
     week1Desc:       'Establish aerobic rhythm on the board. Introduce threshold-zone intervals at controlled volume.',
     week2Desc:       'More reps at threshold, longer distance session. Teach your SUP stroke to hold form under load.',
-    sessionTitle:    'Two sessions, built around the SUP stroke.',
+    sessionTitle:    'Sessions built around the SUP stroke.',
     session1Desc:    'Structured reps in TZ3–TZ4 with measured recovery. Every interval has a prescribed pace range calculated from your threshold pace — stay stable, drive the blade.',
     session2Desc:    'A longer TZ2 session to build aerobic capacity and groove your SUP stroke under fatigue. The work that makes everything else stick.',
     fitH3:           'Progressive SUP Plan fits if…',
@@ -47,13 +47,13 @@ const DISCIPLINE_COPY = {
   },
   oc: {
     title:           'Outrigger Canoe Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for outrigger canoe paddlers. Two paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for outrigger canoe paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
     h1:              'Outrigger Canoe Plan',
-    lead:            'A self-guided 4-week training block built for the outrigger canoe stroke. Two paddle-specific sessions a week, 5-zone pace targets, and week-over-week progression. Rhythm, change sides, power through the catch.',
+    lead:            'A self-guided 4-week training block built for the outrigger canoe stroke. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. Rhythm, change sides, power through the catch.',
     subscribeHeading: 'Start your OC block',
     week1Desc:       'Establish aerobic rhythm in the canoe. Introduce threshold-zone intervals at controlled volume, even on both sides.',
     week2Desc:       'More reps at threshold, longer distance session. Teach your OC stroke to hold form under load — both sides.',
-    sessionTitle:    'Two sessions, built around the OC stroke.',
+    sessionTitle:    'Sessions built around the OC stroke.',
     session1Desc:    'Structured reps in TZ3–TZ4 with measured recovery. Every interval has a prescribed pace range calculated from your threshold pace — drive the catch, rotate, change evenly.',
     session2Desc:    'A longer TZ2 session to build aerobic capacity and groove your OC stroke under fatigue. The work that makes everything else stick.',
     fitH3:           'Progressive OC Plan fits if…',
@@ -61,13 +61,13 @@ const DISCIPLINE_COPY = {
   },
   ski: {
     title:           'Surf Ski Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for surf ski paddlers. Two paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for surf ski paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
     h1:              'Surf Ski Plan',
-    lead:            'A self-guided 4-week training block built for surf ski. Two paddle-specific sessions a week, 5-zone pace targets, and week-over-week progression. Rotation, catch power, and the aerobic engine that lets you chase runners.',
+    lead:            'A self-guided 4-week training block built for surf ski. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. Rotation, catch power, and the aerobic engine that lets you chase runners.',
     subscribeHeading: 'Start your Surf Ski block',
     week1Desc:       'Establish aerobic rhythm in the ski. Introduce threshold-zone intervals at controlled volume.',
     week2Desc:       'More reps at threshold, longer distance session. Teach your ski stroke to hold rotation and catch under load.',
-    sessionTitle:    'Two sessions, built around the ski stroke.',
+    sessionTitle:    'Sessions built around the ski stroke.',
     session1Desc:    'Structured reps in TZ3–TZ4 with measured recovery. Every interval has a prescribed pace range calculated from your threshold pace — rotate hard, hold the catch, drive through.',
     session2Desc:    'A longer TZ2 session to build aerobic capacity and groove your ski stroke under fatigue. Ideal flat-water work if you’re not chasing runners that day.',
     fitH3:           'Progressive Surf Ski Plan fits if…',
@@ -99,7 +99,7 @@ function progressivePlanPageHTML (copy) {
         <div class="plan-stats">
           <div class="plan-stat">
             <div class="plan-stat-label">Sessions / week</div>
-            <div class="plan-stat-value">2</div>
+            <div class="plan-stat-value">Up to 4</div>
           </div>
           <div class="plan-stat">
             <div class="plan-stat-label">Block length</div>
@@ -184,17 +184,17 @@ function progressivePlanPageHTML (copy) {
   <div class="container">
     <div class="section-eyebrow">A typical week</div>
     <h2 class="section-title">${e(copy.sessionTitle)}</h2>
-    <p class="section-sub">One interval session tuned to an energy system, one longer distance session to build capacity. Both are prescribed in your own pace zones.</p>
+    <p class="section-sub">Up to 4 sessions a week — 3 interval sessions tuned to different energy systems, plus 1 longer steady-distance paddle to build capacity. All prescribed in your own pace zones.</p>
 
     <div class="snapshot-grid">
       <div class="snapshot-card">
-        <div class="session-label">Session 1 · Intervals</div>
-        <h4>Anaerobic threshold repeats</h4>
+        <div class="session-label">Intervals · 3 sessions</div>
+        <h4>Threshold + capacity work</h4>
         <p>${e(copy.session1Desc)}</p>
       </div>
       <div class="snapshot-card">
-        <div class="session-label">Session 2 · Distance</div>
-        <h4>Steady aerobic paddle</h4>
+        <div class="session-label">Long steady · 1 session</div>
+        <h4>Aerobic distance paddle</h4>
         <p>${e(copy.session2Desc)}</p>
       </div>
     </div>
@@ -216,7 +216,7 @@ function progressivePlanPageHTML (copy) {
         <ul>
           <li>${e(copy.fitFirstItem)}</li>
           <li>You want structure without a specific goal race</li>
-          <li>You'd like 2 prescribed sessions a week and the freedom to cancel anytime</li>
+          <li>You'd like up to 4 prescribed sessions a week and the freedom to cancel anytime</li>
           <li>You'd rather start self-guided and see how you go</li>
         </ul>
       </div>
@@ -245,7 +245,7 @@ function progressivePlanPageHTML (copy) {
     </details>
     <details class="faq-item">
       <summary>How many sessions per week?</summary>
-      <p>Two structured sessions — typically one interval session and one longer distance session. You can add your own easy paddling around that if your schedule allows.</p>
+      <p>Up to 4 structured sessions a week — typically 3 interval sessions targeting different energy systems plus 1 longer steady-distance paddle. You can paddle as few or as many of them as your schedule allows, and add your own easy paddling around the prescribed work.</p>
     </details>
     <details class="faq-item">
       <summary>What happens after the 4 weeks?</summary>
