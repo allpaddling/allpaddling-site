@@ -127,7 +127,7 @@ function renderSidebar(member) {
         ${mainLinks}
       </nav>
       <div class="app-sidebar-footer">
-        <a href="admin.html" class="coach-link coach-only" aria-label="Switch to Coach Admin">
+        <a href="admin.html" class="role-switch-btn coach-only" aria-label="Switch to Coach Admin">
           <span>Coach Admin</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
         </a>

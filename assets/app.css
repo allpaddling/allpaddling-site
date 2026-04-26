@@ -470,30 +470,41 @@ body.is-coach .coach-only { display: inline-flex !important; }
   vertical-align: 1px;
 }
 
-/* "Coach Admin →" pill in the sidebar footer.
+/* Role-switch pill — used on BOTH sides of the platform so the
+   switch looks identical regardless of direction:
+     * Member pages: "Coach Admin →" pill (also has .coach-only
+       so it's hidden until body.is-coach is set).
+     * Coach pages: "Member view →" pill (always visible — the
+       admin pages are coach-only by design).
    Distinct (filled, branded) so it reads as a CTA, not a nav
-   item. Sits above the member chip — first thing the eye lands
-   on in the footer once a coach signs in. */
-body.is-coach .coach-link {
-  display: flex !important;
+   item. Sits at the top of the sidebar footer, above the member
+   chip / user-info — first thing the eye lands on. */
+.role-switch-btn {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   margin: 0 0 0.85rem 0;
   padding: 0.6rem 0.95rem;
   background: var(--brand-700);
-  color: #ffffff;
+  color: #ffffff !important;
   font-family: 'Space Grotesk', sans-serif;
   font-size: 0.86rem; font-weight: 600;
   border-radius: 9px;
   text-decoration: none;
+  border: 0;
   transition: background .12s, transform .12s;
 }
-body.is-coach .coach-link:hover {
+.role-switch-btn:hover {
   background: var(--brand-800, #0e4858);
   transform: translateY(-1px);
+  text-decoration: none;
 }
-body.is-coach .coach-link svg {
+.role-switch-btn svg {
   width: 14px; height: 14px;
   flex-shrink: 0;
 }
+/* When the role-switch pill is also .coach-only (member side),
+   keep it hidden for non-coaches but show as flex (not the default
+   inline-flex from .coach-only) when revealed. */
+body.is-coach .role-switch-btn.coach-only { display: flex !important; }
