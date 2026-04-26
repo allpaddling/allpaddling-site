@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Welcome — All Paddling</title>
+<meta name="description" content="You're in. Your training plan is being prepared." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* ==== Welcome hero ==== */
+  .welcome-shell {
+    min-height: 100vh;
+    display: grid; place-items: center;
+    padding: 3rem 1.25rem;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(21,94,117,0.06), transparent 50%),
+      radial-gradient(circle at 85% 85%, rgba(8,145,178,0.06), transparent 55%),
+      var(--surface-2);
+  }
+  .welcome-card {
+    max-width: 640px; width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 3rem 2.75rem;
+    text-align: center;
+  }
+  @media (max-width: 560px) {
+    .welcome-card { padding: 2.25rem 1.5rem; }
+  }
+
+  .welcome-checkmark {
+    width: 84px; height: 84px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, #22c55e, #15803d);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    box-shadow: 0 12px 32px rgba(21, 128, 61, 0.25);
+    animation: welcome-pop .5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  }
+  .welcome-checkmark svg { width: 44px; height: 44px; color: white; }
+  @keyframes welcome-pop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .welcome-eyebrow {
+    display: inline-block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brand-700);
+    background: var(--brand-50);
+    padding: 0.32rem 0.75rem; border-radius: 999px;
+    margin-bottom: 1rem;
+  }
+  .welcome-card h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem; font-weight: 700; color: var(--text);
+    margin-bottom: 0.85rem; line-height: 1.18;
+  }
+  .welcome-card .lead {
+    color: var(--text-2); font-size: 1.05rem;
+    line-height: 1.55;
+    margin-bottom: 2rem;
+  }
+
+  /* What happens next — three steps */
+  .next-steps {
+    text-align: left;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1.4rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .next-steps h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-3);
+    margin: 0 0 0.85rem 0;
+  }
+  .next-steps ol {
+    list-style: none; padding: 0; margin: 0;
+    counter-reset: step-counter;
+  }
+  .next-steps li {
+    display: flex; gap: 0.85rem; align-items: flex-start;
+    padding: 0.6rem 0;
+    border-bottom: 1px dashed var(--border);
+    counter-increment: step-counter;
+  }
+  .next-steps li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .next-steps li:first-child { padding-top: 0; }
+  .next-steps li::before {
+    content: counter(step-counter);
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    background: var(--brand-700); color: white;
+    border-radius: 50%;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 0.82rem;
+  }
+  .next-steps li .step-body {
+    flex: 1;
+    line-height: 1.5;
+  }
+  .next-steps li .step-body strong { color: var(--text); display: block; margin-bottom: 0.15rem; }
+  .next-steps li .step-body span { color: var(--text-2); font-size: 0.92rem; }
+
+  /* CTA */
+  .welcome-card .btn {
+    width: 100%; box-sizing: border-box;
+    padding: 0.9rem 1.5rem;
+    font-size: 1rem;
+  }
+  .welcome-card .btn-secondary {
+    margin-top: 0.7rem;
+    background: transparent; color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+  .welcome-card .btn-secondary:hover { border-color: var(--text-2); color: var(--text); }
+
+  .welcome-footer {
+    margin-top: 1.75rem;
+    color: var(--text-3);
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+  .welcome-footer a { color: var(--brand-700); }
+
+  /* Loading state — shown briefly while we verify the session */
+  .welcome-loading {
+    color: var(--text-3);
+    font-size: 0.95rem;
+    padding: 1.5rem 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="welcome-shell">
+  <div class="welcome-card">
+    <div class="welcome-checkmark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20,6 9,17 4,12"/>
+      </svg>
+    </div>
+
+    <span class="welcome-eyebrow">You're in</span>
+    <h1>Welcome aboard.</h1>
+    <p class="lead" id="lead-copy">Your subscription is active and your training plan is being prepared. Mick will email you the moment it's live — usually within a day or two.</p>
+
+    <div class="next-steps">
+      <h2>What happens next</h2>
+      <ol>
+        <li>
+          <div class="step-body">
+            <strong>Set your threshold pace</strong>
+            <span>Every interval in your plan scales to your current fitness. The pace calculator takes 3 minutes — and you can update it whenever you retest.</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <strong>Mick prepares your block</strong>
+            <span>Usually within 1–2 days. You'll get a "your plan is live" email the moment it's ready — no need to refresh.</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <strong>Open your dashboard</strong>
+            <span>Your sessions, intervals, and weekly progress all live there. Bookmark it — you'll be back daily.</span>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <a href="threshold.html" class="btn btn-primary">
+      Set my threshold pace →
+    </a>
+    <a href="dashboard.html" class="btn btn-secondary">
+      Skip ahead to dashboard
+    </a>
+
+    <div class="welcome-footer">
+      Receipt + welcome email on the way to your inbox. Anything looks off? <a href="mailto:mick@allpaddling.online">Reply to that email</a> and Mick will sort it.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script>
+/* ============================================================
+   Welcome page — landed here after Stripe Checkout success.
+   The Stripe Checkout success_url is configured (in
+   create-checkout-session) as:
+     /app/welcome.html?session_id={CHECKOUT_SESSION_ID}
+   The session_id is informational — the canonical "did this
+   subscription work" check is the stripe-webhook firing on the
+   server side, which writes the subscriptions row in Supabase.
+   This page is purely a customer-facing reassurance + onboarding
+   nudge, not a payment confirmation gate.
+   ============================================================ */
+(async () => {
+  /* If the visitor isn't signed in yet (e.g., they came from a
+     migrate-mode link where the Supabase session was minted by
+     the get-or-create user step in create-checkout-session, but
+     the session token doesn't auto-populate the browser), nudge
+     them to sign in. They've already paid — sign-in here is just
+     so the dashboard can pull their plan. */
+  try {
+    const session = await getCurrentSession();
+    if (session && session.user && session.user.email) {
+      // Personalise the lead copy with their first name if we have it.
+      const email = session.user.email.toLowerCase();
+      const firstName = (email.split('@')[0] || '').replace(/[._-]+/g, ' ').split(' ')[0];
+      if (firstName) {
+        document.getElementById('lead-copy').textContent =
+          `You're in, ${firstName.charAt(0).toUpperCase() + firstName.slice(1)}. Your subscription is active and your training plan is being prepared. Mick will email you the moment it's live — usually within a day or two.`;
+      }
+    }
+  } catch (e) {
+    // Fail quiet — the page works without auth too.
+    console.warn('welcome — session check failed', e);
+  }
+})();
+</script>
+</body>
+</html>

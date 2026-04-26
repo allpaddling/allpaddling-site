@@ -110,6 +110,26 @@
   }
   .upgrade-list li svg { width: 18px; height: 18px; color: rgba(255,255,255,0.9); flex-shrink: 0; }
   @media (max-width: 560px) { .upgrade-list { grid-template-columns: 1fr; } }
+
+  .ex-card .ex-demo {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    margin-top: 0.5rem;
+    padding: 0.32rem 0.55rem;
+    align-self: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-2);
+    text-decoration: none;
+    transition: border-color .12s, color .12s;
+  }
+  .ex-card .ex-demo:hover {
+    border-color: var(--brand-700);
+    color: var(--brand-700);
+  }
+  .ex-card .ex-demo svg { flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -142,14 +162,14 @@
         <p class="card-sub">Lower body, posterior chain, and pulling patterns.</p>
 
         <div class="ex-grid">
-          <div class="ex-card"><div class="ex-num">1</div><div class="ex-name">Terminal Knee Extension</div><div class="ex-reps">3 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">2</div><div class="ex-name">Band Resisted Hip External Rotation Lunge</div><div class="ex-reps">3 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">3</div><div class="ex-name">Walking Lunges</div><div class="ex-reps">3 sets · out and back</div></div>
-          <div class="ex-card"><div class="ex-num">4</div><div class="ex-name">Front Box Squat</div><div class="ex-reps">3 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">5</div><div class="ex-name">Sled Push</div><div class="ex-reps">3 sets · out and back</div></div>
-          <div class="ex-card"><div class="ex-num">6</div><div class="ex-name">Incline Bench Press</div><div class="ex-reps">3 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">7</div><div class="ex-name">One Arm Dumbbell Bench Row</div><div class="ex-reps">3 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">8</div><div class="ex-name">Half Kneeling 1 Arm Lat Pulldown</div><div class="ex-reps">3 sets × 10 reps</div></div>
+          <div class="ex-card"><div class="ex-num">1</div><div class="ex-name">Terminal Knee Extension</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Terminal%20Knee%20Extension%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Terminal Knee Extension demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">2</div><div class="ex-name">Band Resisted Hip External Rotation Lunge</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Band%20Resisted%20Hip%20External%20Rotation%20Lunge%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Band Resisted Hip External Rotation Lunge demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">3</div><div class="ex-name">Walking Lunges</div><div class="ex-reps">3 sets · out and back</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Walking%20Lunges%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Walking Lunges demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">4</div><div class="ex-name">Front Box Squat</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Front%20Box%20Squat%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Front Box Squat demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">5</div><div class="ex-name">Sled Push</div><div class="ex-reps">3 sets · out and back</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Sled%20Push%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Sled Push demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">6</div><div class="ex-name">Incline Bench Press</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Incline%20Bench%20Press%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Incline Bench Press demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">7</div><div class="ex-name">One Arm Dumbbell Bench Row</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=One%20Arm%20Dumbbell%20Bench%20Row%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for One Arm Dumbbell Bench Row demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">8</div><div class="ex-name">Half Kneeling 1 Arm Lat Pulldown</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Half%20Kneeling%201%20Arm%20Lat%20Pulldown%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Half Kneeling 1 Arm Lat Pulldown demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
         </div>
       </div>
 
@@ -159,14 +179,14 @@
         <p class="card-sub">Core, isometric stability, push/pull balance.</p>
 
         <div class="ex-grid">
-          <div class="ex-card"><div class="ex-num">1</div><div class="ex-name">Mini Band Over Head Retraction</div><div class="ex-reps">2 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">2</div><div class="ex-name">Overhead Plate Sit Up</div><div class="ex-reps">2 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">3</div><div class="ex-name">Isolated Lunge Hold</div><div class="ex-reps">2 sets × 5 second holds</div></div>
-          <div class="ex-card"><div class="ex-num">4</div><div class="ex-name">Copenhagen Isometric</div><div class="ex-reps">2 sets × 10 second holds</div></div>
-          <div class="ex-card"><div class="ex-num">5</div><div class="ex-name">Incline DB Bicep Curls</div><div class="ex-reps">3 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">6</div><div class="ex-name">DB Chest Supported Reverse Fly</div><div class="ex-reps">3 sets × 10 reps</div></div>
-          <div class="ex-card"><div class="ex-num">7</div><div class="ex-name">Pendlay Row</div><div class="ex-reps">3 sets × 8 reps</div></div>
-          <div class="ex-card"><div class="ex-num">8</div><div class="ex-name">Kettlebell Romanian Deadlift</div><div class="ex-reps">3 sets × 12 reps</div></div>
+          <div class="ex-card"><div class="ex-num">1</div><div class="ex-name">Mini Band Over Head Retraction</div><div class="ex-reps">2 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Mini%20Band%20Over%20Head%20Retraction%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Mini Band Over Head Retraction demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">2</div><div class="ex-name">Overhead Plate Sit Up</div><div class="ex-reps">2 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Overhead%20Plate%20Sit%20Up%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Overhead Plate Sit Up demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">3</div><div class="ex-name">Isolated Lunge Hold</div><div class="ex-reps">2 sets × 5 second holds</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Isolated%20Lunge%20Hold%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Isolated Lunge Hold demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">4</div><div class="ex-name">Copenhagen Isometric</div><div class="ex-reps">2 sets × 10 second holds</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Copenhagen%20Isometric%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Copenhagen Isometric demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">5</div><div class="ex-name">Incline DB Bicep Curls</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Incline%20DB%20Bicep%20Curls%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Incline DB Bicep Curls demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">6</div><div class="ex-name">DB Chest Supported Reverse Fly</div><div class="ex-reps">3 sets × 10 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=DB%20Chest%20Supported%20Reverse%20Fly%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for DB Chest Supported Reverse Fly demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">7</div><div class="ex-name">Pendlay Row</div><div class="ex-reps">3 sets × 8 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Pendlay%20Row%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Pendlay Row demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
+          <div class="ex-card"><div class="ex-num">8</div><div class="ex-name">Kettlebell Romanian Deadlift</div><div class="ex-reps">3 sets × 12 reps</div><a class="ex-demo" href="https://www.youtube.com/results?search_query=Kettlebell%20Romanian%20Deadlift%20exercise%20demo" target="_blank" rel="noopener noreferrer" title="Search YouTube for Kettlebell Romanian Deadlift demo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>How to</span></a></div>
         </div>
       </div>
 

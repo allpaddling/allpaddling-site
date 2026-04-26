@@ -41,3 +41,64 @@ Stripe prices are **immutable** — if you change the `unit_amount` of an existi
 ### Migrate-mode prices
 
 Migrate-mode signup links (created by the coach admin for moving a Shopify customer over) bypass this catalogue entirely — they create a one-off inline `price_data` block with the customer's exact legacy Shopify rate. So you don't need to add per-customer prices to this script.
+
+## migration-runner.ts
+
+Batch generator for the actual migration window. Reads `migration_customers`, calls `create-checkout-session` in MIGRATE mode for each pending customer, renders the migration email body, and writes a JSON file the coach can mass-send from.
+
+```bash
+# DRY RUN first — verifies which customers would be processed,
+# without burning any Stripe Checkout sessions.
+SUPABASE_URL=https://crlukzkgmydyqpwndjvc.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=... \
+  deno run --allow-net --allow-env --allow-read --allow-write \
+  supabase/scripts/migration-runner.ts --dry-run
+
+# REAL RUN — generates real Stripe Checkout URLs (test mode if
+# Stripe is in test mode; live mode if you've already swapped
+# the deployed function over to live keys).
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
+  deno run --allow-net --allow-env --allow-read --allow-write \
+  supabase/scripts/migration-runner.ts
+```
+
+Flags:
+
+- `--status pending` — which migration_status to filter by (default `pending`)
+- `--limit 5` — process only N customers (useful for first-run verification)
+- `--out path.json` — output file (default `./migration-output.json`)
+- `--dry-run` — skip the actual Stripe API calls; just print the matched rows
+
+Output JSON shape:
+
+```json
+{
+  "generated_at": "2026-04-26T...",
+  "status_filter": "pending",
+  "total": 21,
+  "successes": 21,
+  "errors": 0,
+  "records": [
+    {
+      "customer_id": "uuid",
+      "email": "paora.monk@gmail.com",
+      "name": "Paora Monk",
+      "plan_label": "Custom Season Race Plan",
+      "amount_str": "$166.00 NZD",
+      "signup_link": "https://checkout.stripe.com/...",
+      "session_id": "cs_...",
+      "email_subject": "Action needed: ...",
+      "email_body": "Hi Paora,\n\n...",
+      "error": null
+    }
+  ]
+}
+```
+
+Suggested workflow on migration day:
+
+1. Run with `--dry-run` to verify the row set
+2. Run for real with a small `--limit 1` to verify one end-to-end
+3. Run again without limit to generate all 21 links
+4. Bulk-paste the email_body fields into a mail-merge tool, OR send one by one
+5. After sending, bulk-update `migration_customers.migration_status` to `signup_link_sent`

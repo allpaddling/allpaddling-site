@@ -294,6 +294,26 @@
     history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
+  /* Honour ?next=<path> if present — used by the Subscribe-button
+     auth-gate flow on plan pages. After signing in, send the user
+     back to the plan page they were trying to subscribe from
+     instead of dropping them on the dashboard. Only same-origin
+     paths are allowed; absolute or cross-origin URLs are ignored
+     to prevent open-redirect attacks. */
+  const params = new URLSearchParams(window.location.search);
+  const nextRaw = params.get('next');
+  if (nextRaw) {
+    try {
+      // Parse against current origin so absolute URLs that don't
+      // match get ignored. Relative paths resolve to same-origin.
+      const u = new URL(nextRaw, window.location.origin);
+      if (u.origin === window.location.origin) {
+        location.href = u.pathname + u.search + u.hash;
+        return;
+      }
+    } catch (e) { /* fall through to default routing */ }
+  }
+
   // They're signed in — look up entitlement
   const profile = await getCurrentMemberProfile();
   if (profile && profile.type === 'progressive') {

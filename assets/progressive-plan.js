@@ -124,7 +124,7 @@ function progressivePlanPageHTML (copy) {
         <span class="cancel-tag">Cancel anytime — no lock-in</span>
         <h3>${e(copy.subscribeHeading)}</h3>
         <p style="font-size: 0.88rem; color: var(--text-2); margin-bottom: 1rem;">Billed every 4 weeks at $80 AUD. Pause, skip, or cancel at the end of any cycle.</p>
-        <button class="btn btn-primary btn-full" onclick="alert('Checkout coming soon — this will connect to the new member signup flow.');">
+        <button class="btn btn-primary btn-full" onclick="startCheckout('progressive', '${e(key)}', this);">
           Subscribe &amp; Start
         </button>
         <p class="sub-note">By subscribing, you authorise recurring 4-weekly charges until cancelled.</p>
