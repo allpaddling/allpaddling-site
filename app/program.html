@@ -273,7 +273,15 @@
     return;
   }
 
-  document.getElementById('program-title').textContent    = `${program.name} · ${member.discipline}`;
+  /* The primer block is shared across all four disciplines — it is NOT
+     a discipline-specific plan. Appending "· Prone" (or whichever the
+     member's discipline is) makes the primer look like a calendar
+     cohort plan, confusing members reading the page below the primer
+     banner. For primer, omit the discipline suffix. */
+  document.getElementById('program-title').textContent =
+    program.isPrimer
+      ? program.name
+      : `${program.name} · ${member.discipline}`;
   document.getElementById('program-subtitle').textContent = program.subtitle;
 
   // "Updated by your coach" stamp
