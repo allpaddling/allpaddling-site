@@ -211,9 +211,42 @@
   const firstName = (member.name || '').split(' ')[0] || 'there';
 
   /* Load the published plan for the member's discipline.
-     Falls back to the static PROGRAM_1 if the cloud fetch fails. */
-  const program = await loadCurrentPlan() ||
+     loadCurrentPlan reads `joinedAt` so it can route to the primer
+     block for new members (first 28 days) and the regular cohort
+     block for everyone else. We use the progressive_members /
+     custom_members created_at for that — if profile is null
+     (coach previewing) we just pass undefined and get the cohort
+     block. */
+  const memberJoinedAt = profile && profile.createdAt;
+  const program = await loadCurrentPlan(memberJoinedAt) ||
     { name: 'Program 1', subtitle: '', weeks: (typeof PROGRAM_1 !== 'undefined' ? PROGRAM_1.weeks : []), isEmpty: false };
+
+  /* If the loader served a primer (because we're in the first-4-weeks
+     window), surface a small banner so the member knows they're on
+     the settling-in plan rather than the calendar-cohort block. */
+  if (program.isPrimer) {
+    const banner = document.createElement('div');
+    banner.setAttribute('role', 'status');
+    banner.style.cssText = `
+      background: #ecfeff; color: #155e75; border: 1px solid #cffafe;
+      padding: 0.7rem 1.1rem; border-radius: 8px;
+      font-size: 0.92rem; line-height: 1.5;
+      margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: 0.6rem;
+    `;
+    banner.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+      </svg>
+      <span>You're on the <strong>Primer block</strong> — your settling-in plan for the first 4 weeks. After that you'll join the calendar cohort. <a href="getting-started.html" style="color:inherit; text-decoration:underline;">Read more</a></span>
+    `;
+    const upNext = document.getElementById('up-next-card');
+    if (upNext && upNext.parentNode) {
+      upNext.parentNode.insertBefore(banner, upNext);
+    } else {
+      document.querySelector('.app-main').insertBefore(banner, document.querySelector('.app-main').firstChild);
+    }
+  }
 
   /* ====================================================================
      Empty state: brand-new member, Mick hasn't published their first

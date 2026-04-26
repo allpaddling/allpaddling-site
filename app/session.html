@@ -235,8 +235,10 @@
   const weekNum    = Math.max(1, Number(params.get('w')) || 1);
   const sessionNum = Math.max(1, Number(params.get('s')) || 1);
 
-  /* Pull the member's discipline plan from Supabase. */
-  const program = await loadCurrentPlan();
+  /* Pull the member's discipline plan from Supabase. Pass joinedAt so
+     the calendar-cohort + primer routing in loadCurrentPlan resolves
+     the same way as the dashboard / Current Program pages. */
+  const program = await loadCurrentPlan(profile && profile.createdAt);
   const week    = program && program.weeks ? program.weeks[weekNum - 1] : null;
   const session = week && week.sessions   ? week.sessions[sessionNum - 1] : null;
 

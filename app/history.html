@@ -162,9 +162,11 @@
 
   const state = loadMemberState();
   /* Load the member's discipline plan so we can resolve completed
-     session refs to the right week/session metadata. Falls back to
-     the static PROGRAM_1 if the cloud fetch fails. */
-  const program = await loadCurrentPlan() ||
+     session refs to the right week/session metadata. Pass joinedAt so
+     primer-window members see the primer plan structure (consistent
+     with dashboard / program / session pages). Falls back to the
+     static PROGRAM_1 if the cloud fetch fails. */
+  const program = await loadCurrentPlan(profile && profile.createdAt) ||
     { weeks: (typeof PROGRAM_1 !== 'undefined' ? PROGRAM_1.weeks : []), isEmpty: false };
 
   // Stats

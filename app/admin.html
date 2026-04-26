@@ -238,16 +238,16 @@
       </div>
     </div>
 
-    <!-- Progressive 4-Week Plans -->
+    <!-- Progressive 4-Week Plans (current calendar block) -->
     <div class="app-card">
-      <h2>Progressive 4-Week Plans</h2>
-      <p class="card-sub">Self-guided plans at $80 / 4 weeks. Four disciplines, each with its own 4-week program block.</p>
+      <h2>Progressive 4-Week Plans · current block</h2>
+      <p class="card-sub">The block every active subscriber sees on their dashboard. Publish a new one every 4 weeks to roll the calendar forward.</p>
 
       <div class="program-grid">
         <a class="program-tile" href="admin-edit.html?plan=prone">
           <div class="tile-eyebrow">Prone</div>
           <h3>Prone Paddle Board Plan</h3>
-          <p class="tile-sub">4-week progressive block — threshold + aerobic base.</p>
+          <p class="tile-sub">Current 4-week block for the Prone cohort.</p>
           <div class="tile-meta">
             <span id="meta-prone">Never edited</span>
             <span class="edit-arrow">Edit →</span>
@@ -256,7 +256,7 @@
         <a class="program-tile" href="admin-edit.html?plan=sup">
           <div class="tile-eyebrow">SUP</div>
           <h3>Stand Up Paddle Board Plan</h3>
-          <p class="tile-sub">4-week progressive block — stroke efficiency + engine.</p>
+          <p class="tile-sub">Current 4-week block for the SUP cohort.</p>
           <div class="tile-meta">
             <span id="meta-sup">Never edited</span>
             <span class="edit-arrow">Edit →</span>
@@ -265,7 +265,7 @@
         <a class="program-tile" href="admin-edit.html?plan=oc">
           <div class="tile-eyebrow">OC</div>
           <h3>Outrigger Canoe Plan</h3>
-          <p class="tile-sub">4-week progressive block — rhythm, sides, power.</p>
+          <p class="tile-sub">Current 4-week block for the OC cohort.</p>
           <div class="tile-meta">
             <span id="meta-oc">Never edited</span>
             <span class="edit-arrow">Edit →</span>
@@ -274,9 +274,54 @@
         <a class="program-tile" href="admin-edit.html?plan=ski">
           <div class="tile-eyebrow">Surf Ski</div>
           <h3>Surf Ski Plan</h3>
-          <p class="tile-sub">4-week progressive block — rotation, catch, top end.</p>
+          <p class="tile-sub">Current 4-week block for the Surf Ski cohort.</p>
           <div class="tile-meta">
             <span id="meta-ski">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Primer blocks (first 4 weeks for new joiners) -->
+    <div class="app-card">
+      <h2>Primer blocks · first 4 weeks for new joiners</h2>
+      <p class="card-sub">Members in their first 28 days see this instead of the current cohort block. A baseline that gets them on the same page before joining the calendar. Edit once per discipline; doesn't roll on the calendar.</p>
+
+      <div class="program-grid">
+        <a class="program-tile" href="admin-edit.html?plan=prone_primer">
+          <div class="tile-eyebrow">Prone Primer</div>
+          <h3>Prone settling-in plan</h3>
+          <p class="tile-sub">First 4 weeks for new Prone joiners.</p>
+          <div class="tile-meta">
+            <span id="meta-prone-primer">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+        <a class="program-tile" href="admin-edit.html?plan=sup_primer">
+          <div class="tile-eyebrow">SUP Primer</div>
+          <h3>SUP settling-in plan</h3>
+          <p class="tile-sub">First 4 weeks for new SUP joiners.</p>
+          <div class="tile-meta">
+            <span id="meta-sup-primer">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+        <a class="program-tile" href="admin-edit.html?plan=oc_primer">
+          <div class="tile-eyebrow">OC Primer</div>
+          <h3>OC settling-in plan</h3>
+          <p class="tile-sub">First 4 weeks for new OC joiners.</p>
+          <div class="tile-meta">
+            <span id="meta-oc-primer">Never edited</span>
+            <span class="edit-arrow">Edit →</span>
+          </div>
+        </a>
+        <a class="program-tile" href="admin-edit.html?plan=ski_primer">
+          <div class="tile-eyebrow">Surf Ski Primer</div>
+          <h3>Surf Ski settling-in plan</h3>
+          <p class="tile-sub">First 4 weeks for new Surf Ski joiners.</p>
+          <div class="tile-meta">
+            <span id="meta-ski-primer">Never edited</span>
             <span class="edit-arrow">Edit →</span>
           </div>
         </a>
@@ -384,9 +429,13 @@
       avatarEl.textContent = initials || 'CO';
     }
 
-    // Publish-status stamp per Progressive plan (from Supabase cache)
-    ['prone', 'sup', 'oc', 'ski'].forEach(key => {
-      const el = document.getElementById('meta-' + key);
+    // Publish-status stamp per Progressive plan + per Primer block.
+    // Tile DOM ids use a hyphenated form (meta-prone-primer) to keep CSS-friendly,
+    // while plan keys use an underscore (prone_primer) — translate between them.
+    const STATUS_KEYS = ['prone', 'sup', 'oc', 'ski', 'prone_primer', 'sup_primer', 'oc_primer', 'ski_primer'];
+    STATUS_KEYS.forEach(key => {
+      const elId = 'meta-' + key.replace(/_/g, '-');
+      const el = document.getElementById(elId);
       if (!el) return;
       const publishedAt = getPublishedAt(key);
       const pending = hasUnpublishedChanges(key);

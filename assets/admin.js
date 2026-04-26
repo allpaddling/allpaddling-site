@@ -19,10 +19,18 @@ const PLAN_META = {
   sup:    { title: 'Stand Up Paddle Board Plan',  tier: 'Progressive', cadence: '4 weeks'  },
   oc:     { title: 'Outrigger Canoe Plan',        tier: 'Progressive', cadence: '4 weeks'  },
   ski:    { title: 'Surf Ski Plan',               tier: 'Progressive', cadence: '4 weeks'  },
+  // Primer variants — what new joiners see for their first 4 weeks before
+  // joining the calendar cohort. Keyed as "<discipline>_primer" in
+  // progressive_plans, edited via admin-edit.html?plan=<key>_primer.
+  prone_primer: { title: 'Prone Primer (first 4 weeks)',          tier: 'Progressive', cadence: 'Settling-in plan' },
+  sup_primer:   { title: 'SUP Primer (first 4 weeks)',            tier: 'Progressive', cadence: 'Settling-in plan' },
+  oc_primer:    { title: 'OC Primer (first 4 weeks)',             tier: 'Progressive', cadence: 'Settling-in plan' },
+  ski_primer:   { title: 'Surf Ski Primer (first 4 weeks)',       tier: 'Progressive', cadence: 'Settling-in plan' },
   custom: { title: 'Custom Season Race Plan',     tier: 'Custom',      cadence: '12 weeks' },
 };
-const PROGRESSIVE_KEYS = ['prone', 'sup', 'oc', 'ski'];
+const PROGRESSIVE_KEYS = ['prone', 'sup', 'oc', 'ski', 'prone_primer', 'sup_primer', 'oc_primer', 'ski_primer'];
 function isValidPlanKey (k) { return Object.prototype.hasOwnProperty.call(PLAN_META, k); }
+function isPrimerKey (k) { return typeof k === 'string' && k.endsWith('_primer'); }
 
 /* ---------- localStorage keys (Custom plan only now) ---------- */
 const LEGACY_DATA_KEY  = 'admin_programs_v1';   // old unified store
@@ -793,6 +801,7 @@ async function getCurrentMemberProfile () {
         email: pm.email,
         name: pm.name,
         planKey: pm.plan_key,
+        createdAt: pm.created_at || null,
       };
     }
 
@@ -809,6 +818,7 @@ async function getCurrentMemberProfile () {
         id: cm.id,
         email: cm.email,
         name: cm.name,
+        createdAt: cm.created_at || null,
       };
     }
 

@@ -104,9 +104,51 @@ async function loadPublishedPlan (planKey) {
   return program;
 }
 
-/* Convenience: load the plan for the current member's discipline. */
-async function loadCurrentPlan () {
-  return await loadPublishedPlan(getCurrentPlanKey());
+/* Convenience: load the plan for the current member's discipline.
+ *
+ * For Progressive members, this implements the calendar-cohort + primer
+ * model:
+ *   - Members in their first 28 days see the "<discipline>_primer"
+ *     plan (a settling-in baseline that doesn't roll on the calendar).
+ *   - After 28 days they merge into the cohort and see the regular
+ *     "<discipline>" plan that everyone else sees.
+ *
+ * Coach previewing draft content uses loadDraftProgressivePlan directly,
+ * not this function — so coach-side flows are unaffected.
+ *
+ * The 28-day boundary uses the member's `created_at` if available
+ * (passed in via the `joinedAt` arg as ISO date or Date), falling back
+ * to "treat as long-term member" if not provided. That's the safe
+ * default — better to serve the cohort plan than the empty primer
+ * shell when we can't tell when they joined.
+ *
+ * If the primer is empty (member joined before Mick filled it in),
+ * we transparently fall back to the regular cohort block so the
+ * member never sees a blank plan.
+ */
+async function loadCurrentPlan (joinedAt) {
+  const baseKey = getCurrentPlanKey();
+  const PRIMER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
+
+  let inPrimerWindow = false;
+  if (joinedAt) {
+    const t = (joinedAt instanceof Date) ? joinedAt.getTime() : Date.parse(joinedAt);
+    if (!isNaN(t)) {
+      inPrimerWindow = (Date.now() - t) < PRIMER_WINDOW_MS;
+    }
+  }
+
+  if (inPrimerWindow) {
+    const primer = await loadPublishedPlan(baseKey + '_primer');
+    if (primer && !primer.isEmpty) {
+      // Decorate so the dashboard can show the "settling-in" banner.
+      primer.isPrimer = true;
+      return primer;
+    }
+    // Fall through to the cohort plan if the primer hasn't been
+    // published yet — better than a blank dashboard.
+  }
+  return await loadPublishedPlan(baseKey);
 }
 
 /* Force a fresh fetch (bypasses cache) — useful when the user
