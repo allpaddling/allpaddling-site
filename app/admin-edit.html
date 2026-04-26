@@ -618,10 +618,61 @@
     });
     document.getElementById('add-week').addEventListener('click', () => {
       plan.programs.push({ label: 'Week ' + (plan.programs.length + 1), startDate: '', note: '', sessions: [] });
+      // Auto-fill the new week's start date from Week 1 + 7*N days if
+      // Week 1 has a parseable date and the new week's slot is blank.
+      cascadeWeekStartDates(plan);
       activeWeek = plan.programs.length - 1;
       markDirty(); debouncedSave();
       renderWeekTabs(); renderWeekEditor();
     });
+  }
+
+  /* ============================================================
+     Start-date auto-populate
+     ============================================================
+     When Week 1's startDate is parseable as a date, every later
+     week with a blank startDate auto-fills as Week 1 + 7*index days,
+     formatted to match Week 1's style (no year, full or short month
+     based on what Week 1 uses).
+
+     Manually-edited weeks are left alone — the cascade only fills
+     blanks. If a coach wants to re-cascade, clearing the affected
+     weeks and editing Week 1 again will refill them.
+     ============================================================ */
+  function parseFlexibleDate (s) {
+    if (!s) return null;
+    const trimmed = String(s).trim();
+    if (!trimmed) return null;
+    let t = Date.parse(trimmed);
+    if (!isNaN(t)) return new Date(t);
+    // "27 April" alone parses as NaN in some browsers; appending the
+    // current year usually rescues it.
+    t = Date.parse(trimmed + ' ' + new Date().getFullYear());
+    if (!isNaN(t)) return new Date(t);
+    return null;
+  }
+  function formatLikeReference (date, refStr) {
+    const opts = { day: 'numeric' };
+    if (/\b\d{4}\b/.test(refStr)) opts.year = 'numeric';
+    // Use 'long' month if Week 1 spelled out a month name >= 4 chars,
+    // otherwise 'short'. May is identical in both forms so it doesn't matter.
+    const longMonths = /\b(January|February|March|April|June|July|August|September|October|November|December)\b/i;
+    opts.month = longMonths.test(refStr) ? 'long' : 'short';
+    return new Intl.DateTimeFormat('en-AU', opts).format(date);
+  }
+  function cascadeWeekStartDates (plan) {
+    const w0 = plan && plan.programs && plan.programs[0];
+    if (!w0 || !w0.startDate) return;
+    const ref = String(w0.startDate).trim();
+    const refDate = parseFlexibleDate(ref);
+    if (!refDate) return;
+    const DAY = 24 * 60 * 60 * 1000;
+    for (let i = 1; i < plan.programs.length; i++) {
+      const w = plan.programs[i];
+      if (w.startDate && w.startDate.trim()) continue; // respect manual edits
+      const d = new Date(refDate.getTime() + i * 7 * DAY);
+      w.startDate = formatLikeReference(d, ref);
+    }
   }
 
   function renderWeekEditor () {
@@ -636,7 +687,9 @@
       </div>
       <div class="form-row">
         <label for="w-start">Start date
-          <span class="hint">Free text — e.g. "30 Mar".</span>
+          <span class="hint">${activeWeek === 0
+            ? 'Free text — e.g. "27 April". Later weeks with no date set will auto-fill +7 days from this.'
+            : 'Free text — e.g. "30 Mar". Auto-filled from Week 1 unless you change it.'}</span>
         </label>
         <input type="text" id="w-start" class="text-input" value="${escapeAttr(w.startDate || '')}" />
       </div>
@@ -658,7 +711,14 @@
 
     // Bind week fields
     document.getElementById('w-label').addEventListener('input', e => { w.label = e.target.value; markDirty(); debouncedSave(); renderWeekTabsLabelsOnly(); });
-    document.getElementById('w-start').addEventListener('input', e => { w.startDate = e.target.value; markDirty(); debouncedSave(); });
+    document.getElementById('w-start').addEventListener('input', e => {
+      w.startDate = e.target.value;
+      // Editing Week 1 cascades to any blank later weeks. (Editing
+      // later weeks just updates that one.)
+      if (activeWeek === 0) cascadeWeekStartDates(plan);
+      markDirty();
+      debouncedSave();
+    });
     document.getElementById('w-note' ).addEventListener('input', e => { w.note = e.target.value; markDirty(); debouncedSave(); });
 
     // Add session
