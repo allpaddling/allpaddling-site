@@ -478,30 +478,45 @@ body.is-coach .coach-only { display: inline-flex !important; }
        admin pages are coach-only by design).
    Distinct (filled, branded) so it reads as a CTA, not a nav
    item. Sits at the top of the sidebar footer, above the member
-   chip / user-info — first thing the eye lands on. */
+   chip / user-info — first thing the eye lands on.
+
+   Selectors are deliberately specific (.app-sidebar-footer prefix
+   + !important on the overridden properties) because the broader
+   `.app-sidebar-footer a` rule above sets padding/colour/font on
+   every `<a>` in the footer, and a single .role-switch-btn class
+   wouldn't otherwise win the cascade. */
+.app-sidebar-footer .role-switch-btn,
+.app-sidebar .role-switch-btn,
 .role-switch-btn {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   margin: 0 0 0.85rem 0;
-  padding: 0.6rem 0.95rem;
-  background: var(--brand-700);
+  padding: 0.6rem 0.95rem !important;
+  background: var(--brand-700) !important;
   color: #ffffff !important;
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.86rem; font-weight: 600;
-  border-radius: 9px;
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  border-radius: 9px !important;
   text-decoration: none;
   border: 0;
   transition: background .12s, transform .12s;
 }
+.app-sidebar-footer .role-switch-btn:hover,
+.app-sidebar .role-switch-btn:hover,
 .role-switch-btn:hover {
-  background: var(--brand-800, #0e4858);
+  background: var(--brand-800, #0e4858) !important;
+  color: #ffffff !important;
   transform: translateY(-1px);
   text-decoration: none;
 }
+.app-sidebar-footer .role-switch-btn svg,
+.app-sidebar .role-switch-btn svg,
 .role-switch-btn svg {
-  width: 14px; height: 14px;
+  width: 14px !important;
+  height: 14px !important;
   flex-shrink: 0;
 }
 /* When the role-switch pill is also .coach-only (member side),
