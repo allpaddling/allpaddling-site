@@ -15,19 +15,25 @@
 //   SUPABASE_SERVICE_ROLE_KEY  service-role key (for migrate-mode user lookup)
 //   APP_BASE_URL               e.g. "https://allpaddling.com"
 //
-// Two modes — auth determines which:
+// Three callers, two modes — auth + body shape determines which:
 //
-//   1. SELF mode (Authorization: Bearer <user JWT>)
-//      Customer is already signed in via Supabase magic-link, the
-//      frontend calls this to start checkout. We use auth.uid()
-//      as user_id and look up a canonical Price by lookup_key.
+//   1. SELF mode — frontend, customer's own JWT
+//      Authorization: Bearer <user JWT>
+//      No `email`/`legacy_*` fields in body.
+//      We use auth.uid() and look up a canonical Price by lookup_key.
 //
-//   2. MIGRATE mode (Authorization: Bearer <service-role key> + 'x-migration: 1' header)
-//      Coach admin generates a one-time signup link for an
-//      existing Shopify customer. We get-or-create the auth user
-//      from the supplied email and use inline price_data so we
-//      can grandfather the customer's exact monthly amount from
-//      Shopify (no Stripe Price object needed).
+//   2. MIGRATE mode — coach admin browser, coach's JWT
+//      Authorization: Bearer <user JWT> (where the user is in `coaches`)
+//      Body contains `email` + `legacy_amount_cents` + `legacy_currency`.
+//      We verify the JWT belongs to a coach, then look up/create the
+//      target customer's auth user and use inline price_data to
+//      grandfather their exact Shopify monthly amount.
+//
+//   3. MIGRATE mode — server-side script, service-role key
+//      Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+//      Body contains `email` + `legacy_amount_cents` + `legacy_currency`.
+//      Same as (2) but skips the coach-role check (service role is
+//      already trusted). Used by batch migration scripts.
 //
 // Both modes attach the same metadata contract that
 // `stripe-webhook` requires:
@@ -146,31 +152,61 @@ Deno.serve(async (req) => {
     planKey = body.plan_key;
   }
 
-  // Auth-mode detection — service-role key in the bearer header
-  // OR an explicit `x-migration` header puts us in MIGRATE mode.
-  const authHeader   = req.headers.get('authorization') ?? '';
-  const isMigration  = authHeader === `Bearer ${SERVICE_ROLE_KEY}`
-                    || req.headers.get('x-migration') === '1';
+  // Auth + body inspection determine mode.
+  const authHeader     = req.headers.get('authorization') ?? '';
+  const userJwt        = authHeader.replace(/^Bearer\s+/i, '');
+  const isServiceRole  = authHeader === `Bearer ${SERVICE_ROLE_KEY}`;
+  const wantsMigrate   = !!body.email && !!body.legacy_amount_cents;
 
   try {
     let userId: string;
     let email:  string;
     let line:   Stripe.Checkout.SessionCreateParams.LineItem;
+    let isMigration = false;
+
+    if (wantsMigrate && isServiceRole) {
+      // ----- MIGRATE mode (3): server-side script with service-role key -----
+      isMigration = true;
+    } else if (wantsMigrate) {
+      // ----- MIGRATE mode (2): coach JWT in browser. Verify role. -----
+      if (!userJwt) {
+        return jsonResponse({ error: 'unauthorized', detail: 'Authorization header required' }, 401);
+      }
+      const sbUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${userJwt}` } },
+        auth:   { persistSession: false, autoRefreshToken: false },
+      });
+      const { data: userData, error: userErr } = await sbUser.auth.getUser();
+      if (userErr || !userData?.user || !userData.user.email) {
+        return jsonResponse({ error: 'unauthorized', detail: 'Invalid user JWT' }, 401);
+      }
+      // is_coach() — same predicate the frontend uses for admin gating.
+      const callerEmail = userData.user.email.toLowerCase();
+      const { data: coachRow, error: coachErr } = await sbUser
+        .from('coaches')
+        .select('email')
+        .eq('email', callerEmail)
+        .maybeSingle();
+      if (coachErr) {
+        console.error('coach lookup failed', coachErr);
+        return jsonResponse({ error: 'role_check_failed' }, 500);
+      }
+      if (!coachRow) {
+        return jsonResponse({ error: 'forbidden', detail: 'Migrate mode requires a coach role.' }, 403);
+      }
+      isMigration = true;
+    }
 
     if (isMigration) {
-      // ----- MIGRATE MODE -----
-      // Coach admin is generating a per-customer signup link.
-      if (!body.email) {
-        return jsonResponse({ error: 'email_required', detail: 'email is required in migrate mode' }, 400);
+      // Validate migrate-mode body fields.
+      if (!body.legacy_currency || !['aud', 'usd', 'nzd', 'cad'].includes(body.legacy_currency)) {
+        return jsonResponse({ error: 'invalid_legacy_currency', detail: 'legacy_currency must be aud/usd/nzd/cad' }, 400);
       }
-      if (!body.legacy_amount_cents || !body.legacy_currency) {
-        return jsonResponse({ error: 'legacy_pricing_required', detail: 'legacy_amount_cents and legacy_currency are required in migrate mode' }, 400);
-      }
-      if (body.legacy_amount_cents <= 0 || body.legacy_amount_cents > 1_000_000) {
+      if (body.legacy_amount_cents! <= 0 || body.legacy_amount_cents! > 1_000_000) {
         return jsonResponse({ error: 'legacy_amount_out_of_range' }, 400);
       }
 
-      email  = body.email.toLowerCase().trim();
+      email  = body.email!.toLowerCase().trim();
       userId = await getOrCreateAuthUser(email);
 
       // Inline price — grandfathers the customer's existing Shopify rate.
@@ -183,11 +219,8 @@ Deno.serve(async (req) => {
         },
         quantity: 1,
       };
-
     } else {
       // ----- SELF MODE -----
-      // Frontend caller — must have a valid user JWT.
-      const userJwt = authHeader.replace(/^Bearer\s+/i, '');
       if (!userJwt) {
         return jsonResponse({ error: 'unauthorized', detail: 'Authorization header required' }, 401);
       }
@@ -237,6 +270,7 @@ Deno.serve(async (req) => {
         plan_type: planType,
         plan_key:  planKey ?? '',
         source:    isMigration ? 'migrate' : 'self',
+        ...(isMigration && body.email ? { migrated_from_email: body.email.toLowerCase() } : {}),
       },
       // Pass tax-collection setting through; Stripe Tax (if enabled
       // on the account) will compute AU GST for AU customers.

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Customer migration — All Paddling Admin</title>
+<meta name="description" content="Move existing Shopify subscribers across to Stripe, one customer at a time." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  .admin-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem; border-radius: 5px;
+    margin-left: 0.35rem;
+  }
+
+  /* Stats row — same skeleton as admin-members */
+  .stat-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 760px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.95rem 1.05rem;
+  }
+  .stat-tile .label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 0.3rem;
+  }
+  .stat-tile .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.55rem; font-weight: 700; color: var(--text); line-height: 1;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .filter-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .filter-tab {
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-2);
+    padding: 0.45rem 0.9rem; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .filter-tab:hover { border-color: var(--text-2); color: var(--text); }
+  .filter-tab.active { background: var(--brand-700); border-color: var(--brand-700); color: white; }
+  .filter-tab .count { font-weight: 500; opacity: 0.8; margin-left: 0.3rem; }
+  .filter-search {
+    flex: 1; min-width: 220px;
+    display: flex; align-items: center; gap: 0.5rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+  }
+  .filter-search:focus-within { border-color: var(--brand-700); background: var(--surface); }
+  .filter-search svg { width: 16px; height: 16px; color: var(--text-3); flex-shrink: 0; }
+  .filter-search input {
+    flex: 1; border: 0; background: transparent;
+    font-family: inherit; font-size: 0.92rem; color: var(--text); outline: none;
+  }
+
+  /* Table */
+  .mig-table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .mig-table { width: 100%; border-collapse: collapse; }
+  .mig-table thead { background: var(--surface-2); }
+  .mig-table th {
+    text-align: left; padding: 0.7rem 0.95rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+  }
+  .mig-table td {
+    padding: 0.85rem 0.95rem;
+    font-size: 0.92rem; color: var(--text);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .mig-table tbody tr:last-child td { border-bottom: 0; }
+  .mig-table tbody tr { transition: background .12s; }
+  .mig-table tbody tr:hover { background: var(--surface-2); }
+
+  .customer-cell { display: flex; flex-direction: column; gap: 0.15rem; min-width: 180px; }
+  .customer-cell .name  { font-weight: 600; color: var(--text); }
+  .customer-cell .email { color: var(--text-3); font-size: 0.82rem; }
+
+  .price-cell  { font-weight: 600; white-space: nowrap; }
+  .renewal-cell { color: var(--text-2); font-size: 0.88rem; white-space: nowrap; }
+  .renewal-cell .urgent { color: #c0392b; font-weight: 700; }
+
+  /* Status pill */
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    border: 1px solid transparent;
+  }
+  .status-pill.pending             { background: #fbeaea; color: #b0382f; border-color: #f3c7c2; }
+  .status-pill.heads_up_sent       { background: #fff2cc; color: #8c6d10; border-color: #fbe5a3; }
+  .status-pill.signup_link_sent    { background: #fce8c2; color: #835f12; border-color: #f5d68b; }
+  .status-pill.signed_up           { background: #e0eef9; color: #224a72; border-color: #c2dbf3; }
+  .status-pill.shopify_cancelled   { background: #e0eef9; color: #224a72; border-color: #c2dbf3; }
+  .status-pill.migrated            { background: #d6efdc; color: #236138; border-color: #b5dfc2; }
+  .status-pill.lapsed              { background: #ededed; color: #555;    border-color: #d5d5d5; }
+  .status-pill.on_hold             { background: #ededed; color: #555;    border-color: #d5d5d5; }
+
+  .actions-cell { white-space: nowrap; text-align: right; }
+  .btn-mini {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-700); color: white;
+    border: 0; padding: 0.4rem 0.75rem; border-radius: 6px;
+    font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    text-decoration: none;
+    transition: background .12s, opacity .12s;
+  }
+  .btn-mini:hover  { background: var(--brand-800); }
+  .btn-mini:disabled, .btn-mini.is-loading {
+    opacity: 0.6; cursor: progress; pointer-events: none;
+  }
+  .btn-mini.btn-mini-secondary {
+    background: var(--surface); color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+  .btn-mini.btn-mini-secondary:hover { border-color: var(--text-2); color: var(--text); }
+
+  /* Result panel — appears once a link is generated */
+  .result-panel {
+    margin-top: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.4rem;
+  }
+  .result-panel h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem; font-weight: 700; color: var(--text);
+    margin: 0 0 0.4rem 0;
+  }
+  .result-panel .muted { color: var(--text-3); font-size: 0.88rem; margin-bottom: 1rem; }
+  .result-panel h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-3);
+    margin: 1rem 0 0.4rem 0;
+  }
+  .link-row {
+    display: flex; gap: 0.5rem; align-items: stretch;
+  }
+  .link-row input {
+    flex: 1; padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface-2); color: var(--text);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.82rem;
+  }
+  .email-body {
+    background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.95rem 1.1rem;
+    white-space: pre-wrap; word-break: break-word;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem; color: var(--text);
+    line-height: 1.55;
+    max-height: 380px; overflow-y: auto;
+  }
+  .copy-btn {
+    background: var(--surface); color: var(--text-2);
+    border: 1px solid var(--border);
+    padding: 0.55rem 0.85rem; border-radius: 6px;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: border-color .12s, color .12s;
+  }
+  .copy-btn:hover { border-color: var(--text-2); color: var(--text); }
+  .copy-btn.copied { background: #d6efdc; color: #236138; border-color: #b5dfc2; }
+
+  .alert-inline {
+    margin-top: 0.7rem;
+    padding: 0.55rem 0.75rem;
+    background: #fbeaea; color: #b0382f;
+    border: 1px solid #f3c7c2; border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .alert-inline.info { background: #e0eef9; color: #224a72; border-color: #c2dbf3; }
+
+  .empty-state {
+    text-align: center; padding: 3rem 1rem; color: var(--text-3);
+    font-size: 0.92rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- Login gate -->
+<div id="login-gate" class="gate-wrap" style="display:none;">
+  <div class="gate-card">
+    <div class="gate-eyebrow">Coach Admin</div>
+    <h1>Coach access only</h1>
+    <p>Sign in via the main admin page first.</p>
+    <a href="admin.html" class="btn btn-primary" style="width:100%; box-sizing:border-box; justify-content:center; display:inline-flex;">Go to admin sign-in →</a>
+  </div>
+</div>
+
+<!-- Main shell -->
+<div class="app-shell" id="admin-shell" style="display:none;">
+  <aside class="app-sidebar" aria-label="Admin navigation">
+    <div class="app-sidebar-brand">
+      <span class="brand-mark-sm" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" fill="currentColor" stroke="none"/>
+          <polyline points="3,13 8,13 10,9 14,17 16,13 21,13" stroke="white" stroke-width="1.8" fill="none"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        All Paddling<span class="admin-badge">ADMIN</span>
+        <small>Coach dashboard</small>
+      </span>
+    </div>
+    <nav class="app-sidebar-nav">
+      <a href="admin-overview.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg>
+        <span>Overview</span>
+      </a>
+      <a href="admin.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span>Programs</span>
+      </a>
+      <a href="admin-members.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Members</span>
+      </a>
+      <a href="admin-migrate.html" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span>Migration</span>
+      </a>
+    </nav>
+    <div class="app-sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="admin-initials">--</div>
+        <div class="user-details">
+          <div class="user-email" id="admin-email">—</div>
+          <button class="btn btn-text" id="signoutBtn">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main">
+    <header class="page-header">
+      <div>
+        <h1>Customer migration</h1>
+        <p class="page-subtitle">Move existing Shopify subscribers across to Stripe, one at a time.</p>
+      </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="stat-row" id="statRow">
+      <div class="stat-tile"><div class="label">Total roster</div><div class="value" id="statTotal">—</div></div>
+      <div class="stat-tile"><div class="label">Pending</div><div class="value" id="statPending">—</div></div>
+      <div class="stat-tile"><div class="label">In progress</div><div class="value" id="statInProgress">—</div></div>
+      <div class="stat-tile"><div class="label">Migrated</div><div class="value" id="statMigrated">—</div></div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="filter-tabs" id="filterTabs">
+        <button class="filter-tab active" data-filter="all">All <span class="count" id="cntAll">—</span></button>
+        <button class="filter-tab" data-filter="pending">Pending <span class="count" id="cntPending">—</span></button>
+        <button class="filter-tab" data-filter="in_progress">In progress <span class="count" id="cntInProgress">—</span></button>
+        <button class="filter-tab" data-filter="migrated">Migrated <span class="count" id="cntMigrated">—</span></button>
+        <button class="filter-tab" data-filter="lapsed">Lapsed / hold <span class="count" id="cntLapsed">—</span></button>
+      </div>
+      <label class="filter-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" id="searchInput" placeholder="Search by name or email" aria-label="Search customers" />
+      </label>
+    </div>
+
+    <!-- Table -->
+    <div class="mig-table-wrap">
+      <table class="mig-table">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Plan</th>
+            <th>Price</th>
+            <th>Next renewal</th>
+            <th>Status</th>
+            <th class="actions-cell">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="customersBody">
+          <tr><td colspan="6" class="empty-state" id="loadingState">Loading customers…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Result panel — populated by admin-migrate.js after a successful link generation -->
+    <div class="result-panel" id="resultPanel" hidden>
+      <h2>Signup link generated <span id="resultCustomer"></span></h2>
+      <div class="muted" id="resultDetail"></div>
+
+      <h3>Stripe Checkout URL</h3>
+      <div class="link-row">
+        <input type="text" readonly id="linkInput" />
+        <button type="button" class="copy-btn" id="copyLinkBtn">Copy link</button>
+      </div>
+
+      <h3>Migration email body</h3>
+      <div class="email-body" id="emailBody"></div>
+      <div style="margin-top: 0.55rem; display: flex; gap: 0.5rem;">
+        <button type="button" class="copy-btn" id="copyEmailBtn">Copy email</button>
+        <button type="button" class="copy-btn" id="markSentBtn">Mark "signup link sent"</button>
+      </div>
+
+      <div id="resultAlert"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/program-data.js"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script src="../assets/admin-migrate.js"></script>
+<script>
+(async () => {
+  const gateEl  = document.getElementById('login-gate');
+  const shellEl = document.getElementById('admin-shell');
+  function showOnly (el) { [gateEl, shellEl].forEach(x => x.style.display = (x === el) ? '' : 'none'); }
+
+  // Auth gate — must be a coach.
+  const session = await getCurrentSession();
+  if (!session) { showOnly(gateEl); return; }
+  const isCoach = await isCurrentUserCoach();
+  if (!isCoach) { showOnly(gateEl); return; }
+
+  showOnly(shellEl);
+
+  // Sidebar email + initials
+  const adminEmail = (session.user.email || '').toLowerCase();
+  document.getElementById('admin-email').textContent = adminEmail || '—';
+  const initials = adminEmail
+    .split('@')[0]
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .map(s => s[0])
+    .filter(Boolean)
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  document.getElementById('admin-initials').textContent = initials || '—';
+
+  document.getElementById('signoutBtn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    window.location.href = 'admin.html';
+  });
+
+  // Hand off to admin-migrate.js
+  await window.MigratePage.init();
+})();
+</script>
+</body>
+</html>
