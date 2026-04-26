@@ -128,6 +128,42 @@
     text-align: center;
   }
 
+  /* Google OAuth — primary fast-path on the coach gate. Sits above
+     the email field so coaches with a Google Workspace login can
+     skip the magic-link round-trip entirely. Visual treatment
+     matches the member login.html so the experience is consistent
+     across the two entry points. */
+  .gate-card .btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 0.7rem;
+    width: 100%; box-sizing: border-box;
+    margin-top: 0;
+    padding: 0.78rem 1rem;
+    background: white; color: #3c4043;
+    border: 1px solid #dadce0; border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem; font-weight: 600;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, box-shadow .12s, transform .12s;
+  }
+  .gate-card .btn-google:hover {
+    background: #f8f9fa;
+    border-color: #c4c7c5;
+    box-shadow: 0 1px 2px rgba(60,64,67,0.1);
+    transform: translateY(-1px);
+  }
+  .gate-card .btn-google:disabled { opacity: 0.6; cursor: progress; transform: none; }
+  .gate-card .btn-google svg { flex-shrink: 0; }
+
+  .gate-card .auth-divider {
+    display: flex; align-items: center; gap: 0.85rem;
+    margin: 1.4rem 0;
+    color: var(--text-3); font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .gate-card .auth-divider::before, .gate-card .auth-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
   /* Admin sidebar tweaks */
   .admin-badge {
     display: inline-flex; align-items: center; gap: 0.3rem;
@@ -145,7 +181,23 @@
   <form class="gate-card" id="gate-form">
     <div class="gate-eyebrow">Coach Admin</div>
     <h1>Sign in to continue</h1>
-    <p>Enter your coach email — we'll send you a magic link. No password needed.</p>
+    <p>Use Google for one-click sign-in, or send yourself a magic link.</p>
+
+    <!-- Primary path: Google OAuth. Coach access is gated by the
+         coaches table after sign-in — non-coach Google accounts get
+         the "no access" state, same as a non-coach magic-link sign-in. -->
+    <button type="button" class="btn-google" id="google-signin-btn">
+      <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="auth-divider"><span>or sign in with email</span></div>
+
     <label for="gate-email">Email</label>
     <input type="email" id="gate-email" autocomplete="email" placeholder="you@allpaddling.com" required />
     <div class="gate-error" id="gate-error">Something went wrong. Please try again.</div>
@@ -330,6 +382,33 @@
     [gateEl, sentEl, noaccessEl, shellEl].forEach(el => {
       if (!el) return;
       el.style.display = (el === which) ? '' : 'none';
+    });
+  }
+
+  /* Google OAuth — primary fast-path. signInWithOAuth navigates the
+     window to Google then back to redirectTo with a session in the
+     URL hash. We send the user back to admin.html itself so the
+     post-auth coach-check below runs and either reveals the shell
+     or shows the "Access denied" state. */
+  const googleBtn = document.getElementById('google-signin-btn');
+  if (googleBtn) {
+    googleBtn.addEventListener('click', async function () {
+      const err = document.getElementById('gate-error');
+      err.classList.remove('visible');
+      const redirectTo = window.location.origin + window.location.pathname;
+      googleBtn.disabled = true;
+      try {
+        const { error } = await sb.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: redirectTo },
+        });
+        if (error) throw error;
+      } catch (ex) {
+        console.error('google oauth error', ex);
+        googleBtn.disabled = false;
+        err.textContent = (ex && ex.message) ? ex.message : "Couldn't start Google sign-in.";
+        err.classList.add('visible');
+      }
     });
   }
 

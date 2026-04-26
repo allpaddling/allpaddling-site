@@ -107,6 +107,43 @@
     .login-panel { padding: 3rem 2rem; max-width: none; }
   }
 
+  /* Google OAuth button — primary fast-path. Sits above the email
+     form. Outline-style + Google G colour glyph so it reads as a
+     legit Google sign-in (familiar pattern for users), but stays
+     visually subordinate to the brand-colour brand elements. */
+  .btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 0.7rem;
+    width: 100%; box-sizing: border-box;
+    padding: 0.78rem 1rem;
+    background: white; color: #3c4043;
+    border: 1px solid #dadce0; border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem; font-weight: 600;
+    text-decoration: none; cursor: pointer;
+    transition: background .12s, border-color .12s, box-shadow .12s, transform .12s;
+  }
+  .btn-google:hover {
+    background: #f8f9fa;
+    border-color: #c4c7c5;
+    box-shadow: 0 1px 2px rgba(60,64,67,0.1);
+    transform: translateY(-1px);
+  }
+  .btn-google:disabled {
+    opacity: 0.6; cursor: progress; transform: none;
+  }
+  .btn-google svg { flex-shrink: 0; }
+
+  /* "or sign in with email" divider between Google + magic-link form */
+  .auth-divider {
+    display: flex; align-items: center; gap: 0.85rem;
+    margin: 1.4rem 0;
+    color: var(--text-3); font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .auth-divider::before, .auth-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
   /* Inline error / status */
   .form-error {
     background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
@@ -129,9 +166,22 @@
     <div id="form-view">
       <span class="eyebrow">Members</span>
       <h1>Welcome back.</h1>
-      <p>Enter your member email — we'll send you a magic link. No password needed.</p>
+      <p>Sign in to your training plan and dashboard.</p>
 
       <div class="form-error" id="form-error"></div>
+
+      <!-- Primary path: Google OAuth. One click, no email round-trip. -->
+      <button type="button" class="btn btn-google btn-full" id="google-signin-btn">
+        <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-divider"><span>or sign in with email</span></div>
 
       <form class="login-form" id="login-form">
         <div class="form-field">
@@ -246,6 +296,33 @@
   const errEl = document.getElementById('form-error');
   const submitBtn = document.getElementById('login-submit');
   const emailEl = document.getElementById('l-email');
+
+  /* Google OAuth — primary fast-path. signInWithOAuth navigates the
+     window to Google, then back to redirectTo with a session in the
+     URL hash. We pass the same ?next= forward so a Subscribe-button
+     auth bounce returns to the plan page after sign-in. */
+  const googleBtn = document.getElementById('google-signin-btn');
+  googleBtn.addEventListener('click', async function () {
+    errEl.classList.remove('visible');
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    const redirectTo = window.location.origin + window.location.pathname +
+      (next ? '?next=' + encodeURIComponent(next) : '');
+    googleBtn.disabled = true;
+    try {
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: redirectTo },
+      });
+      if (error) throw error;
+      // On success, the browser navigates away — nothing more to do.
+    } catch (ex) {
+      console.error('google oauth error', ex);
+      googleBtn.disabled = false;
+      errEl.textContent = (ex && ex.message) ? ex.message : "Couldn't start Google sign-in.";
+      errEl.classList.add('visible');
+    }
+  });
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
