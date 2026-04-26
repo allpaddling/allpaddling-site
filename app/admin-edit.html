@@ -236,6 +236,38 @@
     color: var(--text-3); margin: 1rem 0 0.4rem;
   }
 
+  /* Copy-from-another-discipline zone — friendly variant of the
+     danger-zone styling. Same shape, branded teal instead of warning
+     orange so coaches don't read it as destructive. */
+  .copy-from-zone {
+    background: var(--brand-50);
+    border: 1px solid var(--brand-100, #cffafe);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .copy-from-zone h3 {
+    color: var(--brand-700);
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+  }
+  .copy-from-zone p {
+    color: var(--brand-700);
+    font-size: 0.92rem;
+    margin: 0 0 0.85rem;
+  }
+  .copy-from-buttons {
+    display: flex; gap: 0.55rem; flex-wrap: wrap;
+  }
+  .copy-from-buttons .btn {
+    border-color: var(--brand-700);
+    color: var(--brand-700);
+    background: white;
+  }
+  .copy-from-buttons .btn:hover {
+    background: var(--brand-700); color: white;
+  }
+
   /* Danger zone */
   .danger-zone {
     background: #fff7ed;
@@ -383,6 +415,20 @@
       <div class="admin-week-tabs" id="week-tabs" role="tablist"></div>
 
       <div id="week-editor"></div>
+    </div>
+
+    <!-- Copy programs from another discipline.
+         Hidden by default; revealed by the editor JS only when the
+         current planKey is one of the 4 Progressive disciplines
+         (prone/sup/oc/ski). Doesn't make sense for primer (shared)
+         or custom (per-member). -->
+    <div class="copy-from-zone" id="copy-from-zone" style="display:none;">
+      <h3>Copy programs from another discipline</h3>
+      <p>Quickly seed this plan with the weeks from another discipline. <strong>Only the program weeks are copied</strong> — the plan name and subtitle stay as-is, so this plan keeps its discipline-specific identity. Useful when the same training shape applies across disciplines and you want to start from a working draft instead of a blank.</p>
+      <div class="copy-from-buttons" id="copy-from-buttons"></div>
+      <p class="copy-from-note" style="margin-top: 0.85rem; font-size: 0.85rem; color: var(--text-3);">
+        Copies the source plan's <strong>most recent draft</strong> if it has one, otherwise the published version. Auto-saves immediately to this plan's draft — review the weeks, then click <strong>Publish</strong> to push them live.
+      </p>
     </div>
 
     <!-- Danger zone -->
@@ -539,6 +585,69 @@
       previewBtn.style.display = 'none';
     }
     if (href) previewBtn.setAttribute('href', href);
+  }
+
+  /* ---- Copy programs from another discipline ----
+     Only meaningful for the four Progressive discipline plans. The
+     primer is shared (no copy needed); custom plans are per-member.
+     Renders one button per OTHER discipline; click → confirm →
+     fetch source's most-recent state → write into this plan's
+     draft → re-render the editor. The destination's name + subtitle
+     are deliberately preserved so a Surf Ski plan stays "Progressive
+     Surf Ski Plan" even after copying the Prone weeks. */
+  const COPY_DISCIPLINES = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+  if (planKey in COPY_DISCIPLINES) {
+    const zone = document.getElementById('copy-from-zone');
+    const btnRow = document.getElementById('copy-from-buttons');
+    if (zone && btnRow) {
+      zone.style.display = '';
+      Object.entries(COPY_DISCIPLINES).forEach(([key, label]) => {
+        if (key === planKey) return; // can't copy from self
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn';
+        btn.dataset.sourceKey = key;
+        btn.innerHTML = `Copy from <strong>${label}</strong> →`;
+        btn.addEventListener('click', () => copyProgramsFromDiscipline(key, label));
+        btnRow.appendChild(btn);
+      });
+    }
+  }
+
+  async function copyProgramsFromDiscipline (srcKey, srcLabel) {
+    const ok = confirm(
+      `Replace this plan's program weeks with the current ${srcLabel} content?\n\n` +
+      `Your current draft weeks will be overwritten.\n` +
+      `The plan name and subtitle stay as-is.`
+    );
+    if (!ok) return;
+
+    try {
+      const src = await loadAnyProgressivePlanSource(srcKey);
+      if (!src) {
+        alert(`No ${srcLabel} plan row found.`);
+        return;
+      }
+      if (src.isEmpty) {
+        alert(`The ${srcLabel} plan has no program weeks yet — nothing to copy.`);
+        return;
+      }
+
+      // Deep-clone the source's programs so subsequent edits in this
+      // editor don't mutate cache state belonging to the source plan.
+      plan.programs = JSON.parse(JSON.stringify(src.programs));
+
+      // Save immediately to this plan's draft. Meta is left untouched.
+      await saveProgressivePlan(planKey, { meta: plan.meta, programs: plan.programs });
+
+      activeWeek = 0;
+      renderWeekTabs();
+      renderWeekEditor();
+      flashSaved(`Copied ${src.programs.length} week${src.programs.length === 1 ? '' : 's'} from ${srcLabel} (${src.source}).`);
+    } catch (err) {
+      console.error('copyProgramsFromDiscipline failed', err);
+      alert(`Copy failed: ${err && err.message ? err.message : 'unknown error'}\n\nPlease refresh and try again.`);
+    }
   }
 
   /* ---- Reset ---- */

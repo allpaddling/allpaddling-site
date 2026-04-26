@@ -187,6 +187,41 @@ function hasUnpublishedChanges (planKey) {
 
 /* ---------- Writes ---------- */
 
+/* Read-only fetch of a Progressive plan's CURRENT content for copying
+   into another discipline. Returns the most-recent state — draft if
+   anything has been edited, otherwise the published version. Doesn't
+   touch __cache so this is safe to call from inside the editor of a
+   different plan key (the editor's own cache for the destination
+   stays intact until saveProgressivePlan() writes the copy). */
+async function loadAnyProgressivePlanSource (planKey) {
+  if (!isValidPlanKey(planKey) || planKey === 'custom') {
+    throw new Error('loadAnyProgressivePlanSource: invalid key ' + planKey);
+  }
+  const { data, error } = await sb
+    .from('progressive_plans')
+    .select('key, meta, programs, draft_meta, draft_programs, last_edited, published_at')
+    .eq('key', planKey)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  // Prefer draft if anything is in there — that's Mick's most recent work.
+  const draftHasContent =
+    (data.draft_meta && Object.keys(data.draft_meta).length > 0) ||
+    (Array.isArray(data.draft_programs) && data.draft_programs.length > 0);
+
+  const meta     = draftHasContent ? (data.draft_meta || {})     : (data.meta || {});
+  const programs = draftHasContent ? (data.draft_programs || []) : (data.programs || []);
+  return {
+    meta,
+    programs,
+    source:     draftHasContent ? 'draft' : 'published',
+    isEmpty:    !programs || programs.length === 0,
+    lastEdited: data.last_edited,
+    publishedAt:data.published_at,
+  };
+}
+
 /* Auto-save target. Writes ONLY to draft columns; members never see this
    until publishProgressivePlan() is called. */
 async function saveProgressivePlan (planKey, planData) {
