@@ -66,6 +66,7 @@ const APP_FOOTER_NAV = [
   {
     href: '../login.html',
     label: 'Sign out',
+    action: 'signout',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
   },
 ];
@@ -100,7 +101,8 @@ function filterLinks(links, member) {
 }
 
 function linkHtml(l, active) {
-  return `<a href="${l.href}"${active ? ' class="active"' : ''}>${l.icon}<span>${l.label}</span></a>`;
+  const actionAttr = l.action ? ` data-action="${l.action}"` : '';
+  return `<a href="${l.href}"${active ? ' class="active"' : ''}${actionAttr}>${l.icon}<span>${l.label}</span></a>`;
 }
 
 /* ---- Renderers ---- */
@@ -275,6 +277,33 @@ function mountApp() {
     });
   }
   scrim.addEventListener('click', closeDrawer);
+
+  /* Sign-out button — actually sign out (was previously just a
+     plain link to login.html, which left the Supabase session
+     intact and therefore bounced straight back to the dashboard
+     via login.html's auth check). Hooks any element with
+     data-action="signout", so the same wiring applies to whatever
+     surface renders one. */
+  document.addEventListener('click', async function (e) {
+    const target = e.target.closest('[data-action="signout"]');
+    if (!target) return;
+    e.preventDefault();
+    try {
+      // signOut may not exist on first load if supabase-config.js
+      // hasn't loaded yet — fall back to redirect-only in that case.
+      if (typeof sb !== 'undefined' && sb.auth) {
+        await sb.auth.signOut();
+      }
+    } catch (ex) {
+      console.error('signOut error', ex);
+    }
+    // Redirect to login regardless. On Google OAuth sign-ins the
+    // signOut call clears the Supabase session; the Google account
+    // remains signed in to Google itself (expected — that's not our
+    // session to clear), but they won't be auto-signed-back-in here
+    // because login.html requires a click to start a new OAuth flow.
+    window.location.href = target.getAttribute('href') || '../login.html';
+  });
 }
 
 if (document.readyState === 'loading') {
