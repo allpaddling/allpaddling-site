@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Strength — All Paddling</title>
-<meta name="description" content="Your off-water strength program — included with the Custom Season Race Plan." />
+<meta name="description" content="Your off-water strength program — two functional strength routines, eight exercises each. Included with all training plans." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -127,7 +127,7 @@
     </div>
 
     <!-- Custom plan content -->
-    <div id="custom-content" style="display:none;">
+    <div id="custom-content">
       <div class="phase-banner">
         <div>
           <div class="phase">Functional Strength</div>
@@ -175,34 +175,9 @@
       </div>
     </div>
 
-    <!-- Progressive plan content (upgrade prompt) -->
-    <div id="upgrade-content" style="display:none;">
-      <div class="upgrade-card">
-        <h2>Strength work is part of the Custom Season Race Plan.</h2>
-        <p>A 4-week strength block aligned to your paddling program — posterior chain, pulling patterns, and shoulder stability. Included free with Custom Plan members.</p>
-        <ul class="upgrade-list">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> 2 strength sessions per week</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> Paddle-specific movements</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> Phase progression across 12 weeks</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg> Custom-tailored to your goal race</li>
-        </ul>
-        <a href="../custom-plan.html" class="btn">Upgrade to Custom Plan →</a>
-      </div>
-    </div>
-
   </main>
 </div>
 
 <script src="../assets/app.js"></script>
-<script>
-(function () {
-  const member = getMember();
-  if (member.plan === 'Custom') {
-    document.getElementById('custom-content').style.display = '';
-  } else {
-    document.getElementById('upgrade-content').style.display = '';
-  }
-})();
-</script>
 </body>
 </html>
