@@ -54,7 +54,11 @@ function corsHeaders (origin: string | null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin':  allowed,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    // Supabase JS clients send apikey + authorization on every request
+    // (the apikey routes the request to the project; authorization
+    // carries the anon JWT). Both must be in the preflight allow-list
+    // or the browser blocks the actual POST.
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
     'Access-Control-Max-Age':       '86400',
   };
 }
