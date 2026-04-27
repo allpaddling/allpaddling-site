@@ -22,8 +22,32 @@
   'use strict';
 
   // ---------- Constants ----------
-  const SUPABASE_URL = 'https://crlukzkgmydyqpwndjvc.supabase.co';
-  const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
+  const SUPABASE_URL          = 'https://crlukzkgmydyqpwndjvc.supabase.co';
+  const FUNCTION_URL          = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
+  const SEND_EMAIL_URL        = `${SUPABASE_URL}/functions/v1/send-email`;
+
+  // Email kinds the coach can trigger from this page. The order
+  // here matches the chronological migration cadence; the `defaultFor`
+  // map drives the dropdown's auto-selection based on status.
+  const EMAIL_KINDS = [
+    { id: 'heads_up_t7',     label: 'T-7 — Heads-up',           needsLink: false, statusAfterSend: 'heads_up_sent' },
+    { id: 'signup_link_t3',  label: 'T-3 — Signup link',        needsLink: true,  statusAfterSend: 'signup_link_sent' },
+    { id: 'renewal_day_t0',  label: 'T-0 — Renewal-day reminder', needsLink: true,  statusAfterSend: null }, // status unchanged — same day
+    { id: 'followup_tplus3', label: 'T+3 — Followup',           needsLink: true,  statusAfterSend: null },
+    { id: 'lapse_tplus14',   label: 'T+14 — Lapse notice',       needsLink: true,  statusAfterSend: 'lapsed' },
+  ];
+
+  // For a given current migration_status, the email kind we default to.
+  const DEFAULT_KIND_BY_STATUS = {
+    pending:           'heads_up_t7',
+    heads_up_sent:     'signup_link_t3',
+    signup_link_sent:  'renewal_day_t0',
+    signed_up:         null,           // they signed up — no migration emails
+    shopify_cancelled: null,           // already done
+    migrated:          null,
+    lapsed:            null,
+    on_hold:           null,
+  };
 
   const PLAN_LABELS = {
     progressive: { prone: 'Progressive — Prone', sup: 'Progressive — SUP', oc: 'Progressive — OC', ski: 'Progressive — Ski' },
@@ -150,6 +174,9 @@
     tbody.querySelectorAll('button[data-action="cycle-status"]').forEach(btn => {
       btn.addEventListener('click', () => onCycleStatusClick(btn));
     });
+    tbody.querySelectorAll('button[data-action="send-email"]').forEach(btn => {
+      btn.addEventListener('click', () => onSendEmailClick(btn));
+    });
   }
 
   function rowHtml (c) {
@@ -177,8 +204,18 @@
           <span class="status-pill ${escape(c.migration_status)}">${escape(statusLabel)}</span>
         </td>
         <td class="actions-cell">
-          <button type="button" class="btn-mini" data-action="generate" ${isFinalState ? 'disabled' : ''}>Generate link</button>
-          <button type="button" class="btn-mini btn-mini-secondary" data-action="cycle-status" title="Click to cycle status">Update</button>
+          <div class="actions-stack">
+            <div class="send-row">
+              <select class="email-kind-select" data-action="email-kind-select" ${isFinalState ? 'disabled' : ''}>
+                ${EMAIL_KINDS.map(k => `<option value="${escape(k.id)}" ${k.id === (DEFAULT_KIND_BY_STATUS[c.migration_status] || EMAIL_KINDS[0].id) ? 'selected' : ''}>${escape(k.label)}</option>`).join('')}
+              </select>
+              <button type="button" class="btn-mini btn-mini-primary" data-action="send-email" ${isFinalState ? 'disabled' : ''}>Send via Resend</button>
+            </div>
+            <div class="action-row">
+              <button type="button" class="btn-mini btn-mini-secondary" data-action="generate" ${isFinalState ? 'disabled' : ''}>Preview / Generate link</button>
+              <button type="button" class="btn-mini btn-mini-secondary" data-action="cycle-status" title="Click to cycle status">Update status</button>
+            </div>
+          </div>
         </td>
       </tr>
     `;
@@ -357,7 +394,295 @@
   }
 
   // ============================================================
+  // Send via Resend (the new path — calls send-email function in
+  // raw mode with the rendered email body. EMAIL_BCC env var on the
+  // server side adds Mick + Jake to the BCC list automatically.)
+  // ============================================================
+  async function onSendEmailClick (btn) {
+    const row = btn.closest('tr');
+    const customerId = row?.dataset.customerId;
+    const customer = allCustomers.find(c => c.id === customerId);
+    if (!customer) return;
+
+    // Read selected email kind from the row's <select>.
+    const selectEl = row.querySelector('select[data-action="email-kind-select"]');
+    const kindId = selectEl?.value;
+    const kind = EMAIL_KINDS.find(k => k.id === kindId);
+    if (!kind) {
+      alert('Internal error: no email kind selected.');
+      return;
+    }
+
+    if (!confirm(`Send the "${kind.label}" email to ${customer.name} (${customer.email}) right now?\n\nThis will fire from mick@allpaddling.online and BCC you + Mick.`)) {
+      return;
+    }
+
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.textContent = 'Sending…';
+
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.access_token) throw new Error('No active session — sign in again.');
+
+      // For email kinds that need a signup link, generate one fresh
+      // right now (so it's not stale).
+      let url = null;
+      if (kind.needsLink) {
+        url = await generateCheckoutUrl(customer, session.access_token);
+      }
+
+      const composed = composeEmailForKind(kind.id, customer, url);
+      if (!composed) throw new Error(`Internal: no renderer for kind "${kind.id}"`);
+
+      const sendRes = await fetch(SEND_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          mode:     'raw',
+          to:       customer.email,
+          subject:  composed.subject,
+          text:     composed.text,
+          html:     composed.html,
+          tags: [
+            { name: 'kind',         value: kind.id },
+            { name: 'migrate_id',   value: customer.id },
+          ],
+        }),
+      });
+      const payload = await sendRes.json().catch(() => ({}));
+      if (!sendRes.ok) {
+        throw new Error(payload.error || `${sendRes.status} ${sendRes.statusText}`);
+      }
+
+      // Update local status if this email kind has a follow-on state.
+      if (kind.statusAfterSend && kind.statusAfterSend !== customer.migration_status) {
+        await updateStatus(customer.id, kind.statusAfterSend);
+      } else {
+        // No status change — just log a status_updated_at touch so the
+        // table reflects something happened. (Skip — too noisy. Just re-render.)
+        render();
+      }
+
+      flashSuccess(btn, `Sent to ${customer.email}`);
+    } catch (err) {
+      console.error('send email failed', err);
+      alert(`Couldn't send email: ${err.message}\n\nIf the error mentions auth, sign out + back in. If it mentions Resend, check the function logs in Supabase Studio.`);
+      btn.textContent = originalLabel;
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    }
+  }
+
+  async function generateCheckoutUrl (customer, accessToken) {
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        plan_type:           customer.plan_type,
+        plan_key:            customer.plan_key || undefined,
+        email:               customer.email,
+        legacy_amount_cents: customer.amount_cents,
+        legacy_currency:     customer.currency,
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload.detail || payload.error || `create-checkout-session ${res.status}`);
+    }
+    return payload.url;
+  }
+
+  function flashSuccess (btn, msg) {
+    const original = btn.textContent;
+    btn.textContent = '✓ ' + msg;
+    btn.classList.add('flash-success');
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.classList.remove('flash-success');
+    }, 2400);
+  }
+
+  function composeEmailForKind (kindId, customer, url) {
+    const ctx = emailContext(customer, url);
+    switch (kindId) {
+      case 'heads_up_t7':     return renderEmailHeadsUpT7(ctx);
+      case 'signup_link_t3':  return renderEmailSignupLinkT3(ctx);
+      case 'renewal_day_t0':  return renderEmailRenewalDayT0(ctx);
+      case 'followup_tplus3': return renderEmailFollowupTplus3(ctx);
+      case 'lapse_tplus14':   return renderEmailLapseTplus14(ctx);
+      default:                return null;
+    }
+  }
+
+  function emailContext (customer, url) {
+    const firstName = (customer.name || customer.email).split(' ')[0];
+    const planLabel = customer.plan_type === 'progressive'
+      ? (PLAN_LABELS.progressive[customer.plan_key] || `Progressive — ${customer.plan_key}`)
+      : PLAN_LABELS.custom;
+    const monthly = formatMoney(customer.amount_cents, customer.currency);
+    const renewalDate = customer.next_renewal
+      ? new Date(customer.next_renewal).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'next renewal';
+    return { firstName, planLabel, monthly, renewalDate, signupLink: url || '' };
+  }
+
+  function wrapHtml (text) {
+    // Convert plain-text body to a simple HTML wrapper (preserves
+    // newlines, links the URLs).
+    const escaped = String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const linked = escaped.replace(
+      /(https?:\/\/[^\s)]+)/g,
+      '<a href="$1" style="color:#155e75;">$1</a>',
+    );
+    return `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#0f172a;white-space:pre-wrap;">${linked}</div>`;
+  }
+
+  // The 5 email renderers. Each returns { subject, text, html }.
+  // Bodies are kept in sync with migration/emails/*.md.
+  function renderEmailHeadsUpT7 ({ firstName, planLabel, monthly, renewalDate }) {
+    const text = `Hi ${firstName},
+
+Quick note from me — over the next couple of weeks I'm moving All Paddling onto a new platform. Same coaching, same plans, just a much better home for it all (faster, cleaner, no more clunky Shopify portal).
+
+Here's what this means for you:
+
+- Your ${planLabel} continues without interruption.
+- Your monthly amount stays the same: ${monthly} per month.
+- Your next renewal is ${renewalDate}.
+- You don't need to do anything today — I'll send you a one-click link in a few days to move you across.
+
+The only small ask when the time comes will be re-entering your card. The new system runs on Stripe (way more secure than what we had), and unfortunately the old Shopify card details don't transfer across — that's the one bit of friction I can't engineer away.
+
+If you've got any questions in the meantime, just hit reply.
+
+Thanks for being on this journey with me.
+
+Mick
+`;
+    return {
+      subject: `Quick heads-up: we're moving the All Paddling site`,
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  function renderEmailSignupLinkT3 ({ firstName, planLabel, monthly, renewalDate, signupLink }) {
+    const text = `Hi ${firstName},
+
+Here's your link to move across to the new All Paddling site:
+
+👉 ${signupLink}
+
+It takes about 60 seconds. Your plan and price are already filled in for you — all you need to do is enter your card details.
+
+What's set up for you:
+
+- Plan: ${planLabel}
+- Price: ${monthly} per month
+- First charge on Stripe: ${renewalDate}
+- Your old Shopify subscription: I'll cancel it before it bills, so you'll never be double-charged.
+
+Once you sign up, you'll get instant access to the new member dashboard — your training plan, threshold pace tracking, and a much cleaner program view.
+
+If anything looks off when you click through (price, plan name, anything), reply to this email and I'll fix it before you sign up.
+
+See you on the other side,
+
+Mick
+`;
+    return {
+      subject: `Action needed: your one-click link to move to the new All Paddling`,
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  function renderEmailRenewalDayT0 ({ firstName, monthly, signupLink }) {
+    const text = `Hi ${firstName},
+
+Just a quick one — today is your usual All Paddling renewal day, and your Shopify sub will bill you ${monthly} as normal in the next few hours.
+
+If you haven't moved across to the new site yet, your link is here:
+
+👉 ${signupLink}
+
+A few options for what happens today:
+
+- Best path: click the link, sign up on Stripe in 60 seconds. I'll cancel the Shopify sub before it bills, and you start fresh on the new platform tomorrow.
+- Fine path: Shopify bills you today as usual, you keep coaching for another month, and we move you across before the next renewal.
+- No-rush path: if you want to take a break or have a question, just reply.
+
+No pressure — your training keeps going either way. But the new site is much better and I'd love to have you on it.
+
+Mick
+`;
+    return {
+      subject: `Today's your renewal day — quick action needed`,
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  function renderEmailFollowupTplus3 ({ firstName, signupLink }) {
+    const text = `Hey ${firstName},
+
+Just checking in — I sent you the link to move to the new All Paddling site about a week ago and I haven't heard back. No drama, just want to make sure nothing's gone wrong on your end.
+
+Possible explanations and how I can help with each:
+
+- The email got lost. Here's the link again: ${signupLink}
+- You're trying to take a break from training. No problem at all — reply and let me know, I'll pause the move so you don't get more reminders.
+- Something's not working when you click through. Reply with what you see and I'll sort it.
+- You've decided to stop coaching with me. That's OK too — just a quick reply so I know to close things off cleanly. No hard feelings.
+
+Whatever it is, just hit reply. Two-line response is plenty.
+
+Mick
+`;
+    return {
+      subject: `Everything OK?`,
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  function renderEmailLapseTplus14 ({ firstName, signupLink }) {
+    const text = `Hi ${firstName},
+
+I haven't heard from you about moving to the new All Paddling site, so I've gone ahead and cancelled your Shopify subscription today. That means:
+
+- No more charges to your card from the old system.
+- Your training history is safe — I keep a record of everything you've done with me.
+- The door is open if you want to come back. Whenever you're ready, your one-click link still works: ${signupLink}
+
+If this was a mistake or you'd like to chat about it, just reply. I'm easy to find.
+
+Wishing you well on the water either way.
+
+Mick
+`;
+    return {
+      subject: `Your All Paddling subscription has been paused`,
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  // ============================================================
   // Email body composition (mirrors migration/emails/02_signup-link_T-3.md)
+  // — kept for the existing "Generate link / preview" flow.
   // ============================================================
   function renderMigrationEmail (customer, url) {
     const firstName = (customer.name || customer.email).split(' ')[0];

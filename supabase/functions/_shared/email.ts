@@ -21,6 +21,15 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')   ?? '';
 const FROM_ADDRESS   = Deno.env.get('EMAIL_FROM')       ?? 'All Paddling <team@allpaddling.com>';
 const REPLY_TO       = Deno.env.get('EMAIL_REPLY_TO')   ?? 'mick@allpaddling.com';
 
+// EMAIL_BCC: comma-separated list of addresses to BCC on every outgoing
+// email through this helper. Used to give Jake + Mick a permanent paper
+// trail of every transactional and migration email sent through Resend.
+// Empty / unset = no BCC (older behaviour).
+const EMAIL_BCC = (Deno.env.get('EMAIL_BCC') ?? '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
 // ------------------------------------------------------------
 // Type definitions
 // ------------------------------------------------------------
@@ -38,6 +47,7 @@ export interface SendEmailRequest {
   text:      string;
   from?:     string;          // override FROM_ADDRESS
   replyTo?:  string;          // override REPLY_TO
+  bcc?:      string[];        // override EMAIL_BCC env list
   headers?:  Record<string, string>;
   tags?:     Array<{ name: string; value: string }>;
 }
@@ -127,7 +137,8 @@ export async function sendEmail (req: SendEmailRequest): Promise<{ id: string }>
     throw new Error('sendEmail: RESEND_API_KEY env var not set');
   }
 
-  const body = {
+  const bccList = req.bcc ?? EMAIL_BCC;
+  const body: Record<string, unknown> = {
     from:     req.from    ?? FROM_ADDRESS,
     to:       Array.isArray(req.to) ? req.to : [req.to],
     subject:  req.subject,
@@ -137,6 +148,9 @@ export async function sendEmail (req: SendEmailRequest): Promise<{ id: string }>
     headers:  req.headers,
     tags:     req.tags,
   };
+  if (bccList.length > 0) {
+    body.bcc = bccList;
+  }
 
   const res = await fetch(RESEND_API, {
     method:  'POST',
@@ -153,7 +167,9 @@ export async function sendEmail (req: SendEmailRequest): Promise<{ id: string }>
   }
 
   const data = await res.json() as { id: string };
-  console.log(`sendEmail: sent to ${body.to.join(', ')} via Resend (id=${data.id}, subject="${body.subject}")`);
+  const toList = (body.to as string[]).join(', ');
+  const bccDesc = bccList.length > 0 ? ` (bcc: ${bccList.join(', ')})` : '';
+  console.log(`sendEmail: sent to ${toList}${bccDesc} via Resend (id=${data.id}, subject="${body.subject}")`);
   return data;
 }
 

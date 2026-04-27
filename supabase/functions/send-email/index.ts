@@ -2,78 +2,162 @@
 // supabase/functions/send-email/index.ts
 //
 // HTTP wrapper around the email helpers in _shared/email.ts.
-// Lets cron jobs, scheduled tasks, and ad-hoc test scripts send
-// transactional emails without having to bundle the helpers
-// themselves.
+// Used by:
+//   - In-process callers should import sendTransactional() directly
+//     from _shared/email.ts (no extra HTTP hop, richer errors).
+//   - Out-of-process callers (cron jobs, scheduled tasks, ad-hoc
+//     scripts) hit this endpoint with the service-role key.
+//   - Coach admin pages (admin-migrate.html) hit this endpoint with
+//     a coach JWT, restricted to migration emails (raw mode).
 //
-// In-process callers (e.g. stripe-webhook) should import
-// sendTransactional() from _shared/email.ts directly — that's
-// faster (no extra HTTP hop) and gets richer error context.
+// Auth (one of):
+//   1. `x-service-role-key: <SUPABASE_SERVICE_ROLE_KEY>` header
+//      → grants full access to all modes.
+//   2. `Authorization: Bearer <coach JWT>` header
+//      → user is verified as being in the `coaches` table; restricted
+//      to the migration-email use case (raw mode only). The JWT comes
+//      from sb.auth.getSession() in the browser.
 //
-// Auth: callers must present the Supabase service-role key in
-// the `x-service-role-key` header. The function never accepts
-// anonymous traffic; it is deployed with --no-verify-jwt because
-// Stripe-style external callers don't apply here, but the
-// service-role check below provides equivalent protection.
+// Two body modes:
+//   A. TEMPLATE mode — renders one of the 6 transactional templates.
+//        { template: "welcome", to: "...", vars: {...}, tags: [...] }
+//      Service-role auth required (transactional emails should go
+//      through the server-side trigger, not be coach-triggered ad-hoc).
+//   B. RAW mode — sends pre-rendered subject/text/html. Used by
+//      admin-migrate to send migration emails.
+//        { to, subject, text, html, tags?, replyTo?, from? }
+//      Either auth method works. Coaches get this for migration sends.
+//
+// EMAIL_BCC (env): comma-separated list of addresses BCC'd on every
+// outgoing email. Lets Jake + Mick maintain a permanent audit trail
+// in their own Gmail of every transactional + migration email sent.
 //
 // Required environment:
-//   RESEND_API_KEY              Resend API key (sk_test_… or sk_live_…)
+//   RESEND_API_KEY              Resend API key (re_…)
 //   SUPABASE_SERVICE_ROLE_KEY   Auto-injected by Supabase
-//   EMAIL_FROM                  e.g. "All Paddling <team@allpaddling.com>"
-//   EMAIL_REPLY_TO              e.g. "mick@allpaddling.com"
+//   EMAIL_FROM                  e.g. "Mick at All Paddling <mick@allpaddling.online>"
+//   EMAIL_REPLY_TO              e.g. "hello@allpaddling.online"
+//   EMAIL_BCC                   comma-separated, e.g. "jakedibetta@gmail.com,dibetta1@gmail.com"
 //
-// Request body (JSON):
-//   {
-//     "template": "welcome" | "payment-receipt" | ...   // required
-//     "to":       "user@example.com" | ["a@…", "b@…"]   // required
-//     "vars":     { "member_name": "Sarah", ... }       // required
-//     "tags":     [{ "name": "purpose", "value": "..." }]  // optional
-//   }
-//
-// Response (JSON):
-//   200 { "id": "abc-123" }                  — message accepted by Resend
-//   400 { "error": "..." }                   — invalid request
-//   401 { "error": "missing or invalid service-role-key" }
-//   500 { "error": "..." }                   — render error or Resend rejected
+// Response:
+//   200 { id }                                — accepted by Resend
+//   400 { error }                             — invalid request
+//   401 { error: "unauthorized" }             — missing or invalid auth
+//   403 { error: "forbidden" }                — auth valid but role not allowed for this mode
+//   500 { error }                             — Resend rejected or render error
 // ============================================================
 
 import {
   sendTransactional,
+  sendEmail,
   TEMPLATE_NAMES,
   type TemplateName,
 } from '../_shared/email.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_ANON_KEY  = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+const SERVICE_ROLE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-interface SendEmailBody {
+interface TemplateModeBody {
+  mode?:    'template';
   template: string;
   to:       string | string[];
   vars:     Record<string, string | number>;
   tags?:    Array<{ name: string; value: string }>;
 }
 
+interface RawModeBody {
+  mode:     'raw';
+  to:       string | string[];
+  subject:  string;
+  text:     string;
+  html:     string;
+  from?:    string;
+  replyTo?: string;
+  tags?:    Array<{ name: string; value: string }>;
+}
+
+type SendEmailBody = TemplateModeBody | RawModeBody;
+
 function jsonResponse (status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, x-service-role-key, x-client-info, apikey, content-type',
+    },
   });
 }
 
 function isValidEmail (s: unknown): s is string {
-  // Permissive check — Resend will do the rigorous validation.
-  // We just want to reject obvious garbage early.
+  // Permissive — Resend will do the rigorous validation.
   return typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
+/**
+ * Verify caller. Returns 'service_role' if the service-role key was
+ * presented, 'coach' if a JWT belonging to a coach was presented, or
+ * null if neither (caller is unauthenticated).
+ */
+async function authenticateCaller (req: Request): Promise<'service_role' | 'coach' | null> {
+  // Service-role check first (cheaper, no DB call).
+  const presentedServiceKey = req.headers.get('x-service-role-key');
+  if (SERVICE_ROLE_KEY && presentedServiceKey === SERVICE_ROLE_KEY) {
+    return 'service_role';
+  }
+
+  // Coach JWT check.
+  const authHeader = req.headers.get('Authorization') ?? '';
+  if (authHeader.startsWith('Bearer ')) {
+    const jwt = authHeader.slice('Bearer '.length).trim();
+    if (!jwt) return null;
+    // Service-role bearer is also accepted (some callers use this style).
+    if (SERVICE_ROLE_KEY && jwt === SERVICE_ROLE_KEY) return 'service_role';
+    try {
+      const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${jwt}` } },
+        auth:   { persistSession: false, autoRefreshToken: false },
+      });
+      const { data: userData, error: userErr } = await sb.auth.getUser();
+      if (userErr || !userData?.user?.email) return null;
+      const callerEmail = userData.user.email.toLowerCase();
+      const { data: coachRow } = await sb
+        .from('coaches')
+        .select('email')
+        .eq('email', callerEmail)
+        .maybeSingle();
+      if (coachRow) return 'coach';
+    } catch (e) {
+      console.warn('send-email: JWT verification threw —', e);
+    }
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin':  '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-service-role-key, x-client-info, apikey, content-type',
+      },
+    });
+  }
+
   if (req.method !== 'POST') {
     return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   // -- auth --
-  const presentedKey = req.headers.get('x-service-role-key');
-  if (!SERVICE_ROLE_KEY || !presentedKey || presentedKey !== SERVICE_ROLE_KEY) {
-    return jsonResponse(401, { error: 'missing or invalid service-role-key' });
+  const role = await authenticateCaller(req);
+  if (!role) {
+    return jsonResponse(401, { error: 'unauthorized' });
   }
 
   // -- body --
@@ -84,7 +168,19 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: 'invalid JSON body' });
   }
 
-  // -- validation --
+  const mode = (body as { mode?: string }).mode ?? 'template';
+
+  if (mode === 'raw') {
+    return await handleRawSend(body as RawModeBody, role);
+  } else {
+    if (role !== 'service_role') {
+      return jsonResponse(403, { error: 'forbidden: template mode requires service-role auth' });
+    }
+    return await handleTemplateSend(body as TemplateModeBody);
+  }
+});
+
+async function handleTemplateSend (body: TemplateModeBody): Promise<Response> {
   if (!body.template || typeof body.template !== 'string') {
     return jsonResponse(400, { error: '`template` is required (string)' });
   }
@@ -104,7 +200,6 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: '`vars` is required (object)' });
   }
 
-  // -- send --
   try {
     const result = await sendTransactional(
       body.template as TemplateName,
@@ -115,9 +210,44 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { id: result.id });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`send-email: failed for template="${body.template}" to=${recipients.join(',')} — ${msg}`);
-    // Distinguish bad-input errors (e.g. missing var) from infrastructure errors.
+    console.error(`send-email (template): failed for "${body.template}" to=${recipients.join(',')} — ${msg}`);
     const isClientError = msg.startsWith('renderTemplate:') || msg.startsWith('loadTemplate:');
     return jsonResponse(isClientError ? 400 : 500, { error: msg });
   }
-});
+}
+
+async function handleRawSend (body: RawModeBody, _role: 'service_role' | 'coach'): Promise<Response> {
+  if (!body.to) {
+    return jsonResponse(400, { error: '`to` is required (string or string[])' });
+  }
+  const recipients = Array.isArray(body.to) ? body.to : [body.to];
+  if (recipients.length === 0 || !recipients.every(isValidEmail)) {
+    return jsonResponse(400, { error: '`to` must be a non-empty list of valid email addresses' });
+  }
+  if (!body.subject || typeof body.subject !== 'string') {
+    return jsonResponse(400, { error: '`subject` is required (string)' });
+  }
+  if (!body.text || typeof body.text !== 'string') {
+    return jsonResponse(400, { error: '`text` is required (string)' });
+  }
+  if (!body.html || typeof body.html !== 'string') {
+    return jsonResponse(400, { error: '`html` is required (string)' });
+  }
+
+  try {
+    const result = await sendEmail({
+      to:       recipients,
+      subject:  body.subject,
+      text:     body.text,
+      html:     body.html,
+      from:     body.from,
+      replyTo:  body.replyTo,
+      tags:     body.tags,
+    });
+    return jsonResponse(200, { id: result.id });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`send-email (raw): failed to=${recipients.join(',')} subject="${body.subject}" — ${msg}`);
+    return jsonResponse(500, { error: msg });
+  }
+}
