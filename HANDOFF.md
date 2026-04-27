@@ -4,6 +4,60 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
+## ⭐⭐⭐ LATEST — 2026-04-28 evening, before sleep
+
+### What just shipped (commit `f87f071c`)
+
+**Send-via-Resend buttons in admin-migrate.html + EMAIL_BCC across all outgoing emails.**
+
+- `_shared/email.ts` reads new `EMAIL_BCC` env var (comma-separated). Every Resend send now BCCs the configured addresses automatically. All 6 transactional templates (welcome, payment-receipt, plan-ready, block-delivered, payment-failed, upcoming-renewal) AND the new migration-email sends inherit.
+- `send-email` Edge Function now accepts coach-JWT auth (alongside existing service-role) and a new `mode: "raw"` body shape (subject/text/html directly). Used by admin-migrate.
+- `admin-migrate.js`: each row now has a `<select>` (5 email kinds: T-7, T-3, T-0, T+3, T+14) + a green "Send via Resend" button. Clicking it generates a fresh Stripe checkout link if needed, renders the email body inline, POSTs to send-email, updates `migration_status` if appropriate. Shows "✓ Sent to ..." flash on success.
+
+**Already done in browser:**
+- `EMAIL_BCC` secret saved in Supabase (= `jakedibetta@gmail.com,dibetta1@gmail.com`)
+- migtest5 wiped from Supabase
+
+### TWO MANUAL STEPS BEFORE TOMORROW'S MIGRATION
+
+**1. Deploy the three Edge Functions** (Terminal):
+```
+cd ~/Documents/AllPaddling
+supabase functions deploy stripe-webhook --no-verify-jwt --project-ref crlukzkgmydyqpwndjvc
+supabase functions deploy send-email --no-verify-jwt --project-ref crlukzkgmydyqpwndjvc
+supabase functions deploy contact-form --no-verify-jwt --project-ref crlukzkgmydyqpwndjvc
+```
+
+(All three share `_shared/email.ts`, so all three need the redeploy to pick up `EMAIL_BCC`.)
+
+**2. Inbound replies — Mick needs to set up a Gmail filter on `dibetta1@gmail.com`** to auto-forward AllPaddling-related emails to `jakedibetta@gmail.com`. Cloudflare Email Routing is 1-destination-per-rule, so true server-side fan-out would need an Email Worker (deferred). Easiest workaround:
+
+   Mick → Gmail Settings → Filters → Create new filter:
+   - From: `*@allpaddling.online`
+   - Action: Forward to `jakedibetta@gmail.com` (Jake will need to verify the forwarding address by clicking a confirmation link)
+
+   Result: customer replies arrive in Mick's inbox AND fan out to Jake's. Outgoing already covered by EMAIL_BCC.
+
+### Migration cadence (reminder)
+
+- T-7 — heads-up (no action needed for customer)
+- T-3 — signup link (action required)
+- T-0 — same-day reminder if not signed up
+- T+3 — friendly check-in if still no signup
+- T+14 — lapse notice (Shopify cancelled, door open)
+
+The `<select>` dropdown auto-defaults to the next-step kind based on each row's `migration_status` (pending → T-7, heads_up_sent → T-3, etc.). Just click "Send via Resend" — no manual choice needed for the happy path.
+
+### Tomorrow's actual workflow
+
+1. Open `https://allpaddling.online/app/admin-migrate.html` (signed in as coach)
+2. Click "Send via Resend" on **one** customer row first to eyeball the live email arriving in your inbox (you'll receive it via the BCC)
+3. If it looks good, click Send on the remaining 19
+4. Statuses auto-update from `pending` → `heads_up_sent`
+5. ~3-4 days later, repeat with T-3 (dropdown auto-defaults; just click)
+
+---
+
 ## ⭐⭐⭐ MORNING BRIEF — 2026-04-28
 
 **TL;DR:** Custom-plan signup flow is end-to-end verified. Migration to 20 real customers is unblocked. Three short tasks before sending the heads-up emails.
