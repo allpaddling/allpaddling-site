@@ -2,7 +2,7 @@
 
 HTTP wrapper that loads one of the templates in `_shared/email-templates/`, renders it with caller-supplied variables, and sends via Resend.
 
-**Status: scaffold + helpers wired.** End-to-end Resend delivery waits on `RESEND_API_KEY` being set and a verified sender domain (ROADMAP §2.1).
+**Status: live.** Resend is wired against `allpaddling.online` (verified domain) and the `welcome` template has been delivered end-to-end via the `stripe-webhook → sendTransactional` path. Other templates are template-tested but not yet live-fired (no `invoice.paid`, `invoice.payment_failed`, or block-delivery events have happened yet).
 
 ## When to use this vs. importing `_shared/email.ts` directly
 
@@ -13,17 +13,19 @@ HTTP wrapper that loads one of the templates in `_shared/email-templates/`, rend
 
 ```
 RESEND_API_KEY              re_…                         (Resend API key)
-EMAIL_FROM                  "All Paddling <team@allpaddling.com>"
-EMAIL_REPLY_TO              "mick@allpaddling.com"
+EMAIL_FROM                  "Mick at All Paddling <mick@allpaddling.online>"
+EMAIL_REPLY_TO              "hello@allpaddling.online"   (Cloudflare-routed → dibetta1@gmail.com)
 SUPABASE_SERVICE_ROLE_KEY   auto-injected, used to authenticate callers
 ```
 
 Set with:
 ```bash
 supabase secrets set RESEND_API_KEY=re_...
-supabase secrets set EMAIL_FROM='All Paddling <team@allpaddling.com>'
-supabase secrets set EMAIL_REPLY_TO=mick@allpaddling.com
+supabase secrets set EMAIL_FROM='Mick at All Paddling <mick@allpaddling.online>'
+supabase secrets set EMAIL_REPLY_TO=hello@allpaddling.online
 ```
+
+Note: the Resend verified domain is the apex `allpaddling.online`, not `.com`. Sending from `team@allpaddling.com` will return 403 Forbidden.
 
 ## Deploy
 

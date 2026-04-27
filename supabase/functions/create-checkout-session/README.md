@@ -69,7 +69,10 @@ The function looks up or creates the customer's Supabase auth user automatically
 supabase functions deploy create-checkout-session
 ```
 
-JWT verification is left ON for this function — self mode requires a valid user JWT. Migrate mode bypasses this by sending the service-role key in the bearer header (the function explicitly checks for service-role-key equality and switches modes).
+JWT verification is left ON for this function — self mode requires a valid user JWT. Migrate mode bypasses this by sending the service-role key in the bearer header. The function detects service-role calls in two ways (either path triggers migrate mode):
+
+- Exact-match against `SUPABASE_SERVICE_ROLE_KEY` env var (works for the legacy `eyJ…` JWT format).
+- Decode the bearer token and check `payload.role === 'service_role'` (works for both formats and is robust to Supabase rotating the default service-role key format, as happened on 2026-04-27).
 
 ## Local testing
 
