@@ -287,7 +287,56 @@ Deno.serve(async (req) => {
     // Include plan_type so welcome.html can branch its "what happens
     // next" copy — Progressive members get instant access; Custom
     // members get the "Mick is preparing your block" wait language.
-    const successUrl = body.success_url ?? `${APP_BASE_URL}/app/welcome.html?session_id={CHECKOUT_SESSION_ID}&type=${planType}`;
+    //
+    // MIGRATE-MODE AUTH HANDOFF (Jake, 2026-04-27):
+    //
+    // In self mode the user already has a Supabase session (they signed
+    // in via magic link before clicking Subscribe), so post-Stripe
+    // they're still signed in and the dashboard works.
+    //
+    // In migrate mode the auth user was created server-side
+    // (getOrCreateAuthUser above) but no session was minted in the
+    // browser. After Stripe redirects to welcome.html the user has
+    // no session — clicking "Skip ahead to dashboard" bounces them
+    // to login.
+    //
+    // Fix: generate a one-time magiclink for the target email and use
+    // its action_link as the Stripe success_url. After payment Stripe
+    // redirects to action_link → Supabase verify endpoint sets the
+    // session cookie + redirects to redirectTo (welcome.html). The user
+    // lands on welcome already signed in; dashboard works on first click.
+    //
+    // Failure handling: if generateLink fails (rare, but e.g. SMTP rate
+    // limit) we fall back to the bare welcome URL — same UX as before
+    // (user sees welcome, has to click magic link from their inbox to
+    // continue). No regression.
+    let successUrl: string;
+    if (body.success_url) {
+      successUrl = body.success_url;
+    } else if (isMigration) {
+      const baseWelcome = `${APP_BASE_URL}/app/welcome.html?type=${planType}`;
+      try {
+        const { data: linkData, error: linkErr } = await sbAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+          options: { redirectTo: baseWelcome },
+        });
+        if (linkErr) {
+          console.warn(`migrate-mode magiclink generation failed for ${email}: ${linkErr.message}`);
+          successUrl = baseWelcome;
+        } else if (linkData?.properties?.action_link) {
+          successUrl = linkData.properties.action_link;
+        } else {
+          console.warn(`migrate-mode magiclink returned no action_link for ${email}`);
+          successUrl = baseWelcome;
+        }
+      } catch (e) {
+        console.warn(`migrate-mode magiclink threw for ${email}:`, e);
+        successUrl = baseWelcome;
+      }
+    } else {
+      successUrl = `${APP_BASE_URL}/app/welcome.html?session_id={CHECKOUT_SESSION_ID}&type=${planType}`;
+    }
     const cancelUrl  = body.cancel_url  ?? `${APP_BASE_URL}/getting-started.html?cancelled=1`;
 
     // Create the Checkout Session.
