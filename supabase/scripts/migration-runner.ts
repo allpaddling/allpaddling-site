@@ -89,6 +89,11 @@ const STATUS_FILTER = arg('status', 'pending');
 const LIMIT         = parseInt(arg('limit', '0'), 10) || 0;
 const OUT_PATH      = arg('out', './migration-output.json');
 const DRY_RUN       = flag('dry-run');
+// --only-email pins the run to a single migration_customers row by
+// email address. Useful for inserting a test row and running the
+// real (non-dry) flow on just that row, without affecting the
+// real customer cohort. When set, --status is ignored.
+const ONLY_EMAIL    = arg('only-email', '');
 
 // ------------------------------------------------------------
 // Types — mirror migration_customers schema
@@ -191,12 +196,22 @@ const sb = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-console.log(`Loading customers with migration_status = '${STATUS_FILTER}'…`);
-
-const { data: customers, error: loadErr } = await sb
+// --only-email overrides --status: pin to one specific row regardless
+// of its current migration_status. Useful for re-running on a single
+// test row without affecting the real cohort.
+let query = sb
   .from('migration_customers')
-  .select('id, legacy_id, email, name, country_code, plan_type, plan_key, amount_cents, currency, next_renewal, shopify_created_at, migration_status')
-  .eq('migration_status', STATUS_FILTER)
+  .select('id, legacy_id, email, name, country_code, plan_type, plan_key, amount_cents, currency, next_renewal, shopify_created_at, migration_status');
+
+if (ONLY_EMAIL) {
+  console.log(`Loading single customer by email '${ONLY_EMAIL}' (status filter ignored)…`);
+  query = query.eq('email', ONLY_EMAIL);
+} else {
+  console.log(`Loading customers with migration_status = '${STATUS_FILTER}'…`);
+  query = query.eq('migration_status', STATUS_FILTER);
+}
+
+const { data: customers, error: loadErr } = await query
   .order('next_renewal', { ascending: true, nullsFirst: false });
 
 if (loadErr) {
