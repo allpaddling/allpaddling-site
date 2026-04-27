@@ -58,30 +58,36 @@ export const TEMPLATE_NAMES = [
 export type TemplateName = typeof TEMPLATE_NAMES[number];
 
 // ------------------------------------------------------------
-// 1. Load a template from disk
+// 1. Load a template (inlined at deploy time)
 // ------------------------------------------------------------
-// Templates live next to this file in _shared/email-templates/.
-// import.meta.url resolves to the deployed location of email.ts,
-// so the URL math is correct in both local `supabase functions
-// serve` and remote `supabase functions deploy`.
+// Templates were originally read from disk via Deno.readTextFile,
+// but `supabase functions deploy` only bundles files reachable
+// from index.ts via import statements — the .txt and .html assets
+// in email-templates/ never made it into the deployed function,
+// causing every send to fail with NotFound at runtime.
 //
-// Throws if the template name isn't whitelisted, or if any of the
-// three files can't be read.
-export async function loadTemplate (name: string): Promise<Template> {
+// Now they live as TS string constants in email-templates.gen.ts
+// (auto-generated from the source files), so they ship with the
+// function automatically.
+//
+// To edit a template:
+//   1. Edit the source file under _shared/email-templates/<name>/
+//   2. Regenerate _shared/email-templates.gen.ts
+//      (use the python script in outputs/regen_email_templates.sh)
+//   3. Redeploy.
+import { TEMPLATES } from './email-templates.gen.ts';
+
+export function loadTemplate (name: string): Template {
   if (!(TEMPLATE_NAMES as readonly string[]).includes(name)) {
     throw new Error(`loadTemplate: unknown template "${name}". Whitelist: ${TEMPLATE_NAMES.join(', ')}`);
   }
 
-  const baseUrl = new URL(`./email-templates/${name}/`, import.meta.url);
+  const t = TEMPLATES[name];
+  if (!t) {
+    throw new Error(`loadTemplate: template "${name}" is in whitelist but missing from email-templates.gen.ts (regenerate?)`);
+  }
 
-  const [subject, html, text] = await Promise.all([
-    Deno.readTextFile(new URL('subject.txt', baseUrl)),
-    Deno.readTextFile(new URL('html.html', baseUrl)),
-    Deno.readTextFile(new URL('text.txt', baseUrl)),
-  ]);
-
-  // subject.txt is one line — trim trailing newline / whitespace.
-  return { name, subject: subject.trim(), html, text };
+  return { name, subject: t.subject.trim(), html: t.html, text: t.text };
 }
 
 // ------------------------------------------------------------
@@ -160,7 +166,7 @@ export async function sendTransactional (
   vars:         Record<string, string | number>,
   options?:     Pick<SendEmailRequest, 'from' | 'replyTo' | 'headers' | 'tags'>,
 ): Promise<{ id: string }> {
-  const template = await loadTemplate(templateName);
+  const template = loadTemplate(templateName);
   const rendered = renderTemplate(template, vars);
 
   return sendEmail({
