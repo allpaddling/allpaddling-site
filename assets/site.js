@@ -87,9 +87,9 @@ function renderFooter() {
           <div class="footer-col">
             <h4>Contact</h4>
             <ul>
-              <li><a href="tel:+61404556880">0404 556 880</a></li>
-              <li><a href="mailto:dibetta1@gmail.com">dibetta1@gmail.com</a></li>
+              <li><a href="mailto:hello@allpaddling.online">hello@allpaddling.online</a></li>
               <li><a href="contact.html">Contact form</a></li>
+              <li><a href="login.html">Member sign-in</a></li>
             </ul>
           </div>
           <div class="footer-col footer-subscribe">
