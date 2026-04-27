@@ -85,7 +85,7 @@ function escapeHTML (s) {
   }[ch]));
 }
 
-function progressivePlanPageHTML (copy) {
+function progressivePlanPageHTML (copy, key) {
   const e = escapeHTML;
   return `
 <section class="page-hero">
@@ -283,7 +283,7 @@ function renderProgressivePlanPage (key) {
     document.title = copy.title;
     const target = document.getElementById('plan-page');
     if (target) {
-      target.innerHTML = progressivePlanPageHTML(copy);
+      target.innerHTML = progressivePlanPageHTML(copy, key);
     } else {
       console.error('progressive-plan.js: <main id="plan-page"> placeholder not found');
     }
