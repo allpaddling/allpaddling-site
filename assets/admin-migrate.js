@@ -388,7 +388,7 @@ What's set up for you:
 
 Once you sign up, you'll get instant access to the new member dashboard — your training plan, threshold pace tracking, and a much cleaner program view.
 
-If anything looks off when you click through (price, plan name, anything), reply to this email and I'll fix it before you sign up. Don't enter card details for the wrong amount.
+If anything looks off when you click through (price, plan name, anything), reply to this email and I'll fix it before you sign up.
 
 See you on the other side,
 
