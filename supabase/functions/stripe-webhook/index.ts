@@ -370,6 +370,82 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
     if (error) throw new Error(`custom_members upsert: ${error.message}`);
     memberId  = data.id;
     planLabel = 'Custom Season Race Plan';
+
+    // Seed a starter custom_plans row for this new member by mirroring
+    // the currently-published Prone Progressive Plan's first 4-week
+    // block. Rationale (Jake, 2026-04-27):
+    //
+    //   "I want new customers that sign up for a Custom Plan to see a
+    //    mirror of the currently published Prone Progressive Plan
+    //    4-week block. This should be the default program that loads
+    //    for all new custom signups. Mick will then within 1-2 days
+    //    customise their plan based off this. This gives us a fallback
+    //    in the instance that Mick doesn't customise their plan in a
+    //    timely fashion — they at least have a base plan to work from."
+    //
+    // Behaviour:
+    //   - We snapshot the Prone published meta+programs[0] at signup
+    //     time. Subsequent edits to the Prone progressive plan do NOT
+    //     bleed into existing custom members — once the row exists,
+    //     it's their personal copy.
+    //   - We populate BOTH the published columns (so the member sees
+    //     it on their dashboard right away) AND the draft columns
+    //     (so Mick has the same content to customise from in admin-edit).
+    //   - meta is REWRITTEN to "Custom Season Race Plan · Block 1 (starter)"
+    //     so the member sees a custom-styled title rather than
+    //     "Progressive Prone Block 1".
+    //   - INSERT ON CONFLICT DO NOTHING (via .upsert with
+    //     ignoreDuplicates) so a re-run of this handler — or any other
+    //     path that already created a custom_plans row — wins.
+    //   - If the Prone plan isn't published yet, OR has no programs[0],
+    //     we skip the seed gracefully. The new admin-edit fallback
+    //     (commit 314b4381) will still let Mick open the editor and
+    //     start from PROGRAM_1 defaults.
+    const { data: prone, error: proneErr } = await sb
+      .from('progressive_plans')
+      .select('meta, programs')
+      .eq('key', 'prone')
+      .maybeSingle();
+    if (proneErr) {
+      console.warn(`progressive_plans (prone) load failed for seeding ${email}:`, proneErr.message);
+    }
+    const seedProgram = (prone && Array.isArray(prone.programs) && prone.programs.length > 0)
+      ? prone.programs[0]
+      : null;
+    if (seedProgram) {
+      const seededMeta = {
+        name:     'Custom Season Race Plan · Block 1',
+        subtitle: 'Starter block — Mick will tailor this to your goals shortly.',
+        tier:     'Custom',
+        cadence:  '4 weeks',
+      };
+      const nowIso = new Date().toISOString();
+      const { error: planErr } = await sb
+        .from('custom_plans')
+        .upsert(
+          {
+            member_id:      memberId,
+            // Member-facing (published) columns:
+            meta:           seededMeta,
+            programs:       [seedProgram],
+            published_at:   nowIso,
+            // Coach-facing (draft) columns — same content; Mick edits from here:
+            draft_meta:     seededMeta,
+            draft_programs: [seedProgram],
+            last_edited:    nowIso,
+          },
+          { onConflict: 'member_id', ignoreDuplicates: true },
+        );
+      if (planErr) {
+        console.warn(`custom_plans seed failed for ${email}:`, planErr.message);
+        // Don't fail the webhook — admin-edit's fallback handles a
+        // missing row, and the welcome email + member access still work.
+      } else {
+        console.log(`custom_plans seeded from Prone block 1 for ${email}`);
+      }
+    } else {
+      console.log(`custom_plans seed skipped for ${email}: prone plan not published or empty`);
+    }
   }
 
   // Make sure a member_profiles row exists so the dashboard's onboarding
