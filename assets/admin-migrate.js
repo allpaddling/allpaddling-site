@@ -346,7 +346,7 @@
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     $('resultCustomer').textContent = `for ${customer.name}`;
-    $('resultDetail').textContent = `${formatMoney(customer.amount_cents, customer.currency)} per month, grandfathered from Shopify. Send the link to ${customer.email}.`;
+    $('resultDetail').textContent = `${formatMoney(customer.amount_cents, customer.currency)} per month. Send the link to ${customer.email}.`;
 
     $('linkInput').value = url;
 
@@ -382,7 +382,7 @@ It takes about 60 seconds. Your plan and price are already filled in for you —
 What's set up for you:
 
 - Plan: ${planLabel}
-- Price: ${monthly} per month (same as today)
+- Price: ${monthly} per month
 - First charge on Stripe: ${renewalDate}
 - Your old Shopify subscription: I'll cancel it before it bills, so you'll never be double-charged.
 
