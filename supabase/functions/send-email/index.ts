@@ -98,24 +98,48 @@ function isValidEmail (s: unknown): s is string {
 }
 
 /**
+ * If the JWT decodes successfully and has role='service_role',
+ * trust it as service-role auth. This is robust to Supabase rotating
+ * the auto-injected SERVICE_ROLE_KEY env var format (legacy `eyJ...`
+ * JWT vs new `sb_secret_...` opaque) — the env var exact-match path
+ * fails when formats diverge, but JWT-decode keeps working.
+ *
+ * Same pattern used in create-checkout-session (commit 98e5beb1).
+ */
+function isServiceRoleJwt (jwt: string): boolean {
+  try {
+    const [, payload] = jwt.split('.');
+    if (!payload) return false;
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    const decoded = JSON.parse(atob(padded));
+    return decoded.role === 'service_role';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Verify caller. Returns 'service_role' if the service-role key was
- * presented, 'coach' if a JWT belonging to a coach was presented, or
- * null if neither (caller is unauthenticated).
+ * presented (exact match OR a JWT whose role claim is service_role),
+ * 'coach' if a JWT belonging to a coach was presented, or null if
+ * neither (caller is unauthenticated).
  */
 async function authenticateCaller (req: Request): Promise<'service_role' | 'coach' | null> {
-  // Service-role check first (cheaper, no DB call).
+  // Service-role via x-service-role-key header (the original style).
   const presentedServiceKey = req.headers.get('x-service-role-key');
-  if (SERVICE_ROLE_KEY && presentedServiceKey === SERVICE_ROLE_KEY) {
-    return 'service_role';
+  if (presentedServiceKey) {
+    if (SERVICE_ROLE_KEY && presentedServiceKey === SERVICE_ROLE_KEY) return 'service_role';
+    if (isServiceRoleJwt(presentedServiceKey)) return 'service_role';
   }
 
-  // Coach JWT check.
+  // Authorization: Bearer <token> — could be service-role OR a coach JWT.
   const authHeader = req.headers.get('Authorization') ?? '';
   if (authHeader.startsWith('Bearer ')) {
     const jwt = authHeader.slice('Bearer '.length).trim();
     if (!jwt) return null;
-    // Service-role bearer is also accepted (some callers use this style).
     if (SERVICE_ROLE_KEY && jwt === SERVICE_ROLE_KEY) return 'service_role';
+    if (isServiceRoleJwt(jwt)) return 'service_role';
     try {
       const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: `Bearer ${jwt}` } },
