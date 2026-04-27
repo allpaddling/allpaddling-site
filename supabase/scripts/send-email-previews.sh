@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Send a preview copy of every customer-facing email to jakedibetta@gmail.com
-# so Jake can read them on his commute. Uses sample customer data.
+# Send a preview copy of every customer-facing email to one recipient
+# so the coach team can read them on their commute. Uses sample
+# customer data.
 #
 #   5 migration emails (T-7, T-3, T-0, T+3, T+14) — sent via send-email
 #     Edge Function in raw mode.
@@ -9,7 +10,11 @@
 #     send-email Edge Function in template mode.
 #
 # Each preview is tagged with `purpose=preview` and the subject is
-# prefixed with "[PREVIEW] " so Jake can distinguish from real sends.
+# prefixed with "[PREVIEW] " so it's distinguishable from real sends.
+# (EMAIL_BCC also applies — Jake + Mick automatically get a copy of
+# every send. Specifying a different recipient via the arg below is
+# only needed when you want the previews in someone's PRIMARY inbox
+# rather than BCC view.)
 #
 # Service-role key is read silently via stdin (silent stdin pattern;
 # see project_allpaddling_secret_handling memory).
@@ -19,11 +24,15 @@
 #   supabase functions deploy send-email --no-verify-jwt --project-ref crlukzkgmydyqpwndjvc
 #
 # Usage:
-#   bash supabase/scripts/send-email-previews.sh
+#   bash supabase/scripts/send-email-previews.sh                      # defaults to jakedibetta@gmail.com
+#   bash supabase/scripts/send-email-previews.sh dibetta1@gmail.com   # send to Mick instead
 set -euo pipefail
 
 PROJECT_REF="crlukzkgmydyqpwndjvc"
-PREVIEW_TO="jakedibetta@gmail.com"
+PREVIEW_TO="${1:-jakedibetta@gmail.com}"
+
+echo "Will send 11 preview emails to: $PREVIEW_TO"
+echo
 
 read -r -s -p "Paste SUPABASE_SERVICE_ROLE_KEY (input is hidden), then press Enter: " SERVICE_ROLE_KEY
 echo
