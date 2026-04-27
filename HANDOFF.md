@@ -4,7 +4,77 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐ Latest session (2026-04-27) — read this first
+## ⭐⭐⭐ MORNING BRIEF — 2026-04-28
+
+**TL;DR:** Custom-plan signup flow is end-to-end verified. Migration to 20 real customers is unblocked. Three short tasks before sending the heads-up emails.
+
+### What we proved last night (migtest5 test signup)
+
+- ✓ Stripe payment → Supabase verify → user lands signed-in on welcome.html (auth-gap fix works)
+- ✓ Webhook seeded `custom_plans` with the published Primer block (member sees real content immediately, not "your plan is being prepared")
+- ✓ `custom_members.auth_user_id` populated correctly (admin lookup links work)
+- ✓ `member_profiles` row created with `completed_onboarding_at: null` (onboarding redirect works)
+
+### Five bug fixes shipped + deployed yesterday afternoon/evening
+
+1. `custom_members.auth_user_id` missing on webhook upsert — commit `98e5beb1`
+2. Webhook didn't create `member_profiles` — commit `98e5beb1`
+3. `create-checkout-session` brittle to service-role key rotation — commit `98e5beb1`
+4. `admin-edit` "could not be found" for plan-less self-signups + `saveCustomPlan` upserts — commit `314b4381` (frontend only)
+5. Custom signups seeded with currently-published Primer block (meta + 4 weeks × 4 sessions) — commit `aa4a7b93`
+6. Migrate-mode auth gap — `create-checkout-session` now uses a magiclink action_link as Stripe success_url so post-payment users land signed-in — commit `17b024f9`
+
+All six lived end-to-end through migtest5 paying A$1, landing signed-in, dashboard rendering primer-seeded plan.
+
+### Three things to do this morning, in order
+
+**1. Eyeball the migtest5 result before deleting** (2 min)
+
+In your normal Chrome (signed in as coach):
+- Open `https://allpaddling.online/app/admin-members.html` → migtest5 should appear in the list
+- Click into them → admin-edit should open cleanly with the Primer draft (not "could not be found")
+- Optional: in Incognito (still signed in as migtest5), open `https://allpaddling.online/app/dashboard.html` → should show "Primer - First 4 Weeks", 4 weeks, 4 sessions/week
+
+**2. Clean up the test data** (1 min)
+
+In Stripe:
+- Subscriptions → cancel migtest5 (if still active)
+- Payments → refund the A$1 charge
+
+In Supabase Studio (https://supabase.com/dashboard/project/crlukzkgmydyqpwndjvc/sql/new) — paste + Run:
+```sql
+delete from public.subscriptions where user_id in (select id from auth.users where email = 'jakedibetta+migtest5@gmail.com');
+delete from public.member_profiles where user_id in (select id from auth.users where email = 'jakedibetta+migtest5@gmail.com');
+delete from public.custom_plans where member_id in (select id from public.custom_members where email = 'jakedibetta+migtest5@gmail.com');
+delete from public.custom_members where email = 'jakedibetta+migtest5@gmail.com';
+delete from public.migration_customers where email = 'jakedibetta+migtest5@gmail.com';
+delete from auth.users where email = 'jakedibetta+migtest5@gmail.com';
+```
+
+(Or just say "clean up migtest5" and Cowork will drive it.)
+
+**3. Send the heads-up emails to the 20 real customers**
+
+`https://allpaddling.online/app/admin-migrate.html` → "Send heads-up emails (T-7)" button.
+
+Suggested gentle rollout: send to **1 customer first** to eyeball the email rendering live (pick someone you trust to forgive a typo if there is one), then if that looks good, send to the remaining 19. The button supports per-row sending if you want fine control.
+
+After heads-up send, the migration_status becomes `heads_up_sent` for each row. The next phase (signup_link) waits 4–7 days per Mick's plan; we can revisit timing then.
+
+### Open questions for you
+
+- **Refund the A$1 from migtest3** if you didn't already (alongside migtest5 refund). Both are real charges that you should reverse before the books look weird.
+- **Decision on heads-up cadence:** the original plan was T-7 / T-3 / T-0. Are you keeping that, or compressing? (Decision is up to you — no code change either way.)
+
+### Known not-broken-but-imperfect things (deferred)
+
+- Cosmetic event-loop noise: `Deno.core.runMicrotasks()` errors in stripe-webhook logs. Doesn't affect behaviour. Cosmetic only.
+- Coach-notification email when a new member signs up — would be nice, not required for launch.
+- The deploy step still requires you to redeploy Edge Functions (per memory). Today's commits are all already deployed; future code changes would need a redeploy.
+
+---
+
+## Previous session (2026-04-27 morning) — Stripe live setup
 
 **The big one: Stripe is live, migration is one button-press away from real customers.**
 
