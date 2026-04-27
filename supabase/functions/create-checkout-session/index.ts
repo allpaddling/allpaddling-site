@@ -256,7 +256,10 @@ Deno.serve(async (req) => {
     // Build success / cancel URLs. Default success goes to a
     // post-checkout welcome page that can read ?session_id=... if
     // we want client-side confirmation; webhook fires either way.
-    const successUrl = body.success_url ?? `${APP_BASE_URL}/app/welcome.html?session_id={CHECKOUT_SESSION_ID}`;
+    // Include plan_type so welcome.html can branch its "what happens
+    // next" copy — Progressive members get instant access; Custom
+    // members get the "Mick is preparing your block" wait language.
+    const successUrl = body.success_url ?? `${APP_BASE_URL}/app/welcome.html?session_id={CHECKOUT_SESSION_ID}&type=${planType}`;
     const cancelUrl  = body.cancel_url  ?? `${APP_BASE_URL}/getting-started.html?cancelled=1`;
 
     // Create the Checkout Session.

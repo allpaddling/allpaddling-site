@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Welcome — All Paddling</title>
-<meta name="description" content="You're in. Your training plan is being prepared." />
+<meta name="description" content="You're in. Your subscription to All Paddling is now active." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -155,23 +155,28 @@
 
     <span class="welcome-eyebrow">You're in</span>
     <h1>Welcome aboard.</h1>
-    <p class="lead" id="lead-copy">Your subscription is active and your training plan is being prepared. Mick will email you the moment it's live — usually within a day or two.</p>
+    <p class="lead" id="lead-copy">Your subscription is active.</p>
 
     <div class="next-steps">
       <h2>What happens next</h2>
-      <ol>
+      <ol id="next-steps-list">
+        <!-- Step 1 — always shown. -->
         <li>
           <div class="step-body">
             <strong>Set your threshold pace</strong>
             <span>Every interval in your plan scales to your current fitness. The pace calculator takes 3 minutes — and you can update it whenever you retest.</span>
           </div>
         </li>
-        <li>
+        <!-- Step 2 — Custom members only. Mick builds bespoke per
+             customer and that takes a day or two. Progressive members
+             skip this step because their plan is already published. -->
+        <li data-show-for="custom">
           <div class="step-body">
             <strong>Mick prepares your block</strong>
             <span>Usually within 1–2 days. You'll get a "your plan is live" email the moment it's ready — no need to refresh.</span>
           </div>
         </li>
+        <!-- Step 3 — always shown. -->
         <li>
           <div class="step-body">
             <strong>Open your dashboard</strong>
@@ -211,26 +216,57 @@
    nudge, not a payment confirmation gate.
    ============================================================ */
 (async () => {
-  /* If the visitor isn't signed in yet (e.g., they came from a
-     migrate-mode link where the Supabase session was minted by
-     the get-or-create user step in create-checkout-session, but
-     the session token doesn't auto-populate the browser), nudge
-     them to sign in. They've already paid — sign-in here is just
-     so the dashboard can pull their plan. */
+  /* Plan type comes through as ?type=progressive or ?type=custom from
+     the create-checkout-session success_url. Used to branch the
+     "what happens next" copy — Progressive members start training
+     immediately because the discipline plans are pre-published, so
+     they don't see "Mick is preparing your block" language. Custom
+     members do see it because Mick builds those bespoke. */
+  const params = new URLSearchParams(window.location.search);
+  const planType = (params.get('type') || '').toLowerCase();
+  const isProgressive = planType === 'progressive';
+
+  // Hide steps that don't apply to this plan type. The data-show-for
+  // attribute markers stay invisible to anyone whose plan_type isn't
+  // an exact match. Custom-only step is hidden for Progressive members.
+  document.querySelectorAll('[data-show-for]').forEach(el => {
+    const showFor = el.getAttribute('data-show-for');
+    if (showFor && showFor !== planType) {
+      el.style.display = 'none';
+    }
+  });
+
+  // Build the lead copy. Progressive: "ready right now". Custom: "Mick
+  // is putting your block together". Personalise with first name if we
+  // can pull it from the session.
+  const customCopy      = `Your subscription is active and your training plan is being prepared. Mick will email you the moment it's live — usually within a day or two.`;
+  const progressiveCopy = `Your subscription is active and your training plan is ready in your dashboard right now. Set your threshold pace, then start training today.`;
+  const baseCopy = isProgressive ? progressiveCopy : customCopy;
+
   try {
+    /* If the visitor isn't signed in yet (e.g., they came from a
+       migrate-mode link where the Supabase session was minted by
+       the get-or-create user step in create-checkout-session, but
+       the session token doesn't auto-populate the browser), nudge
+       them to sign in. They've already paid — sign-in here is just
+       so the dashboard can pull their plan. */
     const session = await getCurrentSession();
     if (session && session.user && session.user.email) {
-      // Personalise the lead copy with their first name if we have it.
       const email = session.user.email.toLowerCase();
       const firstName = (email.split('@')[0] || '').replace(/[._-]+/g, ' ').split(' ')[0];
       if (firstName) {
+        const Capitalised = firstName.charAt(0).toUpperCase() + firstName.slice(1);
         document.getElementById('lead-copy').textContent =
-          `You're in, ${firstName.charAt(0).toUpperCase() + firstName.slice(1)}. Your subscription is active and your training plan is being prepared. Mick will email you the moment it's live — usually within a day or two.`;
+          `You're in, ${Capitalised}. ${baseCopy}`;
+        return;
       }
     }
+    // No session / no name — use the base copy as-is.
+    document.getElementById('lead-copy').textContent = baseCopy;
   } catch (e) {
     // Fail quiet — the page works without auth too.
     console.warn('welcome — session check failed', e);
+    document.getElementById('lead-copy').textContent = baseCopy;
   }
 })();
 </script>

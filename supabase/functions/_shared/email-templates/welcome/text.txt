@@ -2,7 +2,7 @@ Hi {{member_name}},
 
 Welcome to All Paddling. Your subscription to the {{plan_name}} is now active.
 
-{{coach_name}} is putting your first 4-week block together right now — you'll get a separate email the moment it's live in your dashboard. Usually that's within a day or two.
+{{post_signup_message}}
 
 Sign in to your dashboard:
 {{plan_url}}

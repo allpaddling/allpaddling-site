@@ -386,14 +386,25 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
 
   // Fire the welcome email. Send-failures shouldn't fail the webhook —
   // the row writes are committed and Stripe doesn't need to retry.
-  // (The dashboard will still show "your plan is being prepared"
-  // until Mick publishes block 1.)
+  //
+  // Branch the "what happens next" sentence by plan_type:
+  //   - Progressive members get instant access. Mick has already
+  //     published the 4 discipline plans (prone/sup/oc/ski); they
+  //     can land in the dashboard and start training immediately.
+  //   - Custom members do wait. Mick builds bespoke plans per
+  //     customer and they get a separate plan-ready email when
+  //     block 1 is live.
+  const postSignupMessage = planType === 'progressive'
+    ? `Your training plan is ready in your dashboard right now — open it up and get started today. Every interval scales to your threshold pace, so set that first if you haven't already.`
+    : `${COACH_NAME} is putting your first 4-week block together right now — you'll get a separate email the moment it's live in your dashboard. Usually that's within a day or two.`;
+
   try {
     await sendTransactional('welcome', email, {
-      member_name: fullName ? fullName.split(' ')[0] : email.split('@')[0],
-      plan_name:   planLabel,
-      plan_url:    PLAN_URL,
-      coach_name:  COACH_NAME,
+      member_name:         fullName ? fullName.split(' ')[0] : email.split('@')[0],
+      plan_name:           planLabel,
+      plan_url:            PLAN_URL,
+      coach_name:          COACH_NAME,
+      post_signup_message: postSignupMessage,
     });
   } catch (emailErr) {
     console.warn(`welcome email send failed for ${email}:`, emailErr);
