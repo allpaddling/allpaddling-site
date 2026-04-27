@@ -488,12 +488,23 @@
   let plan, member = null;
   if (planKey === 'custom') {
     await loadCustomData();
-    plan = getCustomPlanDraft(memberId);
     member = getCustomMember(memberId);
-    if (!plan || !member) {
+    if (!member) {
+      // Genuinely no member — likely a stale link or deletion.
       alert('This member could not be found. Returning to the members list.');
       location.href = 'admin-custom.html';
       return;
+    }
+    plan = getCustomPlanDraft(memberId);
+    if (!plan) {
+      // Member exists but no plan row yet (e.g. self-signup — the
+      // stripe-webhook creates the member row but the coach hasn't
+      // built their plan yet). Seed an empty draft so the editor
+      // opens cleanly. The first auto-save will persist it as a real
+      // custom_plans row.
+      plan = (typeof defaultCustomPlanContent === 'function')
+        ? defaultCustomPlanContent()
+        : { meta: {}, programs: [] };
     }
   } else {
     // Progressive plan — fetch from Supabase via the admin.js cache

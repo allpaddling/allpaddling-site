@@ -592,7 +592,10 @@ async function removeCustomMember (id) {
   delete __customCache.plans[id];
 }
 
-/* Auto-save target. Writes ONLY to draft columns. */
+/* Auto-save target. Writes ONLY to draft columns.
+   Uses upsert so the very first save for a self-signup member (whose
+   webhook only created custom_members, not custom_plans) creates the
+   row instead of silently no-op'ing on an UPDATE that matches 0 rows. */
 async function saveCustomPlan (memberId, plan) {
   const now = new Date().toISOString();
   const entry = __customCache.plans[memberId] || planRowToCacheEntry({});
@@ -602,12 +605,18 @@ async function saveCustomPlan (memberId, plan) {
 
   const { error } = await sb
     .from('custom_plans')
-    .update({
-      draft_meta:     plan.meta,
-      draft_programs: plan.programs,
-      last_edited:    now,
-    })
-    .eq('member_id', memberId);
+    .upsert(
+      {
+        member_id:      memberId,
+        draft_meta:     plan.meta,
+        draft_programs: plan.programs,
+        last_edited:    now,
+        // Don't touch published columns on the upsert path — leave them
+        // at their existing values. For a fresh-insert (new self-signup)
+        // they'll default to {}/[] which matches the addCustomMember flow.
+      },
+      { onConflict: 'member_id' },
+    );
   if (error) { console.error('saveCustomPlan failed', error); throw error; }
 }
 
