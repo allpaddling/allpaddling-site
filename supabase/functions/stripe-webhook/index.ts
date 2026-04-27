@@ -409,10 +409,14 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
     if (proneErr) {
       console.warn(`progressive_plans (prone) load failed for seeding ${email}:`, proneErr.message);
     }
-    const seedProgram = (prone && Array.isArray(prone.programs) && prone.programs.length > 0)
-      ? prone.programs[0]
+    // The Prone plan stores ONE 4-week block where programs[] is the
+    // list of weeks (programs[0] = Week 1, programs[1] = Week 2, …).
+    // We mirror the entire array so the new custom member sees the
+    // full 4-week block, not just Week 1.
+    const seedPrograms = (prone && Array.isArray(prone.programs) && prone.programs.length > 0)
+      ? prone.programs
       : null;
-    if (seedProgram) {
+    if (seedPrograms) {
       const seededMeta = {
         name:     'Custom Season Race Plan · Block 1',
         subtitle: 'Starter block — Mick will tailor this to your goals shortly.',
@@ -427,11 +431,11 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
             member_id:      memberId,
             // Member-facing (published) columns:
             meta:           seededMeta,
-            programs:       [seedProgram],
+            programs:       seedPrograms,
             published_at:   nowIso,
             // Coach-facing (draft) columns — same content; Mick edits from here:
             draft_meta:     seededMeta,
-            draft_programs: [seedProgram],
+            draft_programs: seedPrograms,
             last_edited:    nowIso,
           },
           { onConflict: 'member_id', ignoreDuplicates: true },
@@ -441,7 +445,7 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
         // Don't fail the webhook — admin-edit's fallback handles a
         // missing row, and the welcome email + member access still work.
       } else {
-        console.log(`custom_plans seeded from Prone block 1 for ${email}`);
+        console.log(`custom_plans seeded from Prone (${seedPrograms.length} weeks) for ${email}`);
       }
     } else {
       console.log(`custom_plans seed skipped for ${email}: prone plan not published or empty`);
