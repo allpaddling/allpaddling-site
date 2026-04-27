@@ -157,7 +157,35 @@ Deno.serve(async (req) => {
   // Auth + body inspection determine mode.
   const authHeader     = req.headers.get('authorization') ?? '';
   const userJwt        = authHeader.replace(/^Bearer\s+/i, '');
-  const isServiceRole  = authHeader === `Bearer ${SERVICE_ROLE_KEY}`;
+  // Service role detection: accept either the legacy JWT format (decode
+  // and check role claim is "service_role") OR an exact-match against
+  // the env var (covers the new sb_secret_ format and any future
+  // formats without us having to know about them).
+  //
+  // Why both: Supabase rotated their default service-role key format on
+  // 2026-04-27 from JWT (eyJ...) to opaque (sb_secret_...). The auto-
+  // injected SUPABASE_SERVICE_ROLE_KEY env var on Edge Functions might
+  // be either format depending on when the project was created, and a
+  // caller might still be using a legacy key from the dashboard. The
+  // JWT-decode path is robust to both rotations and stale env vars; the
+  // exact-match path covers opaque tokens that aren't decodable.
+  const isServiceRoleJwt = (jwt: string): boolean => {
+    try {
+      const [, payload] = jwt.split('.');
+      if (!payload) return false;
+      // base64url -> base64
+      const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+      const decoded = JSON.parse(atob(padded));
+      return decoded.role === 'service_role';
+    } catch {
+      return false;
+    }
+  };
+  const isServiceRole = (
+    isServiceRoleJwt(userJwt) ||
+    (SERVICE_ROLE_KEY && authHeader === `Bearer ${SERVICE_ROLE_KEY}`)
+  );
   const wantsMigrate   = !!body.email && !!body.legacy_amount_cents;
 
   try {

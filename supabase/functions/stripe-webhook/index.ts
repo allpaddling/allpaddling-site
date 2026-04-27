@@ -351,12 +351,17 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
     memberId  = data.id;
     planLabel = `Progressive ${DISCIPLINE_LABELS[data.plan_key as string] ?? data.plan_key} Plan`;
   } else {
+    // Custom members upsert: must populate auth_user_id (was missing
+    // pre-fix, causing admin lookup pages to fail to join member_profiles
+    // and subscriptions data downstream — manifest as "this member could
+    // not be found" alerts in admin-edit/admin-custom).
     const { data, error } = await sb
       .from('custom_members')
       .upsert(
         {
           email,
-          name: fullName || email.split('@')[0],
+          name:         fullName || email.split('@')[0],
+          auth_user_id: userId,
         },
         { onConflict: 'email' },
       )
@@ -365,6 +370,33 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
     if (error) throw new Error(`custom_members upsert: ${error.message}`);
     memberId  = data.id;
     planLabel = 'Custom Season Race Plan';
+  }
+
+  // Make sure a member_profiles row exists so the dashboard's onboarding
+  // redirect logic is deterministic. If absent, dashboard.html should
+  // already redirect to onboarding.html — but a real test today saw
+  // the redirect skipped and no popup. Belt-and-braces: explicitly
+  // insert with completed_onboarding_at = null. The user fills it in
+  // via onboarding.html (Hi Sarah, race date, etc.) which then sets
+  // completed_onboarding_at = now() and redirects to dashboard.
+  //
+  // ON CONFLICT DO NOTHING: a row may already exist if the user
+  // previously signed in (e.g. for a free trial / migration link)
+  // and started but didn't finish onboarding. We don't want to RESET
+  // their progress on a subsequent checkout — leave existing values.
+  const { error: profileErr } = await sb
+    .from('member_profiles')
+    .upsert(
+      {
+        user_id:                  userId,
+        completed_onboarding_at:  null,
+      },
+      { onConflict: 'user_id', ignoreDuplicates: true },
+    );
+  if (profileErr) {
+    console.warn(`member_profiles upsert failed for ${email}:`, profileErr.message);
+    // Don't fail the webhook — the dashboard will still work; the
+    // user just won't be force-redirected to onboarding.
   }
 
   // Insert / update the subscriptions row. Status starts as
