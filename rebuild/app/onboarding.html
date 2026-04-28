@@ -252,9 +252,9 @@
     // Fire the welcome email now that we have the member's preferred
     // name. Idempotent server-side via member_profiles.welcome_email_sent_at —
     // safe to call again on retry. We AWAIT this before returning so the
-    // immediate `location.href = 'dashboard.html'` from the submit handler
-    // doesn't cancel the in-flight POST. Earlier fire-and-forget version
-    // landed only OPTIONS preflights server-side because the page unloaded
+    // immediate `location.href = ...` from the submit handler doesn't
+    // cancel the in-flight POST. Earlier fire-and-forget version landed
+    // only OPTIONS preflights server-side because the page unloaded
     // before the POST followed up. We also pass keepalive: true as a
     // belt-and-braces — even if a future caller forgets to await, the
     // browser will let the request complete after navigation.
@@ -300,7 +300,10 @@
       notes:                 elNotes.value.trim() || null,
     };
     if (await persistProfile(row)) {
-      location.href = 'dashboard.html';
+      // First-time onboarding completion lands on Getting Started
+      // (orientation page) rather than dashboard. Welcome → onboarding
+      // gate → Getting Started is now the canonical first-run path.
+      location.href = 'getting-started.html';
     }
   });
 })();
