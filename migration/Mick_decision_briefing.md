@@ -1,5 +1,7 @@
 # Decision briefing — what we need from Mick
 
+> **SUPERSEDED 2026-04-27.** This was the pre-call options doc. All decisions were captured below in the "DECISIONS" section — most importantly **Decision B: reset all migrating customers to A$140 Custom / A$80 Progressive AUD flat, no grandfathering**. The historical option-A "grandfather everyone" framing later in this file is for context only. Current code, data, and customer copy all reflect Decision B.
+
 Everything below is gating the migration emails. Once these are answered we can press send.
 
 This doc is structured so Jake can walk Mick through it line by line. Each section has the question, the context, and a recommended default if Mick wants to defer the call.

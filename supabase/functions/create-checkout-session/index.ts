@@ -37,8 +37,13 @@
 //      Authorization: Bearer <user JWT> (where the user is in `coaches`)
 //      Body contains `email` + `legacy_amount_cents` + `legacy_currency`.
 //      We verify the JWT belongs to a coach, then look up/create the
-//      target customer's auth user and use inline price_data to
-//      grandfather their exact Shopify monthly amount.
+//      target customer's auth user and use inline price_data with the
+//      amount supplied in the body. NB: parameter is named
+//      `legacy_amount_cents` for backwards compat, but per Mick's
+//      Decision B (2026-04-27) every migrating customer is being reset
+//      to A$140 Custom / A$80 Progressive. There is no grandfathering.
+//      The amount in `migration_customers.amount_cents` (which is what
+//      admin-migrate.js posts here) is now uniform Decision B pricing.
 //
 //   4. MIGRATE mode — server-side script, service-role key
 //      Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
@@ -259,7 +264,13 @@ Deno.serve(async (req) => {
       email  = body.email!.toLowerCase().trim();
       userId = await getOrCreateAuthUser(email);
 
-      // Inline price — grandfathers the customer's existing Shopify rate.
+      // Inline price — uses the amount from migration_customers.amount_cents
+      // posted by the caller. Per Decision B (2026-04-27) this is the
+      // uniform A$140 (Custom) / A$80 (Progressive) rate; no per-customer
+      // grandfathering. Inline price_data is kept (vs the canonical
+      // lookup_key path used by SELF/ANON) so a future per-customer
+      // exception (e.g. a goodwill discount) can be done without touching
+      // the Stripe price catalog.
       line = {
         price_data: {
           currency: body.legacy_currency,

@@ -44,10 +44,12 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 // our stable key — we look up products by it before creating, so
 // the script is idempotent even if names change.
 //
-// Pricing decisions documented in `migration/customer_migration_audit.xlsx`
-// → 8 distinct USD price points exist for legacy Custom plan customers.
-// Those are grandfathered via inline price_data on migration. The
-// prices here are the NEW-CUSTOMER defaults.
+// Per Mick's Decision B (2026-04-27): all migrating customers reset to
+// these same canonical rates (A$140 Custom / A$80 Progressive) with no
+// grandfathering. Migration mode still uses inline price_data (rather
+// than the canonical lookup_key) so we can apply per-customer exceptions
+// — e.g. a goodwill discount for an early-anniversary cohort — without
+// having to touch the price catalog defined here.
 //
 // All amounts are in cents/lowest denomination.
 // ============================================================

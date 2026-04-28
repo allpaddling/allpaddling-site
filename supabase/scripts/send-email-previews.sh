@@ -112,7 +112,7 @@ Quick note from me — over the next couple of weeks I'm moving All Paddling ont
 Here's what this means for you:
 
 - Your {plan} continues without interruption.
-- Your monthly amount stays the same: {monthly} per month.
+- Billing on the new platform: {monthly} every 4 weeks.
 - Your next renewal is {renewal}.
 - You don't need to do anything today — I'll send you a one-click link in a few days to move you across.
 
@@ -138,7 +138,7 @@ It takes about 60 seconds. Your plan and price are already filled in for you —
 What's set up for you:
 
 - Plan: {plan}
-- Price: {monthly} per month
+- Price: {monthly} every 4 weeks
 - First charge on Stripe: {renewal}
 - Your old Shopify subscription: I'll cancel it before it bills, so you'll never be double-charged.
 
@@ -155,7 +155,7 @@ Mick
     "subject": "[PREVIEW] Today's your renewal day — quick action needed",
     "text": f"""Hi {first},
 
-Just a quick one — today is your usual All Paddling renewal day, and your Shopify sub will bill you {monthly} as normal in the next few hours.
+Just a quick one — today is your usual All Paddling renewal day, and your Shopify subscription will bill as normal in the next few hours.
 
 If you haven't moved across to the new site yet, your link is here:
 

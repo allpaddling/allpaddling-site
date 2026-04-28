@@ -7,7 +7,8 @@ Companion to `stripe-webhook`. The webhook ingests events from Stripe; this func
 | Mode      | Auth                                                                | Caller                                  | Pricing                          |
 |-----------|---------------------------------------------------------------------|-----------------------------------------|----------------------------------|
 | **self**     | `Authorization: Bearer <user JWT>`                                  | Frontend (`getting-started.html` flow)  | Canonical Price (lookup_key)     |
-| **migrate**  | `Authorization: Bearer <service-role>` *or* `x-migration: 1` header | Coach admin migration page              | Inline `price_data` (grandfathered) |
+| **anon**     | (none)                                                              | Public signup modal on plans pages       | Canonical Price (lookup_key)     |
+| **migrate**  | `Authorization: Bearer <service-role>` *or* coach JWT               | Coach admin migration page              | Inline `price_data` (Decision B uniform rate, currently A$140 / A$80) |
 
 Both modes attach the same metadata contract the webhook expects (`user_id`, `plan_type`, `plan_key`, `source`).
 
@@ -35,7 +36,7 @@ Self-mode prices come from Stripe Prices created by `supabase/scripts/setup-stri
 
 ## Migrate mode
 
-Coach admin generates a one-time signup link for an existing Shopify customer. The price is set inline so it grandfathers the customer's exact Shopify rate.
+Coach admin generates a one-time signup link for an existing Shopify customer. Per Mick's Decision B (2026-04-27), every migrating customer is being reset to the uniform new rate (A$140 Custom / A$80 Progressive) — there is no grandfathering. The amount comes from `migration_customers.amount_cents`, posted by `admin-migrate.js` as `legacy_amount_cents` (parameter name kept for backwards compat). Inline `price_data` is used so a future per-customer exception (e.g. a goodwill discount) can be applied without touching the Stripe price catalog.
 
 ```bash
 curl -X POST https://<project>.supabase.co/functions/v1/create-checkout-session \
@@ -49,7 +50,7 @@ curl -X POST https://<project>.supabase.co/functions/v1/create-checkout-session 
   }'
 ```
 
-Returns `{ url, session_id, mode: 'migrate' }`. Send the URL to the customer in the migration email — clicking it takes them straight to a Stripe Checkout pre-filled with their email and exact monthly rate.
+Returns `{ url, session_id, mode: 'migrate' }`. Send the URL to the customer in the migration email — clicking it takes them straight to a Stripe Checkout pre-filled with their email and the per-cycle rate.
 
 The function looks up or creates the customer's Supabase auth user automatically (no magic-link step needed — the link itself is the auth).
 

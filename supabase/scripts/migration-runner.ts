@@ -10,7 +10,9 @@
 //      (default: 'pending').
 //   3. For each customer, calls `create-checkout-session` in
 //      MIGRATE mode — generates a one-time signup link with the
-//      customer's exact Shopify rate inline-priced.
+//      `migration_customers.amount_cents` value inline-priced. Per
+//      Mick's Decision B (2026-04-27), that value is uniform A$140
+//      Custom / A$80 Progressive for all migrating customers.
 //   4. Renders the migration email body for each customer using
 //      the same Mustache substitution the admin-migrate page
 //      uses (mirrors `migration/emails/02_signup-link_T-3.md`).

@@ -21,7 +21,7 @@ It takes about 60 seconds. Your plan and price are already filled in for you —
 What's set up for you:
 
 - **Plan:** {{plan_name}}
-- **Price:** {{monthly_amount}} {{currency}}/month
+- **Price:** {{monthly_amount}} {{currency}} every 4 weeks
 - **First charge on Stripe:** {{renewal_date}}
 - **Your old Shopify subscription:** I'll cancel it before it bills, so you'll never be double-charged.
 

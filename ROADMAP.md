@@ -46,6 +46,9 @@ supabase functions deploy create-checkout-session --project-ref crlukzkgmydyqpwn
 
 ## Historical: state as of 2026-04-26
 
+> **NOTE:** the Decision-1/2/3 options below and the churn mitigations were the pre-call options framing. **Final decisions are captured in `MICK_AGENDA.md`.** Most relevantly: Mick's Decision B (2026-04-27) overrides the cadence options (D-1) — every migrating customer is reset to the uniform new rate (A$140 Custom / A$80 Progressive every 4 weeks) with **no grandfathering**. Any reference below to grandfathering or "match-monthly" is historical context only.
+
+
 ### What works end-to-end
 - Magic-link OTP auth via Supabase (URL-allowlisted for `allpaddling.online/**`)
 - Custom + Progressive plan delivery to authenticated members (RLS-gated)

@@ -147,7 +147,7 @@ Done end-to-end via:
 
 `migration/Mick_decision_briefing.md` has the full table at the top. Key calls:
 
-- **Pricing reset (Decision B):** all Custom plan customers move to A$140/month, all Progressive to A$80/month — no grandfathering. `migration_customers` table updated: 18 Custom rows now `amount_cents=14000`, 2 Progressive rows now `amount_cents=8000`, all `currency='aud'`.
+- **Pricing reset (Decision B):** all Custom plan customers move to **A$140 every 4 weeks**, all Progressive to **A$80 every 4 weeks** — no grandfathering. `migration_customers` table updated: 19 Custom rows now `amount_cents=14000`, 2 Progressive rows now `amount_cents=8000`, all `currency='aud'` (the lone USD outlier was reset to AUD on 2026-04-28).
 - **No refunds** (Mick's IP-protection rationale).
 - **Mid-cycle cancel:** access until period end.
 - **GST:** not registered, skip Stripe Tax.
@@ -237,9 +237,10 @@ Once the 3 bug-fix Edge Functions are redeployed and the smoke test passes:
 - **Supabase auth URLs updated**: Site URL = `https://allpaddling.online`, redirect allowlist includes `https://allpaddling.online/**`.
 
 ### Stripe scaffolding (waiting only on Mick's account)
-- **`supabase/functions/create-checkout-session/`** — Edge Function with two modes:
-  - **SELF**: customer's JWT → looks up Stripe Price by `lookup_key`. Used by frontend Subscribe buttons.
-  - **MIGRATE**: coach JWT (`is_coach()`) OR service-role key + customer email + grandfathered `legacy_amount_cents` → inline `price_data` for the existing customer's exact Shopify rate. Used by `admin-migrate.html` and the batch runner.
+- **`supabase/functions/create-checkout-session/`** — Edge Function with three modes:
+  - **SELF**: customer's JWT → looks up Stripe Price by `lookup_key`. Used by frontend Subscribe buttons for signed-in users.
+  - **ANON**: no auth → email-only modal flow on plans pages → looks up Stripe Price by `lookup_key`, creates the auth user inline, and uses a magiclink as success_url so the customer lands signed in post-payment. Used by the public Subscribe flow.
+  - **MIGRATE**: coach JWT (`is_coach()`) OR service-role key + customer email + `legacy_amount_cents` → inline `price_data` at the Decision B uniform rate (A$140 Custom / A$80 Progressive). Parameter name kept for backwards compat; there is no grandfathering. Used by `admin-migrate.html` and the batch runner.
 - **`supabase/functions/stripe-webhook/`** — already existed, untouched. Handles `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated/deleted`.
 - **`supabase/scripts/setup-stripe-products.ts`** — idempotent. Creates 5 Products (4 Progressive + 1 Custom) and 5 AUD Prices with stable lookup keys. Run once per Stripe environment (test / live).
 - **`supabase/scripts/migration-runner.ts`** — batch generator. Reads `migration_customers`, calls `create-checkout-session` for each pending customer, renders the migration email body, writes a JSON file ready to mass-send. `--dry-run` flag for verification.
@@ -273,7 +274,7 @@ Once the 3 bug-fix Edge Functions are redeployed and the smoke test passes:
 
 ### What's blocking the actual migration
 1. **Mick creates the Stripe account** with ABN 52173453156 (the bottleneck — KYC needs his ID + bank). Briefing doc + signup checklist ready.
-2. **Mick's pricing decision** (grandfather vs reset, etc — see `Mick_decision_briefing.md`).
+2. ~~**Mick's pricing decision**~~ — resolved 2026-04-27 (Decision B: reset all customers to A$140 Custom / A$80 Progressive AUD flat, no grandfathering). Captured in `MICK_AGENDA.md` change log.
 3. Once Stripe is live: `setup-stripe-products.ts` → set Supabase secrets → deploy Edge Functions → `migration-runner.ts --dry-run` → real run → mass-send.
 
 ### Live URLs
@@ -380,7 +381,7 @@ These three answers shape Track B; nothing blocks Track A from starting:
 
 - **Q-1 [the unblocker]:** Jake doesn't have admin access to `justpaddle.myshopify.com` or Appstle. Mick needs to add Jake as Shopify staff with read access to customers + orders + apps. Without this, the customer audit (B.1) can't begin.
 - **Q-2:** How does Mick deliver plan content to subscribers today? PDF email, Drive folder, something else? Determines whether existing content can be ported into the new system or has to be re-created in admin.
-- **D-1:** Cadence decision (monthly → 4-weekly). Three options: silent absorb (recommended), match-monthly on the new site, or grandfather monthly for migrated customers only.
+- ~~**D-1:** Cadence decision~~ — resolved 2026-04-27 (Mick's Decision B). All migrating customers reset to the uniform A$140 Custom / A$80 Progressive every-4-weeks rate. No match-monthly, no grandfathering.
 
 Jake plans to put these to Mick directly. Not waiting on the new session for that.
 

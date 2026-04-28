@@ -40,7 +40,7 @@ Stripe prices are **immutable** — if you change the `unit_amount` of an existi
 
 ### Migrate-mode prices
 
-Migrate-mode signup links (created by the coach admin for moving a Shopify customer over) bypass this catalogue entirely — they create a one-off inline `price_data` block with the customer's exact legacy Shopify rate. So you don't need to add per-customer prices to this script.
+Migrate-mode signup links (created by the coach admin for moving a Shopify customer over) bypass this catalogue entirely — they create an inline `price_data` block from `migration_customers.amount_cents`. Per Mick's Decision B (2026-04-27), every migrating customer is on the same uniform rate as new signups (A$140 Custom / A$80 Progressive); inline price_data is kept (rather than reusing the canonical lookup_key from this script) so a future per-customer exception (e.g. a goodwill discount) can be applied without touching the price catalog.
 
 ## migration-runner.ts
 

@@ -36,8 +36,14 @@ create table if not exists public.migration_customers (
                         check (plan_type in ('progressive', 'custom')),
   plan_key            text          check (plan_key in ('prone', 'sup', 'oc', 'ski')),
 
-  -- Current Shopify monthly amount (used to grandfather the rate
-  -- in Stripe via inline price_data on the Checkout Session).
+  -- Per-customer migration price (cents). Per Mick's Decision B
+  -- (2026-04-27): uniform A$140 (Custom) / A$80 (Progressive) for every
+  -- migrating customer — no grandfathering of legacy Shopify rates.
+  -- admin-migrate.js posts this value to create-checkout-session as
+  -- `legacy_amount_cents`, used as inline price_data on the Stripe
+  -- Checkout Session (kept inline rather than canonical lookup_key so a
+  -- future per-customer exception, e.g. a goodwill discount, can be
+  -- applied without touching the Stripe price catalog).
   amount_cents        integer       not null check (amount_cents > 0 and amount_cents <= 1000000),
   currency            text          not null check (length(currency) = 3),
 
