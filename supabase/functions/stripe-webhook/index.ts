@@ -433,31 +433,19 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
 
   console.log(`checkout.session.completed: ${planType} member + subscription staged for ${email}`);
 
-  // Fire the welcome email. Send-failures shouldn't fail the webhook —
-  // the row writes are committed and Stripe doesn't need to retry.
+  // NB: welcome email used to fire here. Moved (Jake, 2026-04-29) to
+  // the post-onboarding trigger function so the email can address the
+  // member by their `member_profiles.preferred_name` (set in the
+  // onboarding form) rather than `customer_details.name` (the Stripe
+  // billing/cardholder name). The trigger is `trigger-welcome-email`,
+  // called from the onboarding form submit handler. Idempotency is
+  // tracked via `member_profiles.welcome_email_sent_at`.
   //
-  // Branch the "what happens next" sentence by plan_type:
-  //   - Progressive members get instant access. Mick has already
-  //     published the 4 discipline plans (prone/sup/oc/ski); they
-  //     can land in the dashboard and start training immediately.
-  //   - Custom members do wait. Mick builds bespoke plans per
-  //     customer and they get a separate plan-ready email when
-  //     block 1 is live.
-  const postSignupMessage = planType === 'progressive'
-    ? `Your training plan is ready in your dashboard right now — open it up and get started today. Every interval scales to your threshold pace, so set that first if you haven't already.`
-    : `${COACH_NAME} is putting your first 4-week block together right now — you'll get a separate email the moment it's live in your dashboard. Usually that's within a day or two.`;
-
-  try {
-    await sendTransactional('welcome', email, {
-      member_name:         fullName ? fullName.split(' ')[0] : email.split('@')[0],
-      plan_name:           planLabel,
-      plan_url:            PLAN_URL,
-      coach_name:          COACH_NAME,
-      post_signup_message: postSignupMessage,
-    });
-  } catch (emailErr) {
-    console.warn(`welcome email send failed for ${email}:`, emailErr);
-  }
+  // Edge case: if a paying customer never completes onboarding they
+  // won't receive a welcome email. Acceptable trade-off for now —
+  // most signups complete within minutes. A scheduled fallback job
+  // (e.g. send welcome with billing-name 24h post-signup if not yet
+  // sent) is parked as future work.
 }
 
 async function handleInvoicePaid (invoice: Stripe.Invoice): Promise<void> {

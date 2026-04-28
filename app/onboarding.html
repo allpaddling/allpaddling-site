@@ -255,7 +255,34 @@
       showError('Couldn’t save just now — please try again. (' + error.message + ')');
       return false;
     }
+    // Fire the welcome email now that we have the member's preferred
+    // name. Idempotent server-side via member_profiles.welcome_email_sent_at —
+    // safe to call again on retry. Non-blocking: a failure here doesn't
+    // prevent the user from reaching the dashboard.
+    triggerWelcomeEmail().catch(() => {/* non-fatal */});
     return true;
+  }
+
+  async function triggerWelcomeEmail () {
+    try {
+      const { data: { session: sbSession } } = await sb.auth.getSession();
+      if (!sbSession?.access_token) return;
+      const url = 'https://crlukzkgmydyqpwndjvc.supabase.co/functions/v1/trigger-welcome-email';
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer ' + sbSession.access_token,
+        },
+        body: '{}',
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        console.warn('trigger-welcome-email returned non-ok:', res.status, txt);
+      }
+    } catch (e) {
+      console.warn('trigger-welcome-email call failed (non-fatal):', e);
+    }
   }
 
   form.addEventListener('submit', async (ev) => {
