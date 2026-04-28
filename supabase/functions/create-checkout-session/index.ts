@@ -17,24 +17,33 @@
 //                              migration window — flips to allpaddling.com after
 //                              cutover; .com still serves the Shopify store).
 //
-// Three callers, two modes — auth + body shape determines which:
+// Four callers, three modes — auth + body shape determines which:
 //
-//   1. SELF mode — frontend, customer's own JWT
+//   1. SELF mode — frontend, customer's own JWT (signed-in returning users)
 //      Authorization: Bearer <user JWT>
 //      No `email`/`legacy_*` fields in body.
 //      We use auth.uid() and look up a canonical Price by lookup_key.
 //
-//   2. MIGRATE mode — coach admin browser, coach's JWT
+//   2. ANON mode — public self-signup, no auth required (NEW customer flow)
+//      No Authorization header.
+//      Body contains `email` + `plan_type` + `plan_key` (Progressive only).
+//      We create the auth user inline (getOrCreateAuthUser), use the
+//      canonical Price by lookup_key (same as SELF), and generate a
+//      magiclink success_url so the customer lands signed in post-payment.
+//      This is the streamlined "click Subscribe → enter email → Stripe"
+//      flow on the public plans pages.
+//
+//   3. MIGRATE mode — coach admin browser, coach's JWT
 //      Authorization: Bearer <user JWT> (where the user is in `coaches`)
 //      Body contains `email` + `legacy_amount_cents` + `legacy_currency`.
 //      We verify the JWT belongs to a coach, then look up/create the
 //      target customer's auth user and use inline price_data to
 //      grandfather their exact Shopify monthly amount.
 //
-//   3. MIGRATE mode — server-side script, service-role key
+//   4. MIGRATE mode — server-side script, service-role key
 //      Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
 //      Body contains `email` + `legacy_amount_cents` + `legacy_currency`.
-//      Same as (2) but skips the coach-role check (service role is
+//      Same as (3) but skips the coach-role check (service role is
 //      already trusted). Used by batch migration scripts.
 //
 // Both modes attach the same metadata contract that
@@ -187,16 +196,27 @@ Deno.serve(async (req) => {
     (SERVICE_ROLE_KEY && authHeader === `Bearer ${SERVICE_ROLE_KEY}`)
   );
   const wantsMigrate   = !!body.email && !!body.legacy_amount_cents;
+  // ANON mode (Jake, 2026-04-29): public self-signup with no pre-existing
+  // auth. Customer enters their email on the plans page, we create their
+  // auth user inline, and the magiclink success_url signs them in
+  // post-payment. Triggered when body has email but no legacy_amount_cents
+  // and no auth header. Removes the "click Subscribe → bounce to login →
+  // click Subscribe again" friction in the public funnel.
+  const wantsAnon      = !!body.email && !body.legacy_amount_cents && !userJwt;
 
   try {
     let userId: string;
     let email:  string;
     let line:   Stripe.Checkout.SessionCreateParams.LineItem;
     let isMigration = false;
+    let isAnon      = false;
 
     if (wantsMigrate && isServiceRole) {
       // ----- MIGRATE mode (3): server-side script with service-role key -----
       isMigration = true;
+    } else if (wantsAnon) {
+      // ----- ANON mode: public self-signup, no auth required -----
+      isAnon = true;
     } else if (wantsMigrate) {
       // ----- MIGRATE mode (2): coach JWT in browser. Verify role. -----
       if (!userJwt) {
@@ -249,6 +269,28 @@ Deno.serve(async (req) => {
         },
         quantity: 1,
       };
+    } else if (isAnon) {
+      // ----- ANON mode: public self-signup, no auth required -----
+      // Validate the email format. Permissive — Stripe will do the
+      // rigorous validation when it tries to charge the card.
+      const rawEmail = (body.email ?? '').toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+        return jsonResponse({ error: 'invalid_email', detail: 'A valid email address is required.' }, 400);
+      }
+      email  = rawEmail;
+      userId = await getOrCreateAuthUser(email);
+
+      // Use canonical Price by lookup_key — same as self mode.
+      const lookupKey = SELF_PRICE_LOOKUP[planKey ?? 'custom'];
+      const prices = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 1 });
+      const price = prices.data[0];
+      if (!price) {
+        return jsonResponse(
+          { error: 'price_not_found', detail: `No active Stripe Price with lookup_key=${lookupKey}. Run setup-stripe-products.ts first.` },
+          500,
+        );
+      }
+      line = { price: price.id, quantity: 1 };
     } else {
       // ----- SELF MODE -----
       if (!userJwt) {
@@ -313,7 +355,13 @@ Deno.serve(async (req) => {
     let successUrl: string;
     if (body.success_url) {
       successUrl = body.success_url;
-    } else if (isMigration) {
+    } else if (isMigration || isAnon) {
+      // Both paths created the auth user server-side without minting a
+      // browser session — use a magiclink as success_url so they land
+      // on welcome.html already signed in. (For self mode the user
+      // already has a session from their pre-checkout sign-in, so the
+      // plain welcome URL is fine.)
+      const modeLabel = isAnon ? 'anon' : 'migrate';
       const baseWelcome = `${APP_BASE_URL}/app/welcome.html?type=${planType}`;
       try {
         const { data: linkData, error: linkErr } = await sbAdmin.auth.admin.generateLink({
@@ -322,16 +370,16 @@ Deno.serve(async (req) => {
           options: { redirectTo: baseWelcome },
         });
         if (linkErr) {
-          console.warn(`migrate-mode magiclink generation failed for ${email}: ${linkErr.message}`);
+          console.warn(`${modeLabel}-mode magiclink generation failed for ${email}: ${linkErr.message}`);
           successUrl = baseWelcome;
         } else if (linkData?.properties?.action_link) {
           successUrl = linkData.properties.action_link;
         } else {
-          console.warn(`migrate-mode magiclink returned no action_link for ${email}`);
+          console.warn(`${modeLabel}-mode magiclink returned no action_link for ${email}`);
           successUrl = baseWelcome;
         }
       } catch (e) {
-        console.warn(`migrate-mode magiclink threw for ${email}:`, e);
+        console.warn(`${modeLabel}-mode magiclink threw for ${email}:`, e);
         successUrl = baseWelcome;
       }
     } else {
@@ -351,7 +399,7 @@ Deno.serve(async (req) => {
         user_id:   userId,
         plan_type: planType,
         plan_key:  planKey ?? '',
-        source:    isMigration ? 'migrate' : 'self',
+        source:    isMigration ? 'migrate' : (isAnon ? 'self_anon' : 'self'),
         ...(isMigration && body.email ? { migrated_from_email: body.email.toLowerCase() } : {}),
       },
       // Pass tax-collection setting through; Stripe Tax (if enabled
@@ -368,7 +416,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       url:        session.url,
       session_id: session.id,
-      mode:       isMigration ? 'migrate' : 'self',
+      mode:       isMigration ? 'migrate' : (isAnon ? 'self_anon' : 'self'),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
