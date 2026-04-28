@@ -197,9 +197,9 @@ Deno.serve(async (req) => {
   if (mode === 'raw') {
     return await handleRawSend(body as RawModeBody, role);
   } else {
-    if (role !== 'service_role') {
-      return jsonResponse(403, { error: 'forbidden: template mode requires service-role auth' });
-    }
+    // Template mode is now also accessible to coaches (e.g. firing
+    // the plan-ready email when Mick publishes a Custom plan from
+    // admin-edit). Service-role still works for cron / scripts.
     return await handleTemplateSend(body as TemplateModeBody);
   }
 });

@@ -805,10 +805,27 @@
     try {
       if (isCustom) {
         await publishCustomPlan(memberId);
+        // Fire the plan-ready email to the member. Custom-plan publish
+        // is the right trigger for this — Mick only publishes when he's
+        // made changes worth telling the member about. For typo-only
+        // edits, Mick can keep them in draft (auto-saved) and not publish.
+        if (member && member.email) {
+          publishBtn.textContent = 'Notifying…';
+          try {
+            await notifyMemberPlanReady(member, plan);
+            flashSaved(`Published — ${member.name || member.email} notified.`);
+          } catch (notifyErr) {
+            // Publish itself succeeded; notify failure is non-fatal.
+            console.error('plan-ready email failed (publish itself OK)', notifyErr);
+            flashSaved('Published. (Email notification failed — see console.)');
+          }
+        } else {
+          flashSaved('Published just now.');
+        }
       } else {
         await publishProgressivePlan(planKey);
+        flashSaved('Published just now.');
       }
-      flashSaved('Published just now.');
     } catch (err) {
       console.error('publish failed', err);
       flashError('Publish failed — try again.');
@@ -817,6 +834,44 @@
       updatePublishUI();
     }
   });
+
+  // Fire the plan-ready transactional email to a member. Uses the
+  // send-email Edge Function in template mode with the coach's JWT.
+  async function notifyMemberPlanReady (memberObj, planObj) {
+    const { data: { session: sbSession } } = await sb.auth.getSession();
+    if (!sbSession?.access_token) throw new Error('no active coach session');
+
+    const SEND_EMAIL_URL = 'https://crlukzkgmydyqpwndjvc.supabase.co/functions/v1/send-email';
+    const firstName = (memberObj.name || memberObj.email).split(' ')[0];
+    const planName  = (planObj && planObj.meta && planObj.meta.name) || 'Custom Season Race Plan';
+    const planUrl   = 'https://allpaddling.online/app/program.html';
+
+    const res = await fetch(SEND_EMAIL_URL, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${sbSession.access_token}`,
+      },
+      body: JSON.stringify({
+        template: 'plan-ready',
+        to:       memberObj.email,
+        vars: {
+          member_name: firstName,
+          plan_name:   planName,
+          plan_url:    planUrl,
+          coach_name:  'Mick',
+        },
+        tags: [
+          { name: 'purpose',   value: 'plan_ready' },
+          { name: 'member_id', value: memberObj.id },
+        ],
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload.error || `${res.status} ${res.statusText}`);
+    }
+  }
 
   revertBtn.addEventListener('click', async () => {
     if (!confirm('Discard your in-progress draft and restore the published version? This can\'t be undone.')) return;
