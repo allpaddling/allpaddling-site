@@ -240,6 +240,54 @@ function getMember() {
   };
 }
 
+/* ---- Onboarding gate ----
+   If the member hasn't completed the onboarding form yet, redirect
+   them there before letting them explore the app. Originally this
+   gate lived only on dashboard.html (§3.3), but Jake hit a case
+   2026-04-29 where clicking "Set my threshold pace" on welcome.html
+   went straight to threshold.html and skipped onboarding entirely
+   (so preferred_name was never set). This gate now runs on every
+   /app/* page that loads app.js — onboarding.html itself doesn't
+   load app.js, so no redirect loop.
+
+   Coach users are skipped (they don't have member_profiles rows of
+   their own). No-session is also skipped — let the page's own auth
+   logic handle that. */
+async function enforceOnboardingGate () {
+  if (typeof sb === 'undefined' || !sb) return;
+  // The redirect destination itself doesn't load app.js, but guard
+  // anyway in case a future page does.
+  const here = (location.pathname.split('/').pop() || '').toLowerCase();
+  if (here === 'onboarding.html') return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user?.email) return;
+    const email = session.user.email.toLowerCase();
+
+    // Skip coaches (they don't go through member onboarding).
+    const { data: coachRow } = await sb
+      .from('coaches')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
+    if (coachRow) return;
+
+    // Check the gate.
+    const { data: mp } = await sb
+      .from('member_profiles')
+      .select('completed_onboarding_at')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if (!mp || !mp.completed_onboarding_at) {
+      location.href = 'onboarding.html';
+    }
+  } catch (e) {
+    // Non-fatal — keep showing the page rather than redirect-looping
+    // on transient errors. Dashboard has a redundant gate as backup.
+    console.warn('enforceOnboardingGate failed (non-fatal):', e);
+  }
+}
+
 /* ---- Patch the rendered sidebar with the member's real name ----
    The initial sidebar render uses MOCK_MEMBER for synchronous mount
    (so the page doesn't flash empty). Once Supabase auth has loaded
@@ -296,6 +344,9 @@ function mountApp() {
   // Async — replace the placeholder name with the real one once
   // Supabase auth + DB are reachable. Doesn't block render.
   patchSidebarWithRealName();
+  // Async — redirect to onboarding.html if the member hasn't filled
+  // it out yet. Skips coaches and the onboarding page itself.
+  enforceOnboardingGate();
 
   // Ensure a scrim exists for the mobile drawer
   let scrim = document.getElementById('app-scrim');
