@@ -240,6 +240,48 @@ function getMember() {
   };
 }
 
+/* ---- Patch the rendered sidebar with the member's real name ----
+   The initial sidebar render uses MOCK_MEMBER for synchronous mount
+   (so the page doesn't flash empty). Once Supabase auth has loaded
+   we fetch the member's actual preferred_name from member_profiles
+   (set during onboarding) — falling back to the Stripe-billing name
+   on progressive_members/custom_members, then to the email prefix.
+   Hits every /app/* page that renders the sidebar via mountApp(). */
+async function patchSidebarWithRealName () {
+  if (typeof sb === 'undefined' || !sb) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user?.email) return;
+    const userId = session.user.id;
+    const email  = session.user.email.toLowerCase();
+
+    // Pull preferred_name from member_profiles (the onboarding form's
+    // canonical store) and the Stripe billing name from the member rows.
+    const [profileRes, pmRes, cmRes] = await Promise.all([
+      sb.from('member_profiles').select('preferred_name').eq('user_id', userId).maybeSingle(),
+      sb.from('progressive_members').select('name').eq('email', email).maybeSingle(),
+      sb.from('custom_members').select('name').eq('email', email).maybeSingle(),
+    ]);
+
+    const preferred = profileRes?.data?.preferred_name?.trim();
+    const memberName = pmRes?.data?.name?.trim() || cmRes?.data?.name?.trim();
+    const emailPrefix = email.split('@')[0];
+    const displayName = preferred || memberName || emailPrefix;
+    if (!displayName) return;
+
+    // Patch the sidebar (desktop + any mobile-rendered chip).
+    document.querySelectorAll('.app-member-meta .name').forEach(el => {
+      el.textContent = displayName;
+    });
+    document.querySelectorAll('.app-member-avatar').forEach(el => {
+      el.textContent = initials(displayName);
+    });
+  } catch (e) {
+    // Non-fatal — sidebar keeps showing the synchronous mount value.
+    console.warn('patchSidebarWithRealName failed:', e);
+  }
+}
+
 /* ---- Mount ---- */
 function mountApp() {
   document.body.classList.add('app-body');
@@ -250,6 +292,10 @@ function mountApp() {
 
   if (sidebarMount) sidebarMount.outerHTML = renderSidebar(member);
   if (mobileMount)  mobileMount.outerHTML  = renderMobileHeader(member);
+
+  // Async — replace the placeholder name with the real one once
+  // Supabase auth + DB are reachable. Doesn't block render.
+  patchSidebarWithRealName();
 
   // Ensure a scrim exists for the mobile drawer
   let scrim = document.getElementById('app-scrim');
