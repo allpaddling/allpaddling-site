@@ -557,13 +557,50 @@ async function handleInvoicePaymentFailed (invoice: Stripe.Invoice): Promise<voi
 }
 
 async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<void> {
+  // Look up existing row to (a) force a Stripe retry if the row doesn't
+  // exist yet (race against checkout.session.completed) and (b) avoid
+  // downgrading status from a known-good state to a stale one.
+  //
+  // The bug we're guarding against — observed live with Paora Monk
+  // 2026-04-28 (events arrived simultaneously, processed out of order):
+  //
+  //   1. customer.subscription.updated  arrives, processes first → silent
+  //      no-op because no row exists yet.
+  //   2. invoice.paid                   arrives, processes → silent no-op
+  //      for the same reason. Then throws on the existing-row guard at
+  //      handleInvoicePaid line ~468, returns 500, Stripe will retry.
+  //   3. checkout.session.completed     arrives, processes → row inserted
+  //      at status='incomplete'.
+  //   4. invoice.paid retry             succeeds → status='active' set.
+  //   5. customer.subscription.updated retry runs with the ORIGINAL
+  //      payload (Stripe replays bytes, doesn't refresh) — if that
+  //      payload's sub.status is 'incomplete', it overwrites 'active'
+  //      back to 'incomplete'. Wrong end state.
+  //
+  // Fix: throw if no row (so step 1 above retries instead of no-op'ing),
+  // and don't permit a downgrade from active/trialing/past_due to
+  // incomplete/incomplete_expired during a replay.
+  const { data: existing, error: lookupErr } = await sb
+    .from('subscriptions')
+    .select('status')
+    .eq('stripe_subscription_id', sub.id)
+    .maybeSingle();
+  if (lookupErr) throw new Error(`customer.subscription.updated lookup: ${lookupErr.message}`);
+  if (!existing) throw new Error(`customer.subscription.updated: no subscriptions row for ${sub.id} — likely race with checkout.session.completed; Stripe will retry.`);
+
+  const isDowngrade =
+    ['active', 'trialing', 'past_due'].includes(existing.status) &&
+    ['incomplete', 'incomplete_expired'].includes(sub.status);
+
   const updates: Record<string, unknown> = {
-    status:               sub.status,
     current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
     current_period_end:   sub.current_period_end   ? new Date(sub.current_period_end   * 1000).toISOString() : null,
     cancel_at:            sub.cancel_at            ? new Date(sub.cancel_at            * 1000).toISOString() : null,
     stripe_price_id:      sub.items?.data?.[0]?.price?.id ?? null,
   };
+  if (!isDowngrade) {
+    updates.status = sub.status;
+  }
 
   const { error: updErr } = await sb
     .from('subscriptions')
@@ -571,7 +608,12 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
     .eq('stripe_subscription_id', sub.id);
   if (updErr) throw new Error(`customer.subscription.updated: ${updErr.message}`);
 
-  console.log(`customer.subscription.updated: ${sub.id} → ${sub.status}`);
+  console.log(
+    `customer.subscription.updated: ${sub.id} → ` +
+    (isDowngrade
+      ? `status kept as ${existing.status} (refused downgrade to ${sub.status})`
+      : sub.status)
+  );
 }
 
 async function handleSubscriptionDeleted (sub: Stripe.Subscription): Promise<void> {
