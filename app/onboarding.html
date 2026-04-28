@@ -54,13 +54,9 @@
   .ability-option.selected .lbl { color: var(--brand-700); }
 
   .submit-row {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; justify-content: flex-end;
     gap: 1rem; margin-top: 1.75rem;
   }
-  .submit-row .skip-link {
-    color: var(--text-3); font-size: 0.92rem;
-  }
-  .submit-row .skip-link:hover { color: var(--text-2); }
   #submit-status { font-size: 0.88rem; color: var(--text-3); }
   #submit-status.error { color: #b91c1c; }
 
@@ -145,7 +141,6 @@
     </div>
 
     <div class="submit-row">
-      <a href="#" class="skip-link" id="skip-link">Skip for now</a>
       <button type="submit" class="btn btn-primary save-btn" id="save-btn">Start training</button>
     </div>
     <p id="submit-status" style="margin-top:1rem;"></p>
@@ -160,9 +155,9 @@
 /* ============ Onboarding logic ============
    Single source of truth for the redirect signal is
    member_profiles.completed_onboarding_at — null means "show
-   onboarding". Submitting the form sets it; "Skip for now"
-   also sets it (with no other fields populated) so we don't
-   nag on every page load. */
+   onboarding". Submitting the form is the only way to set it
+   (we removed "Skip for now" because we now require a name to
+   personalise the welcome email + dashboard greeting). */
 
 (async function () {
   const session = await getCurrentSession();
@@ -195,7 +190,6 @@
   const elNotes      = form.elements['notes'];
   const disciplineHint = document.getElementById('discipline-hint');
   const saveBtn      = document.getElementById('save-btn');
-  const skipLink     = document.getElementById('skip-link');
   const status       = document.getElementById('submit-status');
 
   if (existing) {
@@ -236,7 +230,7 @@
   refreshAbilityHighlight();
   elAbility.forEach(r => r.addEventListener('change', refreshAbilityHighlight));
 
-  // ---- Submit / skip ----
+  // ---- Submit ----
   function clearStatus () { status.textContent = ''; status.classList.remove('error'); }
   function showError (msg) { status.textContent = msg; status.classList.add('error'); }
 
@@ -257,9 +251,14 @@
     }
     // Fire the welcome email now that we have the member's preferred
     // name. Idempotent server-side via member_profiles.welcome_email_sent_at —
-    // safe to call again on retry. Non-blocking: a failure here doesn't
-    // prevent the user from reaching the dashboard.
-    triggerWelcomeEmail().catch(() => {/* non-fatal */});
+    // safe to call again on retry. We AWAIT this before returning so the
+    // immediate `location.href = ...` from the submit handler doesn't
+    // cancel the in-flight POST. Earlier fire-and-forget version landed
+    // only OPTIONS preflights server-side because the page unloaded
+    // before the POST followed up. We also pass keepalive: true as a
+    // belt-and-braces — even if a future caller forgets to await, the
+    // browser will let the request complete after navigation.
+    await triggerWelcomeEmail();
     return true;
   }
 
@@ -269,7 +268,8 @@
       if (!sbSession?.access_token) return;
       const url = 'https://crlukzkgmydyqpwndjvc.supabase.co/functions/v1/trigger-welcome-email';
       const res = await fetch(url, {
-        method:  'POST',
+        method:    'POST',
+        keepalive: true,
         headers: {
           'Content-Type':  'application/json',
           'Authorization': 'Bearer ' + sbSession.access_token,
@@ -300,14 +300,12 @@
       notes:                 elNotes.value.trim() || null,
     };
     if (await persistProfile(row)) {
-      location.href = 'dashboard.html';
-    }
-  });
-
-  skipLink.addEventListener('click', async (ev) => {
-    ev.preventDefault();
-    if (await persistProfile({})) {
-      location.href = 'dashboard.html';
+      // Post-onboarding flow (Jake, 2026-04-28): order is Stripe success →
+      // onboarding → welcome → getting-started. We preserve any ?type=...
+      // (or other) search params from the Stripe success_url so welcome.html
+      // can branch its "what happens next" copy by Progressive vs Custom.
+      const carriedParams = window.location.search || '';
+      location.href = 'welcome.html' + carriedParams;
     }
   });
 })();
