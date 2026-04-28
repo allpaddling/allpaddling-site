@@ -176,17 +176,21 @@
   // === Onboarding gate (§3.3): if the member hasn't completed the
   // onboarding form yet, route them there before showing a dashboard
   // that hasn't been personalised. Coaches skip this — they don't
-  // have a member_profiles row of their own. ===
+  // have a member_profiles row of their own.
+  // Also pull preferred_name so the greeting + sidebar use it
+  // instead of the Stripe billing name. ===
+  let memberPreferredName = null;
   if (profile && !isCoachUser) {
     const { data: mp } = await sb
       .from('member_profiles')
-      .select('completed_onboarding_at')
+      .select('completed_onboarding_at, preferred_name')
       .eq('user_id', session.user.id)
       .maybeSingle();
     if (!mp || !mp.completed_onboarding_at) {
       location.href = 'onboarding.html';
       return;
     }
+    memberPreferredName = (mp.preferred_name || '').trim() || null;
   }
 
   if (profile && profile.type === 'progressive') {
@@ -208,7 +212,11 @@
   const member = getMember();
   const state  = loadMemberState();
   const programNum = member.currentProgram || 1;
-  const firstName = (member.name || '').split(' ')[0] || 'there';
+  // Prefer the onboarding-form preferred_name; fall back to the
+  // Stripe billing first-name; final fallback "there".
+  const firstName = (memberPreferredName && memberPreferredName.split(' ')[0])
+    || (member.name || '').split(' ')[0]
+    || 'there';
 
   /* Load the published plan for the member's discipline.
      loadCurrentPlan reads `joinedAt` (for the 28-day auto-graduate
