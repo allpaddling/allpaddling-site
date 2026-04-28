@@ -352,38 +352,43 @@ Deno.serve(async (req) => {
     // limit) we fall back to the bare welcome URL — same UX as before
     // (user sees welcome, has to click magic link from their inbox to
     // continue). No regression.
+    // Post-checkout flow (Jake, 2026-04-28): land on onboarding.html FIRST so
+    // we capture preferred_name + discipline/ability before any celebration
+    // copy. After onboarding submit, the user is redirected to welcome.html
+    // ("you're in" + Getting Started CTA), then on to getting-started.html.
+    // Order: Stripe success → onboarding → welcome → getting-started.
     let successUrl: string;
     if (body.success_url) {
       successUrl = body.success_url;
     } else if (isMigration || isAnon) {
       // Both paths created the auth user server-side without minting a
       // browser session — use a magiclink as success_url so they land
-      // on welcome.html already signed in. (For self mode the user
+      // on onboarding.html already signed in. (For self mode the user
       // already has a session from their pre-checkout sign-in, so the
-      // plain welcome URL is fine.)
+      // plain onboarding URL is fine.)
       const modeLabel = isAnon ? 'anon' : 'migrate';
-      const baseWelcome = `${APP_BASE_URL}/app/welcome.html?type=${planType}`;
+      const baseOnboarding = `${APP_BASE_URL}/app/onboarding.html?type=${planType}`;
       try {
         const { data: linkData, error: linkErr } = await sbAdmin.auth.admin.generateLink({
           type: 'magiclink',
           email,
-          options: { redirectTo: baseWelcome },
+          options: { redirectTo: baseOnboarding },
         });
         if (linkErr) {
           console.warn(`${modeLabel}-mode magiclink generation failed for ${email}: ${linkErr.message}`);
-          successUrl = baseWelcome;
+          successUrl = baseOnboarding;
         } else if (linkData?.properties?.action_link) {
           successUrl = linkData.properties.action_link;
         } else {
           console.warn(`${modeLabel}-mode magiclink returned no action_link for ${email}`);
-          successUrl = baseWelcome;
+          successUrl = baseOnboarding;
         }
       } catch (e) {
         console.warn(`${modeLabel}-mode magiclink threw for ${email}:`, e);
-        successUrl = baseWelcome;
+        successUrl = baseOnboarding;
       }
     } else {
-      successUrl = `${APP_BASE_URL}/app/welcome.html?session_id={CHECKOUT_SESSION_ID}&type=${planType}`;
+      successUrl = `${APP_BASE_URL}/app/onboarding.html?session_id={CHECKOUT_SESSION_ID}&type=${planType}`;
     }
     const cancelUrl  = body.cancel_url  ?? `${APP_BASE_URL}/getting-started.html?cancelled=1`;
 

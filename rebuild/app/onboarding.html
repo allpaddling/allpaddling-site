@@ -300,10 +300,12 @@
       notes:                 elNotes.value.trim() || null,
     };
     if (await persistProfile(row)) {
-      // First-time onboarding completion lands on Getting Started
-      // (orientation page) rather than dashboard. Welcome → onboarding
-      // gate → Getting Started is now the canonical first-run path.
-      location.href = 'getting-started.html';
+      // Post-onboarding flow (Jake, 2026-04-28): order is Stripe success →
+      // onboarding → welcome → getting-started. We preserve any ?type=...
+      // (or other) search params from the Stripe success_url so welcome.html
+      // can branch its "what happens next" copy by Progressive vs Custom.
+      const carriedParams = window.location.search || '';
+      location.href = 'welcome.html' + carriedParams;
     }
   });
 })();
