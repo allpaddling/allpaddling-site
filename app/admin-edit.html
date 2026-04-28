@@ -431,6 +431,27 @@
       </p>
     </div>
 
+    <!-- Copy plan from another customer.
+         Hidden by default; revealed by the editor JS only when the
+         current planKey is 'custom'. Lets Mick pick another custom
+         member from a dropdown and copy their full plan (meta + weeks)
+         into this customer's draft as a starting point. -->
+    <div class="copy-from-zone" id="copy-from-customer-zone" style="display:none;">
+      <h3>Copy plan from another customer</h3>
+      <p>Use an existing customer's plan as a starting template for this one. <strong>Both the plan name/subtitle AND the program weeks</strong> get copied into this customer's draft — review and tweak to fit, then publish. Helpful when two customers have similar goals.</p>
+      <div class="copy-from-customer-row" style="display: flex; gap: 0.5rem; align-items: stretch; flex-wrap: wrap;">
+        <select id="copy-from-customer-select" class="select" style="flex: 1; min-width: 240px; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: white; font-size: 0.92rem;">
+          <option value="">— Pick a customer to copy from —</option>
+        </select>
+        <button type="button" class="btn" id="copy-from-customer-btn" disabled style="border-color: var(--brand-700); color: var(--brand-700); background: white;">
+          Copy →
+        </button>
+      </div>
+      <p class="copy-from-note" style="margin-top: 0.85rem; font-size: 0.85rem; color: var(--text-3);">
+        Copies the source customer's <strong>most recent draft</strong> if anything has been edited there, otherwise their published plan. Auto-saves immediately to <em>this</em> customer's draft — review the weeks, then click <strong>Publish</strong> to push them live for this customer.
+      </p>
+    </div>
+
     <!-- Danger zone -->
     <div class="danger-zone">
       <h3>Discard draft changes</h3>
@@ -497,14 +518,21 @@
     }
     plan = getCustomPlanDraft(memberId);
     if (!plan) {
-      // Member exists but no plan row yet (e.g. self-signup — the
-      // stripe-webhook creates the member row but the coach hasn't
-      // built their plan yet). Seed an empty draft so the editor
-      // opens cleanly. The first auto-save will persist it as a real
+      // Member exists but no plan row yet — this is the normal state
+      // for a new Custom signup (the stripe-webhook intentionally does
+      // NOT seed a plan; Mick builds it from scratch or copies from
+      // another customer). Start with a minimal meta + empty programs
+      // so the editor opens cleanly. First auto-save creates the
       // custom_plans row.
-      plan = (typeof defaultCustomPlanContent === 'function')
-        ? defaultCustomPlanContent()
-        : { meta: {}, programs: [] };
+      plan = {
+        meta: {
+          name:     'Custom Season Race Plan',
+          subtitle: '',
+          tier:     'Custom',
+          cadence:  '',
+        },
+        programs: [],
+      };
     }
   } else {
     // Progressive plan — fetch from Supabase via the admin.js cache
@@ -622,6 +650,88 @@
         btn.addEventListener('click', () => copyProgramsFromDiscipline(key, label));
         btnRow.appendChild(btn);
       });
+    }
+  }
+
+  /* ---- Copy plan from another customer (Custom plan only) ----
+     Mirrors the discipline-copy zone above, but for Custom plans:
+     populates a <select> with all OTHER custom members, and on Copy,
+     pulls the source's plan (preferring draft over published) and
+     writes BOTH meta + programs into this customer's draft.
+     Unlike the discipline-copy (which preserves the destination's
+     meta), here we copy the meta too — Mick typically wants the
+     source plan's name/subtitle/cadence as a starting point and
+     edits if needed. */
+  if (planKey === 'custom' && member && member.id) {
+    const customerZone = document.getElementById('copy-from-customer-zone');
+    const customerSelect = document.getElementById('copy-from-customer-select');
+    const customerCopyBtn = document.getElementById('copy-from-customer-btn');
+    if (customerZone && customerSelect && customerCopyBtn) {
+      // Populate dropdown with other custom members, sorted alphabetically.
+      // Skip the current member (can't copy from self).
+      const others = (typeof getCustomMembers === 'function' ? getCustomMembers() : [])
+        .filter(m => m.id !== member.id)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      others.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.email ? `${m.name || m.email} (${m.email})` : (m.name || m.id);
+        customerSelect.appendChild(opt);
+      });
+      if (others.length > 0) {
+        customerZone.style.display = '';
+      }
+      customerSelect.addEventListener('change', () => {
+        customerCopyBtn.disabled = !customerSelect.value;
+      });
+      customerCopyBtn.addEventListener('click', () => {
+        const srcId = customerSelect.value;
+        if (!srcId) return;
+        const srcMember = others.find(m => m.id === srcId);
+        copyPlanFromCustomer(srcId, srcMember);
+      });
+    }
+  }
+
+  async function copyPlanFromCustomer (srcMemberId, srcMember) {
+    const srcLabel = srcMember ? (srcMember.name || srcMember.email || 'that customer') : 'that customer';
+    const ok = confirm(
+      `Replace this customer's draft with ${srcLabel}'s plan?\n\n` +
+      `Both the plan name/subtitle AND the program weeks will be overwritten.\n` +
+      `(The current customer's profile, race goal, and notes are not touched.)`
+    );
+    if (!ok) return;
+
+    try {
+      const src = await loadAnyCustomPlanSource(srcMemberId);
+      if (!src) {
+        alert(`${srcLabel} has no plan yet — nothing to copy.`);
+        return;
+      }
+      if (src.isEmpty) {
+        alert(`${srcLabel} has no program weeks yet — nothing to copy.`);
+        return;
+      }
+
+      // Deep-clone so subsequent edits in this editor don't bleed
+      // into any cached source data.
+      plan.meta     = JSON.parse(JSON.stringify(src.meta || {}));
+      plan.programs = JSON.parse(JSON.stringify(src.programs));
+
+      // Save immediately to this customer's draft.
+      await saveCustomPlan(memberId, { meta: plan.meta, programs: plan.programs });
+
+      // Reflect the new meta in the editor inputs.
+      if (metaName) metaName.value = plan.meta.name     || '';
+      if (metaSub)  metaSub.value  = plan.meta.subtitle || '';
+
+      activeWeek = 0;
+      renderWeekTabs();
+      renderWeekEditor();
+      flashSaved(`Copied ${src.programs.length} week${src.programs.length === 1 ? '' : 's'} from ${srcLabel} (${src.source}).`);
+    } catch (err) {
+      console.error('copyPlanFromCustomer failed', err);
+      alert(`Copy failed: ${err && err.message ? err.message : 'unknown error'}\n\nPlease refresh and try again.`);
     }
   }
 

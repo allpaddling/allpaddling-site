@@ -371,75 +371,22 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
     memberId  = data.id;
     planLabel = 'Custom Season Race Plan';
 
-    // Seed a starter custom_plans row for this new member by mirroring
-    // the currently-published Primer block. Rationale (Jake, 2026-04-27):
+    // NB: We intentionally DO NOT seed a custom_plans row here.
     //
-    //   "All Custom Sign-ups can follow the same onboarding process as
-    //    our Progressive Plans. Just deliver them the 4-week Primer
-    //    block to begin. Then once they chat to Mick he can update the
-    //    Custom Plan from the Primer Block. The primer block is going
-    //    to stay the same mostly so that seems like an easier path."
+    // History: an earlier version of this handler seeded custom_plans
+    // with the published Primer block as a starter (commit aa4a7b93).
+    // Jake reverted that decision (2026-04-29) — Custom signups can
+    // now feel confused by the primer content because their plan is
+    // intended to be bespoke, not a primer-derived template. New
+    // workflow: Custom signups land with no plan content. Mick opens
+    // admin-edit and either builds from scratch or uses the new
+    // "Copy plan from another customer" feature to bring an existing
+    // similar plan over as the starting point.
     //
-    // Behaviour:
-    //   - Copy the Primer's full meta + programs (4 weeks, 4 sessions
-    //     each) into a new custom_plans row. Both the published columns
-    //     (so the member sees it right away) AND the draft columns (so
-    //     Mick has the same content to customise from).
-    //   - Snapshot semantics: subsequent edits to the canonical Primer
-    //     do NOT bleed into existing custom members — each member has
-    //     their own personal copy from signup time forward.
-    //   - meta is preserved as-is — the member sees the same primer
-    //     title/subtitle that Progressive members see during their
-    //     onboarding. Mick rewrites both meta and programs when he
-    //     customises in admin-edit.
-    //   - INSERT ON CONFLICT DO NOTHING (via .upsert with
-    //     ignoreDuplicates) — if a row somehow already exists for this
-    //     member, leave it alone.
-    //   - If the Primer isn't published or has no programs, we skip
-    //     gracefully. The admin-edit fallback (commit 314b4381) still
-    //     lets Mick open the editor and start from PROGRAM_1 defaults.
-    const { data: primer, error: primerErr } = await sb
-      .from('progressive_plans')
-      .select('meta, programs')
-      .eq('key', 'primer')
-      .maybeSingle();
-    if (primerErr) {
-      console.warn(`progressive_plans (primer) load failed for seeding ${email}:`, primerErr.message);
-    }
-    const seedPrograms = (primer && Array.isArray(primer.programs) && primer.programs.length > 0)
-      ? primer.programs
-      : null;
-    const seededMeta   = (primer && primer.meta && Object.keys(primer.meta).length > 0)
-      ? primer.meta
-      : null;
-    if (seedPrograms && seededMeta) {
-      const nowIso = new Date().toISOString();
-      const { error: planErr } = await sb
-        .from('custom_plans')
-        .upsert(
-          {
-            member_id:      memberId,
-            // Member-facing (published) columns:
-            meta:           seededMeta,
-            programs:       seedPrograms,
-            published_at:   nowIso,
-            // Coach-facing (draft) columns — same content; Mick edits from here:
-            draft_meta:     seededMeta,
-            draft_programs: seedPrograms,
-            last_edited:    nowIso,
-          },
-          { onConflict: 'member_id', ignoreDuplicates: true },
-        );
-      if (planErr) {
-        console.warn(`custom_plans seed failed for ${email}:`, planErr.message);
-        // Don't fail the webhook — admin-edit's fallback handles a
-        // missing row, and the welcome email + member access still work.
-      } else {
-        console.log(`custom_plans seeded from Primer (${seedPrograms.length} weeks) for ${email}`);
-      }
-    } else {
-      console.log(`custom_plans seed skipped for ${email}: primer plan not published or empty`);
-    }
+    // Member-side: dashboard.html shows the empty-state UI (per task
+    // 3.4) when programs is empty, which says "your plan is being
+    // prepared" — exactly the right message during the 1–2 day
+    // window between signup and Mick customising the plan.
   }
 
   // Make sure a member_profiles row exists so the dashboard's onboarding

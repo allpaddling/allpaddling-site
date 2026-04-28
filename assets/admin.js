@@ -222,6 +222,39 @@ async function loadAnyProgressivePlanSource (planKey) {
   };
 }
 
+/* Load a single custom member's plan as a copy SOURCE — used by the
+   "Copy plan from another customer" feature in admin-edit. Mirrors
+   loadAnyProgressivePlanSource: prefers the draft if anything has
+   been edited there, otherwise the published version. Returns null
+   if the member has no custom_plans row at all (brand-new signup).
+   Doesn't touch the in-memory cache so the destination editor's
+   working state stays intact. */
+async function loadAnyCustomPlanSource (memberId) {
+  if (!memberId) throw new Error('loadAnyCustomPlanSource: memberId required');
+  const { data, error } = await sb
+    .from('custom_plans')
+    .select('member_id, meta, programs, draft_meta, draft_programs, last_edited, published_at')
+    .eq('member_id', memberId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const draftHasContent =
+    (data.draft_meta && Object.keys(data.draft_meta).length > 0) ||
+    (Array.isArray(data.draft_programs) && data.draft_programs.length > 0);
+
+  const meta     = draftHasContent ? (data.draft_meta || {})     : (data.meta || {});
+  const programs = draftHasContent ? (data.draft_programs || []) : (data.programs || []);
+  return {
+    meta,
+    programs,
+    source:     draftHasContent ? 'draft' : 'published',
+    isEmpty:    !programs || programs.length === 0,
+    lastEdited: data.last_edited,
+    publishedAt:data.published_at,
+  };
+}
+
 /* Auto-save target. Writes ONLY to draft columns; members never see this
    until publishProgressivePlan() is called. */
 async function saveProgressivePlan (planKey, planData) {
