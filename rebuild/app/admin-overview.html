@@ -432,14 +432,16 @@
     document.getElementById('t-past-due-sub').textContent = pastDue > 0 ? 'Cards declined this period' : 'All payments current';
     document.getElementById('t-churn').textContent = canceled30d;
     document.getElementById('t-churn-sub').textContent = canceled30d > 0 ? 'Subscriptions ended in last 30 days' : 'No churn last 30 days';
-    // MRR — best-effort estimate. We don't know each price reliably yet
-    // (price_id is on the row but we'd need a name+amount lookup); for a
-    // first pass, count $80 for Progressive members and $140 for Custom
-    // members with active subs. Refine later when we have the price catalog.
+    // MRR — best-effort estimate (no price catalog lookup yet).
+    // Progressive is $80 every 4 weeks (13 cycles per 52-week year)
+    // → $80 × 13 / 12 ≈ $86.67 / calendar month.
+    // Custom is $140 per calendar month, flat.
+    // Earlier version divided BOTH by 4 weeks then multiplied by 52/12,
+    // which over-counted Custom by a factor of 13/12 (showed $152 for
+    // Paora instead of $140). Fixed 2026-04-28.
     const activeProgressive = subs.filter(s => s.status === 'active' && s.stripe_price_id && /prog/i.test(s.stripe_price_id)).length;
     const activeCustom      = subs.filter(s => s.status === 'active').length - activeProgressive;
-    const weeklyRev = activeProgressive * 80/4 + activeCustom * 140/4;
-    const monthlyRev = Math.round(weeklyRev * 52 / 12);
+    const monthlyRev = Math.round(activeProgressive * 80 * 13 / 12 + activeCustom * 140);
     document.getElementById('t-mrr').textContent = `$${monthlyRev.toLocaleString('en-AU')}`;
     document.getElementById('t-mrr-sub').textContent = `Estimated · ${active} active subs`;
   }
