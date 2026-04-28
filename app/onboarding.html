@@ -79,6 +79,11 @@
     </div>
 
     <div class="form-field">
+      <label for="family-name">Last name</label>
+      <input type="text" id="family-name" name="family_name" autocomplete="family-name" required maxlength="80" placeholder="O'Keefe, Smith, etc." />
+    </div>
+
+    <div class="form-field">
       <label for="discipline">Your main discipline</label>
       <select id="discipline" name="discipline" required>
         <option value="">Choose one…</option>
@@ -182,6 +187,7 @@
   // ---- Pre-fill from existing partial profile + member type ----
   const form         = document.getElementById('onboard-form');
   const elName       = form.elements['preferred_name'];
+  const elFamilyName = form.elements['family_name'];
   const elDiscipline = form.elements['discipline'];
   const elAbility    = form.querySelectorAll('input[name="ability_level"]');
   const elHours      = form.elements['weekly_training_hours'];
@@ -194,6 +200,7 @@
 
   if (existing) {
     if (existing.preferred_name)        elName.value = existing.preferred_name;
+    if (existing.family_name)           elFamilyName.value = existing.family_name;
     if (existing.discipline)            elDiscipline.value = existing.discipline;
     if (existing.weekly_training_hours != null) elHours.value = existing.weekly_training_hours;
     if (existing.goal_race_name)        elRaceName.value = existing.goal_race_name;
@@ -292,6 +299,7 @@
 
     const row = {
       preferred_name:        elName.value.trim() || null,
+      family_name:           elFamilyName.value.trim() || null,
       discipline:            elDiscipline.value || null,
       ability_level:         (form.querySelector('input[name="ability_level"]:checked') || {}).value || null,
       weekly_training_hours: elHours.value ? parseInt(elHours.value, 10) : null,

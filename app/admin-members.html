@@ -384,7 +384,7 @@
     loadProgressiveMembers(),
     loadCustomData(),
     sb.from('member_profiles')
-      .select('user_id, completed_onboarding_at, goal_race_name, goal_race_date, weekly_training_hours, ability_level'),
+      .select('user_id, preferred_name, family_name, completed_onboarding_at, goal_race_name, goal_race_date, weekly_training_hours, ability_level'),
     sb.from('subscriptions')
       .select('user_id, status, current_period_end, cancel_at, cancel_unlocks_at'),
     sb.from('coaches').select('email'),
@@ -414,10 +414,19 @@
     const userId  = m.authUserId || null;
     const profile = userId ? profileByUser[userId] : null;
     const sub     = userId ? subByUser[userId]     : null;
+    // Display name: prefer "preferred_name family_name" from onboarding when
+    // both fields are present (the canonical first+last we ask the member
+    // for). Fall back to the Stripe billing name on the member row, then
+    // to "(no name)". Note that onboarding-completed members will always
+    // have both since family_name was made required 2026-04-29.
+    const preferred = profile && profile.preferred_name ? profile.preferred_name.trim() : '';
+    const family    = profile && profile.family_name    ? profile.family_name.trim()    : '';
+    const fullFromProfile = (preferred && family) ? `${preferred} ${family}` : '';
+    const displayName     = fullFromProfile || m.name || '(no name)';
     return {
       id:         m.id,
       type,
-      name:       m.name      || '(no name)',
+      name:       displayName,
       email:      m.email     || '',
       discipline: type === 'progressive' ? (PROGRESSIVE_LABELS[m.planKey] || m.planKey || '') : '',
       notes:      m.notes     || '',
