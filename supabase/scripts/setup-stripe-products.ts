@@ -104,21 +104,14 @@ const PRODUCTS: ProductSpec[] = [
 // when Mick confirms the new-customer pricing for non-AU customers.
 // See migration audit "PRICING DECISION" finding.
 const PRICES: PriceSpec[] = [
-  // Progressive plans — calendar-monthly billing. Mick's Progressive
-  // content isn't calendar-aligned, so monthly intervals are fine.
+  // All plans — calendar-monthly billing. Phase 1 (4-weekly Custom
+  // billing for block alignment) reverted 2026-04-29; will be retried
+  // post-migration when there's no time pressure.
   { product_id: 'progressive_prone', lookup_key: 'progressive_prone_monthly_aud', unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
   { product_id: 'progressive_sup',   lookup_key: 'progressive_sup_monthly_aud',   unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
   { product_id: 'progressive_oc',    lookup_key: 'progressive_oc_monthly_aud',    unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
   { product_id: 'progressive_ski',   lookup_key: 'progressive_ski_monthly_aud',   unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
-  // Custom plan — every-4-weeks billing (28-day cycles) so Stripe stays
-  // aligned with Mick's calendar-anchored block delivery (May block ≈
-  // May 4, June block = May 4 + 28d = Jun 1, etc.). Lookup key updated
-  // 2026-04-29 from `custom_race_monthly_aud` to `custom_race_4weekly_aud`
-  // so the script creates a NEW Stripe price (the old monthly price stays
-  // active in Stripe to keep the 3 already-migrated customers' subs working
-  // — Daniel, Pat, Paora — and will be migrated to the new price in a
-  // separate Phase 2 step).
-  { product_id: 'custom_race',       lookup_key: 'custom_race_4weekly_aud',       unit_amount: 14000, currency: 'aud', recurring: { interval: 'week', interval_count: 4 } },
+  { product_id: 'custom_race',       lookup_key: 'custom_race_monthly_aud',       unit_amount: 14000, currency: 'aud', recurring: { interval: 'month' } },
 ];
 
 // ------------------------------------------------------------
@@ -168,10 +161,17 @@ async function upsertProduct (spec: ProductSpec): Promise<Stripe.Product> {
 //   * If exists but doesn't match → deactivate it (transfer the lookup_key) and create a new one
 //   * If doesn't exist → create
 async function upsertPrice (spec: PriceSpec, productId: string): Promise<Stripe.Price> {
-  const list = await stripe.prices.list({ lookup_keys: [spec.lookup_key], limit: 5 });
+  // List prices by product (not by lookup_keys) so a restricted key with
+  // only Prices:Read works. Stripe's `prices.list({ lookup_keys })` filter
+  // internally maps to the legacy "Plans" permission (rak_plan_read), which
+  // is no longer exposed in the restricted-key UI for some accounts —
+  // filtering client-side avoids that requirement entirely. Each product
+  // only ever has 1–2 active prices, so paging is not a concern.
+  const list = await stripe.prices.list({ product: productId, limit: 100 });
+  const sameLookup = list.data.filter(p => p.lookup_key === spec.lookup_key);
 
   const expectedIntervalCount = spec.recurring.interval_count ?? 1;
-  const existing = list.data.find(p =>
+  const existing = sameLookup.find(p =>
     p.active &&
     p.unit_amount === spec.unit_amount &&
     p.currency    === spec.currency &&
@@ -190,7 +190,7 @@ async function upsertPrice (spec: PriceSpec, productId: string): Promise<Stripe.
   // lookup_key (e.g. custom_race_monthly_aud → custom_race_4weekly_aud)
   // leaves the old key intact in Stripe — that's intentional, so existing
   // subscriptions on the old price keep working.
-  for (const old of list.data.filter(p => p.active)) {
+  for (const old of sameLookup.filter(p => p.active)) {
     await stripe.prices.update(old.id, { active: false, lookup_key: '' });
     console.log(`    ↳ deactivated stale price ${old.id} (was ${spec.lookup_key})`);
   }
