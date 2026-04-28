@@ -66,6 +66,29 @@ Add to "Up next" any time something comes up between meetings. After the meeting
 
 ---
 
+## Future / parked — revisit after migration is complete
+
+> Topics worth thinking about later but deliberately deprioritised right now. Promote into "Up next" when the time is right.
+
+### Win-back the ~50 historical Shopify customers (parked 2026-04-29)
+
+**Context:** Mick has ~72 historical customers in Shopify; 21 are currently active and being migrated. The remaining ~50 are past-but-not-paying — a potential growth pool once active migration is done.
+
+**Why parked:** Migration of the active 21 over the next ~month is the focus. Trying to do win-back at the same time risks splitting attention and confusing messaging.
+
+**When to revisit:** After all 21 are migrated and stable on Stripe (probably mid-late May 2026).
+
+**Things to think about when picking it back up:**
+
+- **Compliance check:** AU Spam Act / NZ UEMA require prior consent for marketing emails. Many past customers may be `Email subscription: Not subscribed` in Shopify — those are legally fragile to bulk-email.
+- **Strategy first, tooling second:** the highest-converting move is often Mick personally messaging the 5–10 customers he most wants back, not a bulk blast. Start with that.
+- **Two implementation paths if it grows beyond personal outreach:**
+  - **A.** Use Shopify's built-in Customer Segments + Email Marketing (respects opt-in automatically, zero new code, but data stays in Shopify).
+  - **B.** Build a "Prospects" surface in the new admin (extend `migration_customers` or new table; full audit trail; track conversion). Only worth it if win-back becomes a recurring quarterly motion.
+- **Pre-step:** pull exact numbers from Shopify (total customers / opted-in / RFM segmentation) before deciding scope.
+
+---
+
 ## Change log (optional — only worth keeping for decisions you'll forget)
 
 > Format: `YYYY-MM-DD · Topic · Decision`
