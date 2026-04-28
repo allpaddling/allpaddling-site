@@ -35,18 +35,27 @@
     { id: 'renewal_day_t0',  label: 'T-0 — Renewal-day reminder', needsLink: true,  statusAfterSend: null }, // status unchanged — same day
     { id: 'followup_tplus3', label: 'T+3 — Followup',           needsLink: true,  statusAfterSend: null },
     { id: 'lapse_tplus14',   label: 'T+14 — Lapse notice',       needsLink: true,  statusAfterSend: 'lapsed' },
+    // URGENT track (Jake, 2026-04-29) — synchronized cutover after Mick
+    // confirmed Custom Plan content is calendar-aligned (May block drops
+    // May 4 regardless of each customer's individual Shopify renewal
+    // date). All Shopify subs cancelled together; this email tells them
+    // to sign up via the standard custom-plan.html / plan-*.html anon
+    // signup flow with email pre-filled via ?email= URL param. No
+    // per-customer Stripe checkout link needed.
+    { id: 'urgent_signup',   label: 'URGENT — Cancelled, signup-by-Sat', needsLink: false, statusAfterSend: 'urgent_signup_sent' },
   ];
 
   // For a given current migration_status, the email kind we default to.
   const DEFAULT_KIND_BY_STATUS = {
-    pending:           'heads_up_t7',
-    heads_up_sent:     'signup_link_t3',
-    signup_link_sent:  'renewal_day_t0',
-    signed_up:         null,           // they signed up — no migration emails
-    shopify_cancelled: null,           // already done
-    migrated:          null,
-    lapsed:            null,
-    on_hold:           null,
+    pending:             'urgent_signup',  // urgent track is now the default for unsent customers
+    heads_up_sent:       'urgent_signup',  // even if they got T-7 already, urgent supersedes
+    signup_link_sent:    'urgent_signup',  // same — urgent supersedes
+    urgent_signup_sent:  'urgent_signup',  // resend if needed
+    signed_up:           null,           // they signed up — no migration emails
+    shopify_cancelled:   null,           // already done
+    migrated:            null,
+    lapsed:              null,
+    on_hold:             null,
   };
 
   const PLAN_LABELS = {
@@ -58,20 +67,21 @@
   // 'in_progress' = coach has touched them but they haven't fully migrated yet.
   const STATUS_BUCKETS = {
     pending:     ['pending'],
-    in_progress: ['heads_up_sent', 'signup_link_sent', 'signed_up', 'shopify_cancelled'],
+    in_progress: ['heads_up_sent', 'signup_link_sent', 'urgent_signup_sent', 'signed_up', 'shopify_cancelled'],
     migrated:    ['migrated'],
     lapsed:      ['lapsed', 'on_hold'],
   };
 
   const STATUS_LABELS = {
-    pending:           'Pending',
-    heads_up_sent:     'Heads-up sent',
-    signup_link_sent:  'Link sent',
-    signed_up:         'Signed up',
-    shopify_cancelled: 'Shopify cancelled',
-    migrated:          'Migrated',
-    lapsed:            'Lapsed',
-    on_hold:           'On hold',
+    pending:             'Pending',
+    heads_up_sent:       'Heads-up sent',
+    signup_link_sent:    'Link sent',
+    urgent_signup_sent:  'Urgent sent',
+    signed_up:           'Signed up',
+    shopify_cancelled:   'Shopify cancelled',
+    migrated:            'Migrated',
+    lapsed:              'Lapsed',
+    on_hold:             'On hold',
   };
 
   // ---------- State ----------
@@ -275,6 +285,107 @@
     $('copyLinkBtn').addEventListener('click', () => copyToClipboard($('linkInput').value, $('copyLinkBtn')));
     $('copyEmailBtn').addEventListener('click', () => copyToClipboard($('emailBody').textContent, $('copyEmailBtn')));
     $('markSentBtn').addEventListener('click', onMarkSentClick);
+
+    // Bulk URGENT-send button — fires the urgent_signup email to every
+    // customer not already signed up / migrated / lapsed / on-hold.
+    const bulkBtn = $('bulkUrgentBtn');
+    if (bulkBtn) bulkBtn.addEventListener('click', onBulkUrgentClick);
+  }
+
+  // ============================================================
+  // Bulk URGENT send (Jake/Mick, 2026-04-29)
+  // Fires renderEmailUrgentSignup to every customer in pending /
+  // heads_up_sent / signup_link_sent / urgent_signup_sent. Skips
+  // signed_up / migrated / lapsed / on_hold (those are out of the
+  // funnel or explicitly deferred).
+  // ============================================================
+  const URGENT_ELIGIBLE_STATUSES = ['pending', 'heads_up_sent', 'signup_link_sent', 'urgent_signup_sent'];
+
+  async function onBulkUrgentClick () {
+    const eligible = allCustomers.filter(c => URGENT_ELIGIBLE_STATUSES.includes(c.migration_status));
+    if (!eligible.length) {
+      alert('No eligible customers right now.\n\nEveryone is either signed up, migrated, lapsed, or on hold.');
+      return;
+    }
+
+    const customCount = eligible.filter(c => c.plan_type === 'custom').length;
+    const progCount   = eligible.length - customCount;
+    const ok = confirm(
+      `Send URGENT migration email to ${eligible.length} customer${eligible.length === 1 ? '' : 's'}?\n\n` +
+      `  • ${customCount} Custom (with the Saturday May 2 deadline + May 4 block)\n` +
+      `  • ${progCount} Progressive (no deadline framing)\n\n` +
+      `Each will be BCC'd to you and Mick.\n` +
+      `Status will be set to "Urgent sent" for each.\n\n` +
+      `This is non-reversible — emails will hit inboxes immediately.`,
+    );
+    if (!ok) return;
+
+    const btn = $('bulkUrgentBtn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = `Sending 0 / ${eligible.length}…`;
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.access_token) {
+      alert('No active session — sign in again and retry.');
+      btn.disabled = false; btn.textContent = originalLabel;
+      return;
+    }
+
+    let sent = 0, failed = 0;
+    const failures = [];
+    // Sequential to keep things ordered (and to avoid hammering the
+    // send-email function — Resend has its own per-second rate limit).
+    for (const customer of eligible) {
+      try {
+        const url = urgentSignupUrl(customer);
+        const composed = composeEmailForKind('urgent_signup', customer, url);
+        const sendRes = await fetch(SEND_EMAIL_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            mode:     'raw',
+            to:       customer.email,
+            subject:  composed.subject,
+            text:     composed.text,
+            html:     composed.html,
+            tags: [
+              { name: 'kind',         value: 'urgent_signup' },
+              { name: 'migrate_id',   value: customer.id },
+              { name: 'plan_type',    value: customer.plan_type },
+            ],
+          }),
+        });
+        if (!sendRes.ok) {
+          const detail = await sendRes.text().catch(() => '');
+          throw new Error(`${sendRes.status} ${detail}`);
+        }
+        await updateStatus(customer.id, 'urgent_signup_sent', { skipRender: true });
+        sent++;
+      } catch (err) {
+        console.error(`urgent send failed for ${customer.email}:`, err);
+        failures.push({ email: customer.email, error: err.message });
+        failed++;
+      }
+      btn.textContent = `Sending ${sent + failed} / ${eligible.length}…`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    render();
+
+    if (failed === 0) {
+      alert(`✓ Sent ${sent} URGENT migration emails.\n\nWatch the funnel — customers should start hitting "Signed up" status within a few minutes.`);
+    } else {
+      const fails = failures.map(f => `  • ${f.email}: ${f.error}`).join('\n');
+      alert(
+        `Sent ${sent} of ${eligible.length} URGENT emails. ${failed} failed:\n\n${fails}\n\n` +
+        `The successful ones have been moved to "Urgent sent" status. Failed customers stay on their previous status — retry from the per-row send dropdown.`,
+      );
+    }
   }
 
   // ============================================================
@@ -359,22 +470,27 @@
     alertEl.textContent = '✓ Status updated.';
   }
 
-  async function updateStatus (customerId, newStatus) {
+  async function updateStatus (customerId, newStatus, opts) {
     const { error } = await sb
       .from('migration_customers')
       .update({ migration_status: newStatus })
       .eq('id', customerId);
     if (error) {
+      // Bulk callers want errors thrown so they can collect failures
+      // and present them in a single summary; per-row callers pass no
+      // opts and get the existing alert behaviour.
+      if (opts && opts.skipRender) throw new Error(error.message);
       alert(`Couldn't update status: ${error.message}`);
       return;
     }
-    // Update local state and re-render
+    // Update local state and re-render (unless caller is doing a bulk
+    // pass and will trigger render once at the end).
     const c = allCustomers.find(x => x.id === customerId);
     if (c) {
       c.migration_status = newStatus;
       c.status_updated_at = new Date().toISOString();
     }
-    render();
+    if (!opts || !opts.skipRender) render();
   }
 
   function showResult (customer, url) {
@@ -426,11 +542,15 @@
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.access_token) throw new Error('No active session — sign in again.');
 
-      // For email kinds that need a signup link, generate one fresh
-      // right now (so it's not stale).
+      // For email kinds that need a per-customer Stripe Checkout link,
+      // generate one fresh right now (so it's not stale). The urgent
+      // track instead uses the public signup page with email pre-filled
+      // (no per-customer Stripe link), so it has its own URL builder.
       let url = null;
       if (kind.needsLink) {
         url = await generateCheckoutUrl(customer, session.access_token);
+      } else if (kind.id === 'urgent_signup') {
+        url = urgentSignupUrl(customer);
       }
 
       const composed = composeEmailForKind(kind.id, customer, url);
@@ -519,6 +639,7 @@
       case 'renewal_day_t0':  return renderEmailRenewalDayT0(ctx);
       case 'followup_tplus3': return renderEmailFollowupTplus3(ctx);
       case 'lapse_tplus14':   return renderEmailLapseTplus14(ctx);
+      case 'urgent_signup':   return renderEmailUrgentSignup(ctx, customer);
       default:                return null;
     }
   }
@@ -533,6 +654,20 @@
       ? new Date(customer.next_renewal).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
       : 'next renewal';
     return { firstName, planLabel, monthly, renewalDate, signupLink: url || '' };
+  }
+
+  // Builds the public signup URL for a customer with their email pre-filled
+  // via the ?email= URL param (read by checkout.js's anon modal). Custom
+  // plan customers go to the Custom Plan signup page; Progressive customers
+  // go to their specific discipline page (plan-prone.html / plan-sup.html
+  // / plan-oc.html / plan-ski.html).
+  function urgentSignupUrl (customer) {
+    const email = encodeURIComponent((customer.email || '').toLowerCase().trim());
+    if (customer.plan_type === 'custom') {
+      return `https://allpaddling.online/custom-plan.html?email=${email}`;
+    }
+    const key = customer.plan_key || 'prone';
+    return `https://allpaddling.online/plan-${key}.html?email=${email}`;
   }
 
   function wrapHtml (text) {
@@ -653,6 +788,67 @@ Mick
 `;
     return {
       subject: `Everything OK?`,
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  // URGENT migration email (Jake/Mick, 2026-04-29).
+  // - Custom Plan customers: tight deadline (Sat 2 May) because the May
+  //   block content drops Mon 4 May and they need an active Stripe sub
+  //   to access it via the dashboard.
+  // - Progressive Plan customers: same cancellation context but no
+  //   block-deadline pressure (Progressive content isn't calendar-aligned
+  //   per Mick's 2026-04-29 confirmation).
+  // The signupLink here is the public custom-plan.html or plan-*.html
+  // URL with ?email= pre-fill (NOT a per-customer Stripe checkout link).
+  // See urgentSignupUrl() above for the URL construction.
+  function renderEmailUrgentSignup ({ firstName, signupLink }, customer) {
+    const isCustom = customer.plan_type === 'custom';
+    if (isCustom) {
+      const text = `Hi ${firstName},
+
+Quick heads-up from me. I've moved All Paddling onto a new platform, and that means I've cancelled your old Shopify subscription today — no more charges coming from there.
+
+To pick up the May block on the new site, please sign up by end of day Saturday 2 May. The new block goes live Monday 4 May:
+
+👉 ${signupLink}
+
+Same plan, same A$140 every 4 weeks, same training I've been writing for you — just a much better home for it.
+
+Any questions or anything looks off, hit reply — it lands with me directly.
+
+Thanks for paddling with me,
+
+Mick
+`;
+      return {
+        subject: 'Action needed by Saturday — your May training block + new platform',
+        text,
+        html: wrapHtml(text),
+      };
+    }
+    // Progressive variant — softer urgency
+    const text = `Hi ${firstName},
+
+Heads-up: I've moved All Paddling onto a new platform. Your old Shopify subscription is cancelled today — no more charges from there.
+
+To keep training without interruption, sign up on the new site whenever suits:
+
+👉 ${signupLink}
+
+Same plan, same A$80 every 4 weeks, same content — and the new dashboard makes it much easier to follow your week.
+
+No specific deadline, but sooner is better so you don't miss your weekly sessions.
+
+Any questions, reply to this email.
+
+Thanks,
+
+Mick
+`;
+    return {
+      subject: "I've moved you to the new All Paddling platform",
       text,
       html: wrapHtml(text),
     };
