@@ -65,6 +65,11 @@ interface PriceSpec {
   lookup_key:  string;               // stable key used by create-checkout-session
   unit_amount: number;
   currency:    'aud' | 'usd' | 'nzd' | 'cad';
+  // Recurring shape. Custom Plan needs every-4-weeks (28 days) so Stripe
+  // billing aligns with Mick's calendar-anchored content blocks. Progressive
+  // is currently calendar-monthly (Mick's content for Progressive isn't
+  // block-aligned). Per spec 2026-04-29.
+  recurring:   { interval: 'month' | 'week'; interval_count?: number };
 }
 
 const PRODUCTS: ProductSpec[] = [
@@ -99,11 +104,21 @@ const PRODUCTS: ProductSpec[] = [
 // when Mick confirms the new-customer pricing for non-AU customers.
 // See migration audit "PRICING DECISION" finding.
 const PRICES: PriceSpec[] = [
-  { product_id: 'progressive_prone', lookup_key: 'progressive_prone_monthly_aud', unit_amount:  8000, currency: 'aud' },
-  { product_id: 'progressive_sup',   lookup_key: 'progressive_sup_monthly_aud',   unit_amount:  8000, currency: 'aud' },
-  { product_id: 'progressive_oc',    lookup_key: 'progressive_oc_monthly_aud',    unit_amount:  8000, currency: 'aud' },
-  { product_id: 'progressive_ski',   lookup_key: 'progressive_ski_monthly_aud',   unit_amount:  8000, currency: 'aud' },
-  { product_id: 'custom_race',       lookup_key: 'custom_race_monthly_aud',       unit_amount: 14000, currency: 'aud' },
+  // Progressive plans — calendar-monthly billing. Mick's Progressive
+  // content isn't calendar-aligned, so monthly intervals are fine.
+  { product_id: 'progressive_prone', lookup_key: 'progressive_prone_monthly_aud', unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
+  { product_id: 'progressive_sup',   lookup_key: 'progressive_sup_monthly_aud',   unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
+  { product_id: 'progressive_oc',    lookup_key: 'progressive_oc_monthly_aud',    unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
+  { product_id: 'progressive_ski',   lookup_key: 'progressive_ski_monthly_aud',   unit_amount:  8000, currency: 'aud', recurring: { interval: 'month' } },
+  // Custom plan — every-4-weeks billing (28-day cycles) so Stripe stays
+  // aligned with Mick's calendar-anchored block delivery (May block ≈
+  // May 4, June block = May 4 + 28d = Jun 1, etc.). Lookup key updated
+  // 2026-04-29 from `custom_race_monthly_aud` to `custom_race_4weekly_aud`
+  // so the script creates a NEW Stripe price (the old monthly price stays
+  // active in Stripe to keep the 3 already-migrated customers' subs working
+  // — Daniel, Pat, Paora — and will be migrated to the new price in a
+  // separate Phase 2 step).
+  { product_id: 'custom_race',       lookup_key: 'custom_race_4weekly_aud',       unit_amount: 14000, currency: 'aud', recurring: { interval: 'week', interval_count: 4 } },
 ];
 
 // ------------------------------------------------------------
@@ -155,11 +170,14 @@ async function upsertProduct (spec: ProductSpec): Promise<Stripe.Product> {
 async function upsertPrice (spec: PriceSpec, productId: string): Promise<Stripe.Price> {
   const list = await stripe.prices.list({ lookup_keys: [spec.lookup_key], limit: 5 });
 
+  const expectedIntervalCount = spec.recurring.interval_count ?? 1;
   const existing = list.data.find(p =>
     p.active &&
     p.unit_amount === spec.unit_amount &&
     p.currency    === spec.currency &&
-    p.product     === productId
+    p.product     === productId &&
+    p.recurring?.interval       === spec.recurring.interval &&
+    p.recurring?.interval_count === expectedIntervalCount
   );
   if (existing) {
     console.log(`    ✓ price ${spec.lookup_key} matches → ${existing.id}`);
@@ -167,7 +185,11 @@ async function upsertPrice (spec: PriceSpec, productId: string): Promise<Stripe.
   }
 
   // Deactivate any previous active price holding this lookup_key
-  // and unset its lookup_key so the new one can claim it.
+  // and unset its lookup_key so the new one can claim it. Note: we
+  // only touch prices that share THIS lookup_key. Renaming a price's
+  // lookup_key (e.g. custom_race_monthly_aud → custom_race_4weekly_aud)
+  // leaves the old key intact in Stripe — that's intentional, so existing
+  // subscriptions on the old price keep working.
   for (const old of list.data.filter(p => p.active)) {
     await stripe.prices.update(old.id, { active: false, lookup_key: '' });
     console.log(`    ↳ deactivated stale price ${old.id} (was ${spec.lookup_key})`);
@@ -177,7 +199,10 @@ async function upsertPrice (spec: PriceSpec, productId: string): Promise<Stripe.
     product:     productId,
     unit_amount: spec.unit_amount,
     currency:    spec.currency,
-    recurring:   { interval: 'month' },
+    recurring:   {
+      interval:       spec.recurring.interval,
+      interval_count: expectedIntervalCount,
+    },
     lookup_key:  spec.lookup_key,
     transfer_lookup_key: true,        // belt-and-braces if the deactivate above raced
   });

@@ -118,13 +118,57 @@ interface CheckoutRequest {
 // setup-stripe-products script. SELF mode resolves these via the
 // Stripe API rather than hardcoding price IDs, so the function
 // keeps working across test/live mode swaps.
+//
+// Custom Plan key updated 2026-04-29 from `custom_race_monthly_aud`
+// (calendar-monthly billing) to `custom_race_4weekly_aud` (every 28
+// days). Reason: Mick's Custom content is delivered in calendar-
+// anchored 4-week blocks (Block 2 = May 4 + 28d = Jun 1). To keep
+// billing aligned with content delivery without drift, the Stripe
+// price now bills every 4 weeks. The old monthly price stays active
+// in Stripe so the 3 already-migrated customers (Daniel, Pat, Paora)
+// keep working — they'll be migrated to the new price as a separate
+// Phase 2 step. Progressive prices stay monthly (Mick's Progressive
+// content isn't calendar-aligned).
 const SELF_PRICE_LOOKUP: Record<PlanKey | 'custom', string> = {
   prone:  'progressive_prone_monthly_aud',
   sup:    'progressive_sup_monthly_aud',
   oc:     'progressive_oc_monthly_aud',
   ski:    'progressive_ski_monthly_aud',
-  custom: 'custom_race_monthly_aud',
+  custom: 'custom_race_4weekly_aud',
 };
+
+// ------------------------------------------------------------
+// Block-anchored billing (Custom Plan only, 2026-04-29)
+//
+// Mick publishes a new 4-week Custom Plan content block every 28
+// days, anchored to Mon 4 May 2026 in Sydney time. Block boundaries
+// from there: 4 May → 1 Jun → 29 Jun → 27 Jul → 24 Aug → ...
+//
+// nextBlockStart(today) returns the next block boundary at or after
+// `today`. Used as Stripe Checkout's `subscription_data.billing_cycle_anchor`
+// so a customer signing up mid-block:
+//   1. Pays a pro-rated portion immediately (Stripe computes from
+//      proration_behavior='create_prorations' against the cycle).
+//   2. Has their first full $140 charge land on the next block start.
+//   3. Renews every 28 days from there, staying aligned with content.
+//
+// The anchor date is fixed in code intentionally — it's the program's
+// real-world calendar event. If the schedule ever shifts (Mick takes
+// a break, etc.) we'll update the constant and any sub created from
+// the new value will track the new schedule. Existing subs ride out
+// at their existing 28-day cadence.
+// ------------------------------------------------------------
+const BLOCK_ANCHOR_UTC_MS = Date.UTC(2026, 4, 3, 14, 0, 0);
+// ↑ 2026-05-04 00:00 Sydney (AEST = UTC+10) → 2026-05-03 14:00 UTC.
+//   Hardcoded in UTC ms to avoid Deno edge runtimes' default-tz drift.
+const BLOCK_LENGTH_MS    = 28 * 24 * 60 * 60 * 1000;
+
+function nextBlockStart (today: Date): Date {
+  const elapsed = today.getTime() - BLOCK_ANCHOR_UTC_MS;
+  if (elapsed <= 0) return new Date(BLOCK_ANCHOR_UTC_MS);
+  const blocksElapsed = Math.floor(elapsed / BLOCK_LENGTH_MS);
+  return new Date(BLOCK_ANCHOR_UTC_MS + (blocksElapsed + 1) * BLOCK_LENGTH_MS);
+}
 
 // Human-readable product names used when we have to create a
 // price inline for migrate-mode (Stripe requires a product name
@@ -403,6 +447,37 @@ Deno.serve(async (req) => {
     }
     const cancelUrl  = body.cancel_url  ?? `${APP_BASE_URL}/getting-started.html?cancelled=1`;
 
+    // Custom-plan-only: anchor billing to the next 4-week block boundary
+    // and pro-rate the current partial cycle. See nextBlockStart() block
+    // comment above for the rationale. Progressive plans don't get this
+    // treatment — their content isn't calendar-anchored, so plain
+    // signup-anchored cycles are fine.
+    //
+    // Edge case: if the customer signs up exactly on a block start,
+    // nextBlockStart() returns today, and Stripe's billing_cycle_anchor
+    // must be in the future — so in that case we set anchor to the
+    // block AFTER (i.e. they pay full $140 today for the current block,
+    // next charge is +28 days as you'd expect).
+    const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData = {
+      metadata: { plan_type: planType, plan_key: planKey ?? '' },
+    };
+    if (planType === 'custom') {
+      const now = new Date();
+      let anchor = nextBlockStart(now);
+      // Stripe rejects an anchor at-or-before the subscription start time.
+      // If signup happens to fall on a block boundary, push anchor to the
+      // next-but-one block (28 days later).
+      if (anchor.getTime() - now.getTime() < 60 * 1000) {
+        anchor = new Date(anchor.getTime() + BLOCK_LENGTH_MS);
+      }
+      subscriptionData.billing_cycle_anchor = Math.floor(anchor.getTime() / 1000);
+      subscriptionData.proration_behavior   = 'create_prorations';
+      console.log(
+        `custom-plan billing anchor for ${email}: signup ${now.toISOString()} → ` +
+        `anchor ${anchor.toISOString()} (pro-rated first invoice + $140 then every 28d).`
+      );
+    }
+
     // Create the Checkout Session.
     const session = await stripe.checkout.sessions.create({
       mode:                 'subscription',
@@ -418,6 +493,7 @@ Deno.serve(async (req) => {
         source:    isMigration ? 'migrate' : (isAnon ? 'self_anon' : 'self'),
         ...(isMigration && body.email ? { migrated_from_email: body.email.toLowerCase() } : {}),
       },
+      subscription_data:    subscriptionData,
       // Pass tax-collection setting through; Stripe Tax (if enabled
       // on the account) will compute AU GST for AU customers.
       automatic_tax: { enabled: true },
