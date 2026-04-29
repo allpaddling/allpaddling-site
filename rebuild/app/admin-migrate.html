@@ -291,9 +291,15 @@
         <h1>Customer migration</h1>
         <p class="page-subtitle">Move existing Shopify subscribers across to Stripe, one at a time.</p>
       </div>
-      <div>
+      <div style="display:flex; flex-direction:column; gap:0.4rem; align-items:flex-end;">
         <button type="button" id="bulkUrgentBtn" class="btn btn-primary" style="background:#b91c1c; border-color:#b91c1c;">
           Send URGENT to all eligible →
+        </button>
+        <button type="button" id="bulkReminderBtn" class="btn btn-primary" style="background:#d97706; border-color:#d97706;">
+          Send REMINDER to all eligible →
+        </button>
+        <button type="button" id="bulkLastCallBtn" class="btn btn-primary" style="background:#0f172a; border-color:#0f172a;">
+          Send LAST CALL to all eligible →
         </button>
       </div>
     </header>

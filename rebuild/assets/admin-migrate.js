@@ -43,16 +43,25 @@
     // signup flow with email pre-filled via ?email= URL param. No
     // per-customer Stripe checkout link needed.
     { id: 'urgent_signup',   label: 'URGENT — Cancelled, signup-by-Sat', needsLink: false, statusAfterSend: 'urgent_signup_sent' },
+    // Follow-up cadence (Jake, 2026-04-29) — three touches total
+    // before the May block goes live Mon 4 May:
+    //   * urgent_signup  (Tue 28 Apr)  — initial notice, hard pivot
+    //   * urgent_reminder (Thu 30 Apr) — "haven't seen you yet, deadline Sat"
+    //   * urgent_last_call (Fri 1 May) — final, asks for yes/no
+    { id: 'urgent_reminder',  label: 'REMINDER — 3 days to deadline',  needsLink: false, statusAfterSend: 'reminder_sent'  },
+    { id: 'urgent_last_call', label: 'LAST CALL — Final reminder',     needsLink: false, statusAfterSend: 'last_call_sent' },
   ];
 
   // For a given current migration_status, the email kind we default to.
   const DEFAULT_KIND_BY_STATUS = {
-    pending:             'urgent_signup',  // urgent track is now the default for unsent customers
-    heads_up_sent:       'urgent_signup',  // even if they got T-7 already, urgent supersedes
-    signup_link_sent:    'urgent_signup',  // same — urgent supersedes
-    urgent_signup_sent:  'urgent_signup',  // resend if needed
-    signed_up:           null,           // they signed up — no migration emails
-    shopify_cancelled:   null,           // already done
+    pending:             'urgent_signup',   // urgent track is now the default for unsent customers
+    heads_up_sent:       'urgent_signup',   // even if they got T-7 already, urgent supersedes
+    signup_link_sent:    'urgent_signup',   // same — urgent supersedes
+    urgent_signup_sent:  'urgent_reminder', // they got urgent → next touch is reminder
+    reminder_sent:       'urgent_last_call',// reminder went → next is last call
+    last_call_sent:      'urgent_last_call',// last call already sent — resend if needed
+    signed_up:           null,              // they signed up — no migration emails
+    shopify_cancelled:   null,              // already done
     migrated:            null,
     lapsed:              null,
     on_hold:             null,
@@ -67,7 +76,7 @@
   // 'in_progress' = coach has touched them but they haven't fully migrated yet.
   const STATUS_BUCKETS = {
     pending:     ['pending'],
-    in_progress: ['heads_up_sent', 'signup_link_sent', 'urgent_signup_sent', 'signed_up', 'shopify_cancelled'],
+    in_progress: ['heads_up_sent', 'signup_link_sent', 'urgent_signup_sent', 'reminder_sent', 'last_call_sent', 'signed_up', 'shopify_cancelled'],
     migrated:    ['migrated'],
     lapsed:      ['lapsed', 'on_hold'],
   };
@@ -77,6 +86,8 @@
     heads_up_sent:       'Heads-up sent',
     signup_link_sent:    'Link sent',
     urgent_signup_sent:  'Urgent sent',
+    reminder_sent:       'Reminder sent',
+    last_call_sent:      'Last call sent',
     signed_up:           'Signed up',
     shopify_cancelled:   'Shopify cancelled',
     migrated:            'Migrated',
@@ -286,41 +297,81 @@
     $('copyEmailBtn').addEventListener('click', () => copyToClipboard($('emailBody').textContent, $('copyEmailBtn')));
     $('markSentBtn').addEventListener('click', onMarkSentClick);
 
-    // Bulk URGENT-send button — fires the urgent_signup email to every
-    // customer not already signed up / migrated / lapsed / on-hold.
-    const bulkBtn = $('bulkUrgentBtn');
-    if (bulkBtn) bulkBtn.addEventListener('click', onBulkUrgentClick);
+    // Bulk-send buttons. All three urgent-track sends share the same
+    // mechanics; only the kind, eligibility list, and labels differ.
+    // See BULK_SEND_CONFIGS for the per-button parameters.
+    BULK_SEND_CONFIGS.forEach(cfg => {
+      const btn = $(cfg.btnId);
+      if (btn) btn.addEventListener('click', () => runBulkSend(cfg));
+    });
   }
 
   // ============================================================
-  // Bulk URGENT send (Jake/Mick, 2026-04-29)
-  // Fires renderEmailUrgentSignup to every customer in pending /
-  // heads_up_sent / signup_link_sent / urgent_signup_sent. Skips
-  // signed_up / migrated / lapsed / on_hold (those are out of the
-  // funnel or explicitly deferred).
+  // Bulk send — urgent track follow-up cadence (Jake/Mick, 2026-04-29)
+  //
+  // Three buttons in the page header drive the same machine:
+  //
+  //   1. URGENT     (Tue 28 Apr) — initial cancel-and-resignup notice.
+  //                 Eligibility: anyone not already signed up.
+  //   2. REMINDER   (Thu 30 Apr) — friendly nudge 3 days before cutoff.
+  //                 Eligibility: anyone in 'urgent_signup_sent'
+  //                 (already received the urgent email).
+  //   3. LAST CALL  (Fri 1 May)  — final reminder day before deadline.
+  //                 Eligibility: 'urgent_signup_sent' or 'reminder_sent'
+  //                 (anyone we've touched on the urgent track).
+  //
+  // Skips signed_up / migrated / lapsed / on_hold (out of funnel).
   // ============================================================
-  const URGENT_ELIGIBLE_STATUSES = ['pending', 'heads_up_sent', 'signup_link_sent', 'urgent_signup_sent'];
+  const BULK_SEND_CONFIGS = [
+    {
+      kindId:           'urgent_signup',
+      btnId:            'bulkUrgentBtn',
+      friendlyLabel:    'URGENT',
+      eligibleStatuses: ['pending', 'heads_up_sent', 'signup_link_sent', 'urgent_signup_sent'],
+      newStatus:        'urgent_signup_sent',
+      customCopy:       'Custom (with the Saturday May 2 deadline + May 4 block)',
+      progCopy:         'Progressive (no deadline framing)',
+    },
+    {
+      kindId:           'urgent_reminder',
+      btnId:            'bulkReminderBtn',
+      friendlyLabel:    'REMINDER',
+      eligibleStatuses: ['urgent_signup_sent'],
+      newStatus:        'reminder_sent',
+      customCopy:       'Custom (3-day-out reminder, Sat 2 May deadline)',
+      progCopy:         'Progressive (gentle nudge)',
+    },
+    {
+      kindId:           'urgent_last_call',
+      btnId:            'bulkLastCallBtn',
+      friendlyLabel:    'LAST CALL',
+      eligibleStatuses: ['urgent_signup_sent', 'reminder_sent'],
+      newStatus:        'last_call_sent',
+      customCopy:       'Custom (Fri-of-deadline last call, asks for yes/no reply)',
+      progCopy:         'Progressive (final friendly reminder)',
+    },
+  ];
 
-  async function onBulkUrgentClick () {
-    const eligible = allCustomers.filter(c => URGENT_ELIGIBLE_STATUSES.includes(c.migration_status));
+  async function runBulkSend (cfg) {
+    const eligible = allCustomers.filter(c => cfg.eligibleStatuses.includes(c.migration_status));
     if (!eligible.length) {
-      alert('No eligible customers right now.\n\nEveryone is either signed up, migrated, lapsed, or on hold.');
+      alert(`No eligible customers right now for ${cfg.friendlyLabel}.\n\nEveryone in this segment has already been touched at this stage (or is signed up / migrated / lapsed / on hold).`);
       return;
     }
 
     const customCount = eligible.filter(c => c.plan_type === 'custom').length;
     const progCount   = eligible.length - customCount;
     const ok = confirm(
-      `Send URGENT migration email to ${eligible.length} customer${eligible.length === 1 ? '' : 's'}?\n\n` +
-      `  • ${customCount} Custom (with the Saturday May 2 deadline + May 4 block)\n` +
-      `  • ${progCount} Progressive (no deadline framing)\n\n` +
+      `Send ${cfg.friendlyLabel} email to ${eligible.length} customer${eligible.length === 1 ? '' : 's'}?\n\n` +
+      `  • ${customCount} ${cfg.customCopy}\n` +
+      `  • ${progCount} ${cfg.progCopy}\n\n` +
       `Each will be BCC'd to you and Mick.\n` +
-      `Status will be set to "Urgent sent" for each.\n\n` +
-      `This is non-reversible — emails will hit inboxes immediately.`,
+      `Status will move to "${STATUS_LABELS[cfg.newStatus] || cfg.newStatus}" on success.\n\n` +
+      `This is non-reversible — emails hit inboxes immediately.`,
     );
     if (!ok) return;
 
-    const btn = $('bulkUrgentBtn');
+    const btn = $(cfg.btnId);
     const originalLabel = btn.textContent;
     btn.disabled = true;
     btn.textContent = `Sending 0 / ${eligible.length}…`;
@@ -339,7 +390,8 @@
     for (const customer of eligible) {
       try {
         const url = urgentSignupUrl(customer);
-        const composed = composeEmailForKind('urgent_signup', customer, url);
+        const composed = composeEmailForKind(cfg.kindId, customer, url);
+        if (!composed) throw new Error(`No renderer for kind ${cfg.kindId}`);
         const sendRes = await fetch(SEND_EMAIL_URL, {
           method: 'POST',
           headers: {
@@ -353,9 +405,9 @@
             text:     composed.text,
             html:     composed.html,
             tags: [
-              { name: 'kind',         value: 'urgent_signup' },
-              { name: 'migrate_id',   value: customer.id },
-              { name: 'plan_type',    value: customer.plan_type },
+              { name: 'kind',       value: cfg.kindId },
+              { name: 'migrate_id', value: customer.id },
+              { name: 'plan_type',  value: customer.plan_type },
             ],
           }),
         });
@@ -363,10 +415,10 @@
           const detail = await sendRes.text().catch(() => '');
           throw new Error(`${sendRes.status} ${detail}`);
         }
-        await updateStatus(customer.id, 'urgent_signup_sent', { skipRender: true });
+        await updateStatus(customer.id, cfg.newStatus, { skipRender: true });
         sent++;
       } catch (err) {
-        console.error(`urgent send failed for ${customer.email}:`, err);
+        console.error(`${cfg.friendlyLabel} send failed for ${customer.email}:`, err);
         failures.push({ email: customer.email, error: err.message });
         failed++;
       }
@@ -378,12 +430,12 @@
     render();
 
     if (failed === 0) {
-      alert(`✓ Sent ${sent} URGENT migration emails.\n\nWatch the funnel — customers should start hitting "Signed up" status within a few minutes.`);
+      alert(`✓ Sent ${sent} ${cfg.friendlyLabel} emails.\n\nWatch the funnel — customers should start hitting "Signed up" status within a few minutes.`);
     } else {
       const fails = failures.map(f => `  • ${f.email}: ${f.error}`).join('\n');
       alert(
-        `Sent ${sent} of ${eligible.length} URGENT emails. ${failed} failed:\n\n${fails}\n\n` +
-        `The successful ones have been moved to "Urgent sent" status. Failed customers stay on their previous status — retry from the per-row send dropdown.`,
+        `Sent ${sent} of ${eligible.length} ${cfg.friendlyLabel} emails. ${failed} failed:\n\n${fails}\n\n` +
+        `Successful sends moved to "${STATUS_LABELS[cfg.newStatus] || cfg.newStatus}". Failed customers stay on their previous status — retry from the per-row send dropdown.`,
       );
     }
   }
@@ -549,7 +601,9 @@
       let url = null;
       if (kind.needsLink) {
         url = await generateCheckoutUrl(customer, session.access_token);
-      } else if (kind.id === 'urgent_signup') {
+      } else if (kind.id === 'urgent_signup' || kind.id === 'urgent_reminder' || kind.id === 'urgent_last_call') {
+        // All three urgent-track emails reuse the same public-signup URL
+        // (custom-plan.html / plan-*.html with ?email= pre-fill).
         url = urgentSignupUrl(customer);
       }
 
@@ -640,6 +694,8 @@
       case 'followup_tplus3': return renderEmailFollowupTplus3(ctx);
       case 'lapse_tplus14':   return renderEmailLapseTplus14(ctx);
       case 'urgent_signup':   return renderEmailUrgentSignup(ctx, customer);
+      case 'urgent_reminder': return renderEmailUrgentReminder(ctx, customer);
+      case 'urgent_last_call':return renderEmailUrgentLastCall(ctx, customer);
       default:                return null;
     }
   }
@@ -849,6 +905,112 @@ Mick
 `;
     return {
       subject: "I've moved you to the new All Paddling platform",
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  // ----------------------------------------------------------------
+  // Reminder (Thursday — 3 days before the Sat 2 May cutoff).
+  // Same signup URL as urgent_signup. Tone: friendly, slightly more
+  // direct, references the deadline. Custom variant emphasises the
+  // May-block delivery; Progressive variant is softer.
+  // ----------------------------------------------------------------
+  function renderEmailUrgentReminder ({ firstName, signupLink }, customer) {
+    const isCustom = customer.plan_type === 'custom';
+    if (isCustom) {
+      const text = `Hi ${firstName},
+
+Quick reminder — I haven't seen you sign up on the new All Paddling site yet, and I want to make sure you don't miss the May block.
+
+The new block goes live Monday 4 May. To be set up in time, sign up by end of day Saturday 2 May:
+
+👉 ${signupLink}
+
+Same plan, A$140 per month — about 60 seconds to complete.
+
+If you've decided to take a break or move on, just reply and let me know. Either way is fine, I'd just like to know.
+
+Cheers,
+
+Mick
+`;
+      return {
+        subject: 'Reminder — your May block is 3 days away',
+        text,
+        html: wrapHtml(text),
+      };
+    }
+    // Progressive variant — no May-block framing, gentler nudge
+    const text = `Hi ${firstName},
+
+Quick reminder — I haven't seen you on the new All Paddling site yet, and I want to make sure you can keep training without a gap.
+
+Sign up here whenever suits:
+
+👉 ${signupLink}
+
+Same plan, same A$80 per month, same content — just a much better home for it. About 60 seconds.
+
+If you've decided to take a break or move on, hit reply and let me know.
+
+Cheers,
+
+Mick
+`;
+    return {
+      subject: 'Reminder — pick up your training on the new site',
+      text,
+      html: wrapHtml(text),
+    };
+  }
+
+  // ----------------------------------------------------------------
+  // Last call (Friday — last full day before the Sat 2 May cutoff).
+  // Tone: final, asks for a "yes/no" reply if undecided so Mick can
+  // plan his block-writing time. Custom variant references the
+  // tomorrow-is-deadline framing; Progressive variant stays soft.
+  // ----------------------------------------------------------------
+  function renderEmailUrgentLastCall ({ firstName, signupLink }, customer) {
+    const isCustom = customer.plan_type === 'custom';
+    if (isCustom) {
+      const text = `Hi ${firstName},
+
+Last call from me — tomorrow (Saturday 2 May) is the cutoff to be set up for the May block, which goes live Monday 4 May.
+
+If you want me to write your May programs, here's the link:
+
+👉 ${signupLink}
+
+If you've decided not to continue, no worries at all — but a quick reply either way would help me plan my week. Just yes or no is plenty.
+
+Cheers,
+
+Mick
+`;
+      return {
+        subject: 'Last call — May block delivery tomorrow',
+        text,
+        html: wrapHtml(text),
+      };
+    }
+    // Progressive variant
+    const text = `Hi ${firstName},
+
+Last reminder from me — I haven't heard from you about moving across to the new site, so I just wanted to check in one more time.
+
+If you want to keep training:
+
+👉 ${signupLink}
+
+If you've decided to take a break, no worries at all — a quick reply either way would help me close out the migration list.
+
+Cheers,
+
+Mick
+`;
+    return {
+      subject: 'Last call from All Paddling',
       text,
       html: wrapHtml(text),
     };
