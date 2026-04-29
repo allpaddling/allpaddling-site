@@ -232,8 +232,13 @@
   const state  = loadMemberState();
   const programNum = member.currentProgram || 1;
   // Prefer the onboarding-form preferred_name; fall back to the
-  // Stripe billing first-name; final fallback "there".
+  // Stripe billing first-name on the previewed/signed-in member's row
+  // (profile.name) BEFORE the MOCK_MEMBER stub — otherwise a coach
+  // previewing a member who hasn't completed onboarding (preferred_name
+  // null) leaks the coach's MOCK_MEMBER name into the greeting. Final
+  // fallback "there".
   const firstName = (memberPreferredName && memberPreferredName.split(' ')[0])
+    || ((profile && profile.name) || '').split(' ')[0]
     || (member.name || '').split(' ')[0]
     || 'there';
 

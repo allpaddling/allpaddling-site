@@ -330,14 +330,35 @@ async function enforceMemberGates () {
    we fetch the member's actual preferred_name from member_profiles
    (set during onboarding) — falling back to the Stripe-billing name
    on progressive_members/custom_members, then to the email prefix.
-   Hits every /app/* page that renders the sidebar via mountApp(). */
+   Hits every /app/* page that renders the sidebar via mountApp().
+
+   In preview-as-member mode this resolves the PREVIEWED member's
+   identity, not the signed-in coach's, so the sidebar chip mirrors
+   the yellow "Previewing as X" banner. Without this, a coach
+   previewing a member would see the coach's own name in the chip. */
 async function patchSidebarWithRealName () {
   if (typeof sb === 'undefined' || !sb) return;
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user?.email) return;
-    const userId = session.user.id;
-    const email  = session.user.email.toLowerCase();
+    // Resolve which user we're rendering for. Preview mode wins; otherwise
+    // fall back to the signed-in session.
+    let userId       = null;
+    let email        = null;
+    let billingName  = null;  // pre-resolved Stripe billing name (preview path)
+
+    if (typeof getPreviewContext === 'function') {
+      const ctx = await getPreviewContext();
+      if (ctx.isPreview && ctx.previewMember) {
+        userId      = ctx.previewMember.authUserId || null;
+        email       = (ctx.previewMember.email || '').toLowerCase() || null;
+        billingName = (ctx.previewMember.name || '').trim() || null;
+      }
+    }
+    if (!userId && !email) {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.user?.email) return;
+      userId = session.user.id;
+      email  = session.user.email.toLowerCase();
+    }
 
     // Pull preferred_name + family_name from member_profiles (the
     // onboarding form's canonical store) and the Stripe billing name
@@ -345,17 +366,25 @@ async function patchSidebarWithRealName () {
     // onboarding fields are set; falls back to Stripe billing name (which
     // may be just "Pat" or "Pat O'Keefe" depending on what the customer
     // entered as cardholder); final fallback is the email local part.
-    const [profileRes, pmRes, cmRes] = await Promise.all([
-      sb.from('member_profiles').select('preferred_name, family_name').eq('user_id', userId).maybeSingle(),
-      sb.from('progressive_members').select('name').eq('email', email).maybeSingle(),
-      sb.from('custom_members').select('name').eq('email', email).maybeSingle(),
-    ]);
+    // Skip the member-row lookups when preview context already gave us
+    // the billing name; skip the profile lookup when there's no userId
+    // (preview of a member who hasn't signed in yet).
+    const profilePromise = userId
+      ? sb.from('member_profiles').select('preferred_name, family_name').eq('user_id', userId).maybeSingle()
+      : Promise.resolve({ data: null });
+    const pmPromise = billingName
+      ? Promise.resolve({ data: null })
+      : sb.from('progressive_members').select('name').eq('email', email).maybeSingle();
+    const cmPromise = billingName
+      ? Promise.resolve({ data: null })
+      : sb.from('custom_members').select('name').eq('email', email).maybeSingle();
+    const [profileRes, pmRes, cmRes] = await Promise.all([profilePromise, pmPromise, cmPromise]);
 
     const preferred = profileRes?.data?.preferred_name?.trim();
     const family    = profileRes?.data?.family_name?.trim();
     const fullFromProfile = (preferred && family) ? `${preferred} ${family}` : (preferred || '');
-    const memberName  = pmRes?.data?.name?.trim() || cmRes?.data?.name?.trim();
-    const emailPrefix = email.split('@')[0];
+    const memberName  = billingName || pmRes?.data?.name?.trim() || cmRes?.data?.name?.trim();
+    const emailPrefix = (email || '').split('@')[0];
     const displayName = fullFromProfile || memberName || emailPrefix;
     if (!displayName) return;
 
