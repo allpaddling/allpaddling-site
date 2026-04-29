@@ -4,7 +4,89 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-04-28 evening, before sleep
+## ⭐⭐⭐ LATEST — 2026-04-29 (Wed mid-day)
+
+### Read this first if you're picking up a new chat
+
+**Read these memory files before doing anything**, in order:
+- `feedback_no_guessing_verify_everything.md` — every factual claim about state needs a verifying tool call before you state it. Slow down.
+- `feedback_supabase_webhook_no_verify_jwt.md` — `supabase functions deploy stripe-webhook` MUST include `--no-verify-jwt`.
+- `feedback_drive_supabase_directly.md` — drive Supabase Studio via Chrome MCP, don't ask Jake to click around.
+- `feedback_allpaddling_dual_tree.md` — every edit to `rebuild/app/*` or `rebuild/assets/*` MUST also be mirrored to `/app/*` or `/assets/*` in the same commit.
+- `feedback_execute_dont_handoff.md` — if you have the tools, drive the task end-to-end.
+
+Push pipeline: GitHub Git Data API. PAT at `.claude/secrets/github-pat.txt`. Repo `allpaddling/allpaddling-site`. Confirmation curl is documented further down this file.
+
+### Current paying customer state (verified 29 Apr 02:46 UTC)
+
+| Customer | Plan | Sub status | Onboarded | Plan status |
+|---|---|---|---|---|
+| Daniel Michaluk | Custom | active | NO (still pending) | Published |
+| Pat O'Keefe | Custom | active | YES | Published |
+| Paora Monk | Custom | active | YES | Published |
+| Ian Ferrell | Custom | active | NO (still pending) | **Draft** — Mick to finish + publish before Mon 4 May |
+
+Migration funnel: 21 in roster, 4 paid (above), 16 still in `urgent_signup_sent` (received the urgent migration email Tue, haven't paid yet). May block goes live Mon 4 May; deadline communicated to customers is end of Sat 2 May.
+
+### Tomorrow (Thu 30 Apr) and Friday (Fri 1 May) — pre-wired actions for Jake
+
+Open `/app/admin-migrate.html`. Page-header has three stacked buttons:
+
+1. 🔴 **URGENT** — already used Tuesday; don't click again.
+2. 🟠 **REMINDER** — click Thu morning. Sends to all in `urgent_signup_sent` (currently 16). Status flips to `reminder_sent`. Email is friendly nudge, references the Sat 2 May deadline.
+3. ⚫ **LAST CALL** — click Fri morning. Sends to all in `urgent_signup_sent` OR `reminder_sent`. Status flips to `last_call_sent`. Asks for yes/no reply to help Mick plan.
+
+Both reminder + last-call email templates say "$140 per month" (consistent with the post-revert monthly billing — see Phase 1 Reverted below). Original urgent email said "every 4 weeks"; small inconsistency Jake explicitly said leave alone — handle one-off questions if they come up.
+
+### What happened in this session (commits, all on main)
+
+1. **`e98db5c`** — REVERTED Phase 1 (4-weekly billing for Custom plan). The setup script kept failing on Stripe permissions and we couldn't safely create the `custom_race_4weekly_aud` price under the urgent migration deadline. Live function locked back to monthly billing (`custom_race_monthly_aud`). Mick handles calendar-block alignment manually for now (status quo).
+   - Phase 1 plan is **parked**. Jake later asked about a manual UI-driven Phase 1 redo, then said "this seems risky, let's leave it." Phase 1 is fully off the table for now.
+2. **`0f3cf6a`** — subscription gate added to `/app/*`. `enforceMemberGates()` in `app.js` now blocks unpaid users (no `progressive_members` / `custom_members` row) — redirects them to `/plans.html`. Coaches still bypass. Replaced the previous onboarding-only gate; same single call site in `mountApp()`.
+3. **`53c3505`** — Reminder + Last Call email kinds added (Thu/Fri cadence). Also migration `012` adding `reminder_sent` + `last_call_sent` to the `migration_status` check constraint (already applied to live DB via Studio API).
+4. **`d338cae`** — Custom plan publish status surfaced in admin-members.html. Per-row badge ("Plan published" / "Plan draft" / "Awaiting plan"), Custom stat-tile breakdown, new "Awaiting plan" filter tab. Source: `custom_plans.published_at` + `custom_plans.last_edited`.
+5. **`d37091e`** — "Preview as member" coach feature. New helpers in `admin.js` (`setPreviewMode`, `getPreviewContext`, `getEffectiveMemberProfile`, `getEffectiveAuthUserId`). Yellow banner in `app.js`'s `renderPreviewBanner()`. Buttons on admin-members rows + admin-edit.html ("Preview draft →" renamed; new "View as member →"). dashboard.html + program.html updated to use effective helpers. **Known limitation flagged to Jake:** dashboard's plan-content rendering currently uses Progressive loader, not Custom — so the "Up next" card may show fallback content for Custom previews. program.html should be more correct. Jake hasn't tested yet.
+
+### Big incident this session: webhook bug + Ian Ferrell recovery
+
+Discovered around 11 AM AEST that `stripe-webhook` had been redeployed without `--no-verify-jwt` (function metadata showed `verify_jwt: true`). Result: every Stripe delivery 401'd at the gateway BEFORE reaching the handler — `webhook_events` table had zero rows after Pat's signup the previous evening. Ian Ferrell paid yesterday but our DB never received the events; he showed up only as a Stripe Customer with no Supabase records.
+
+Fix: redeployed `stripe-webhook --no-verify-jwt`, then resent Ian's `checkout.session.completed` + `invoice.paid` events from Stripe Workbench → Events → Resend. His `subscriptions` + `custom_members` + `member_profiles` rows materialised. Memory note saved (`feedback_supabase_webhook_no_verify_jwt.md`) so we don't repeat this.
+
+### Open Ian sign-in issue (parked)
+
+Late afternoon Ian emailed Jake saying he can't sign in — "my email is not recognized." Verified facts: his auth.users row exists and is fully active; auth in general works (`coleklick@gmail.com` signed up successfully today; Jake's `+blockmem` / `+nopay` test signups also succeeded). The phrase "email is not recognized" doesn't appear anywhere in our codebase, so the wording is either a misinterpretation or from a surface I didn't trace. Most likely diagnosis: Ian's confused between sign-in (`/login.html`) and sign-up (`/custom-plan.html` from the urgent email link). Jake emailed Ian back to clarify and is waiting for a screenshot. **Don't dig further until Ian replies.**
+
+### Other items still open
+
+- **Daniel + Ian short reminder email** (Jake leaning toward "Mick writes a personal one-liner from his inbox" rather than a system email) — to nudge them to sign in and complete onboarding.
+- **Lapse email to non-converters after Sat 2 May** — Jake said hold until we see the actual non-converter list Sun/Mon. T+14 lapse template already wired in admin-migrate.
+
+### Known limitations / debt to be aware of
+
+- **Custom plan content on dashboard.html / program.html for members** — both pages call `loadCurrentPlan()` which only reads from `progressive_plans`. There's no `loadPublishedCustomPlan()`. Custom members signing in see a fallback that's NOT their custom plan content. Daniel/Pat/Paora are paying customers in this state. They probably aren't using the dashboard heavily yet, but Mick will hit this when he tries the new "View as member" preview. Surface needed: a Custom-aware loader that pulls `custom_plans.programs` for the previewed/signed-in custom member.
+- **Onboarding form** — Daniel/Ian still have `completed_onboarding_at = null` (Pat/Paora are done). Pre-existing `member_profiles` rows have their `preferred_name` + `family_name` backfilled but onboarding wasn't run. Confirmed: their next sign-in WILL force them through `/app/onboarding.html` (subscription gate passes via member rows; onboarding gate fires on null `completed_onboarding_at`). No action needed.
+- **Pricing message inconsistency** — urgent email said "every 4 weeks", reverted to monthly; reminder + last-call emails accurately say "per month". Customers who notice → tell them "we simplified to monthly billing."
+- **Phase 1 (4-weekly billing aligned to content blocks)** — fully parked. If we ever revisit, plan is in mid-session conversation: Phase 1 = create new Stripe Price via UI, Phase 2 = code change + deploy, Phase 3 = migrate 4 existing customers via Stripe Dashboard. Don't auto-resume; Jake said leave it.
+
+### Useful URLs to know
+
+- Supabase project: `https://supabase.com/dashboard/project/crlukzkgmydyqpwndjvc`
+- Stripe webhook endpoint: `https://crlukzkgmydyqpwndjvc.supabase.co/functions/v1/stripe-webhook`
+- Live site: `https://allpaddling.online`
+- GitHub repo: `https://github.com/allpaddling/allpaddling-site`
+
+### Function metadata snapshot (29 Apr 02:51 UTC, all healthy)
+
+| Function | verify_jwt | version | Last deploy |
+|---|---|---|---|
+| create-checkout-session | false ✓ | 17 | 28 Apr 23:13 UTC |
+| stripe-webhook | false ✓ | 23 | 28 Apr 23:41 UTC |
+| send-email | true (correct — coach JWT) | 11 | 28 Apr 20:35 UTC |
+
+---
+
+## ⭐⭐⭐ Earlier — 2026-04-28 evening, before sleep
 
 ### What just shipped (commit `f87f071c`)
 
