@@ -230,11 +230,10 @@
     }
     program = program || { name: 'Plan', subtitle: '', weeks: [], isEmpty: true };
   } else {
-    // Pass joinedAt + primerCompleted so the primer/cohort routing
-    // matches dashboard.html exactly.
-    const memberJoinedAt    = profile && profile.createdAt;
-    const memberPrimerDone  = profile && profile.primerCompleted;
-    program = await loadCurrentPlan(memberJoinedAt, memberPrimerDone) ||
+    // loadCurrentPlan branches on profile.type — Custom members get
+    // their published custom_plans row; Progressive members get the
+    // primer/cohort routing. Matches dashboard.html exactly.
+    program = await loadCurrentPlan(profile) ||
       { name: 'Program 1', subtitle: '', weeks: (typeof PROGRAM_1 !== 'undefined' ? PROGRAM_1.weeks : []), isEmpty: false };
   }
 
