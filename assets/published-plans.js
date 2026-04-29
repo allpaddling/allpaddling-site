@@ -176,18 +176,9 @@ async function loadPublishedCustomPlan (memberId) {
  * intended path for surfacing the published custom plan to a coach.
  */
 async function loadCurrentPlan (profile) {
-  // Diagnostic — remove once we've confirmed the Custom branch is firing
-  // for previewed Custom members. Logs what arrived so we can tell stale
-  // cached calls (legacy 2-arg) apart from new 1-arg profile calls.
-  try {
-    console.log('[loadCurrentPlan] profile:', profile,
-      profile ? { type: profile.type, id: profile.id, createdAt: profile.createdAt } : null);
-  } catch (_) {}
-
   // Custom members: published custom plan, no primer routing.
   if (profile && profile.type === 'custom') {
     const plan = await loadPublishedCustomPlan(profile.id);
-    console.log('[loadCurrentPlan] custom branch — plan:', plan);
     if (plan) return plan;
     // No row yet — return an isEmpty placeholder so the call site does
     // NOT fall back to PROGRAM_1 (Progressive content).
