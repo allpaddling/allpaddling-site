@@ -240,31 +240,49 @@ function getMember() {
   };
 }
 
-/* ---- Onboarding gate ----
-   If the member hasn't completed the onboarding form yet, redirect
-   them there before letting them explore the app. Originally this
-   gate lived only on dashboard.html (§3.3), but Jake hit a case
-   2026-04-29 where clicking "Set my threshold pace" on welcome.html
-   went straight to threshold.html and skipped onboarding entirely
-   (so preferred_name was never set). This gate now runs on every
-   /app/* page that loads app.js — onboarding.html itself doesn't
-   load app.js, so no redirect loop.
+/* ---- Member access gates ----
+   Combined subscription + onboarding gate. Runs on every /app/* page
+   that loads app.js (onboarding.html itself doesn't load app.js, so
+   no redirect loop).
 
-   Coach users are skipped (they don't have member_profiles rows of
-   their own). No-session is also skipped — let the page's own auth
-   logic handle that. */
-async function enforceOnboardingGate () {
+   Two checks, in order:
+
+   1. SUBSCRIPTION GATE — must have a row in `progressive_members` OR
+      `custom_members`. These rows are only created by the Stripe
+      webhook on paid checkouts, by the migration runner, or manually
+      by Mick — so their presence is a reliable proxy for "paid". If
+      missing, redirect to /plans.html (the public sales page) so the
+      user can subscribe.
+
+      Why this matters: before 2026-04-29 only the onboarding gate
+      existed, so anyone who could log in (e.g. via the public /login
+      magic-link page) and then completed the onboarding form would
+      have been let into the empty member shell. We caught
+      chriskrussell@gmail.com in this state — he never paid but had a
+      valid auth.users row from /login. This gate closes that hole.
+
+   2. ONBOARDING GATE — paid members must complete the onboarding
+      form (preferred name, ability, race goal) before exploring the
+      app. Originally lived only on dashboard.html (§3.3); was raised
+      to /app/* level after Jake hit a case where clicking "Set my
+      threshold pace" on welcome.html bypassed onboarding entirely.
+
+   Coaches bypass both gates (no member row of their own; their
+   admin pages reveal coach chrome via separate logic). Sessions with
+   no logged-in user also pass through — each page's own auth logic
+   handles that. */
+async function enforceMemberGates () {
   if (typeof sb === 'undefined' || !sb) return;
-  // The redirect destination itself doesn't load app.js, but guard
-  // anyway in case a future page does.
+  // Onboarding.html is one of the redirect targets; never gate it.
   const here = (location.pathname.split('/').pop() || '').toLowerCase();
   if (here === 'onboarding.html') return;
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session?.user?.email) return;
-    const email = session.user.email.toLowerCase();
+    const email  = session.user.email.toLowerCase();
+    const userId = session.user.id;
 
-    // Skip coaches (they don't go through member onboarding).
+    // Coaches bypass both gates.
     const { data: coachRow } = await sb
       .from('coaches')
       .select('email')
@@ -272,19 +290,37 @@ async function enforceOnboardingGate () {
       .maybeSingle();
     if (coachRow) return;
 
-    // Check the gate.
+    // SUBSCRIPTION GATE — match by auth_user_id OR email. The latter
+    // catches members whose auth_user_id was never linked (e.g. rows
+    // Mick added manually before the customer first signed in).
+    const [pmAuth, cmAuth, pmEmail, cmEmail] = await Promise.all([
+      sb.from('progressive_members').select('id').eq('auth_user_id', userId).maybeSingle(),
+      sb.from('custom_members')     .select('id').eq('auth_user_id', userId).maybeSingle(),
+      sb.from('progressive_members').select('id').eq('email',         email ).maybeSingle(),
+      sb.from('custom_members')     .select('id').eq('email',         email ).maybeSingle(),
+    ]);
+    const isPaidMember = !!(pmAuth.data || cmAuth.data || pmEmail.data || cmEmail.data);
+    if (!isPaidMember) {
+      // Bounce to the public plans page (NOT a /app/* path — that
+      // would loop through this gate again).
+      location.href = '/plans.html';
+      return;
+    }
+
+    // ONBOARDING GATE — paid member but profile incomplete.
     const { data: mp } = await sb
       .from('member_profiles')
       .select('completed_onboarding_at')
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .maybeSingle();
     if (!mp || !mp.completed_onboarding_at) {
       location.href = 'onboarding.html';
     }
   } catch (e) {
-    // Non-fatal — keep showing the page rather than redirect-looping
-    // on transient errors. Dashboard has a redundant gate as backup.
-    console.warn('enforceOnboardingGate failed (non-fatal):', e);
+    // Non-fatal — keep showing the page rather than redirect-loop on
+    // a transient error. Each page should still enforce its own auth
+    // as a backstop.
+    console.warn('enforceMemberGates failed (non-fatal):', e);
   }
 }
 
@@ -350,9 +386,10 @@ function mountApp() {
   // Async — replace the placeholder name with the real one once
   // Supabase auth + DB are reachable. Doesn't block render.
   patchSidebarWithRealName();
-  // Async — redirect to onboarding.html if the member hasn't filled
-  // it out yet. Skips coaches and the onboarding page itself.
-  enforceOnboardingGate();
+  // Async — enforce subscription + onboarding gates. Redirects
+  // unpaid users to /plans.html and paid-but-not-onboarded users to
+  // onboarding.html. Coaches bypass both. See enforceMemberGates().
+  enforceMemberGates();
 
   // Ensure a scrim exists for the mobile drawer
   let scrim = document.getElementById('app-scrim');
