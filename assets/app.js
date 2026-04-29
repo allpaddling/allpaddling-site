@@ -372,6 +372,76 @@ async function patchSidebarWithRealName () {
   }
 }
 
+/* ---- "Previewing as <member>" banner ----
+   When the coach toggles preview mode (sessionStorage flag set via
+   admin-edit/admin-members "Preview as <member>" button), every
+   /app/* page should show a persistent yellow strip at the top of
+   the page reading:
+
+     Previewing as Daniel Michaluk — [Exit preview →]
+
+   The exit button clears the flag and navigates back to the Members
+   page. Defensive: if anything in getPreviewContext() throws or the
+   flag id no longer resolves to a real member, the banner just
+   silently doesn't render — preview mode is unset by the helper. */
+async function renderPreviewBanner () {
+  if (typeof getPreviewContext !== 'function') return;
+  try {
+    const ctx = await getPreviewContext();
+    if (!ctx.isPreview || !ctx.previewMember) return;
+
+    // Don't double-render if a banner already exists (e.g. on a
+    // second mountApp call from a hot-reload edge case).
+    if (document.getElementById('preview-banner')) return;
+
+    const m = ctx.previewMember;
+    const displayName = (m.name && m.name.trim()) || m.email || 'this member';
+    const planLabel = m.type === 'progressive'
+      ? `Progressive · ${({prone:'Prone',sup:'SUP',oc:'OC',ski:'Ski'})[m.planKey] || m.planKey || ''}`
+      : 'Custom Plan';
+
+    const banner = document.createElement('div');
+    banner.id = 'preview-banner';
+    banner.setAttribute('role', 'status');
+    banner.style.cssText = [
+      'background:#fef3c7',
+      'color:#92400e',
+      'border-bottom:2px solid #f59e0b',
+      'padding:0.65rem 1rem',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'gap:0.85rem',
+      'font-size:0.9rem',
+      'font-weight:500',
+      'position:sticky',
+      'top:0',
+      'z-index:200',
+      'flex-wrap:wrap',
+    ].join(';');
+    const escName = displayName
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    banner.innerHTML = `
+      <span>
+        <strong>Previewing as ${escName}</strong>
+        <span style="opacity:0.75; margin-left:0.4rem;">${planLabel} · you're seeing exactly what they see</span>
+      </span>
+      <a href="#" id="preview-banner-exit" style="background:#92400e; color:white; padding:0.3rem 0.8rem; border-radius:5px; text-decoration:none; font-size:0.85rem;">Exit preview →</a>
+    `;
+    document.body.insertBefore(banner, document.body.firstChild);
+
+    document.getElementById('preview-banner-exit').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (typeof exitPreviewMode === 'function') exitPreviewMode();
+      // Bounce back to the Members admin page so Mick lands somewhere
+      // useful instead of staring at his own dashboard post-exit.
+      window.location.href = 'admin-members.html';
+    });
+  } catch (e) {
+    console.warn('renderPreviewBanner failed (non-fatal):', e);
+  }
+}
+
 /* ---- Mount ---- */
 function mountApp() {
   document.body.classList.add('app-body');
@@ -390,6 +460,9 @@ function mountApp() {
   // unpaid users to /plans.html and paid-but-not-onboarded users to
   // onboarding.html. Coaches bypass both. See enforceMemberGates().
   enforceMemberGates();
+  // Async — render the "Previewing as <Member>" banner if a coach has
+  // toggled preview mode. See getPreviewContext() in admin.js.
+  renderPreviewBanner();
 
   // Ensure a scrim exists for the mobile drawer
   let scrim = document.getElementById('app-scrim');

@@ -666,6 +666,10 @@
       const planLink = m.planHref
         ? `<a class="btn-mini" href="${escapeHtml(m.planHref)}">Open plan</a>`
         : '';
+      // "Preview as" button — sets the sessionStorage flag and routes
+      // Mick into the member-side experience. Renders for every
+      // member type so Mick can spot-check Progressive members too.
+      const previewBtn = `<button type="button" class="btn-mini" data-action="preview-as" data-member-id="${escapeHtml(m.id)}" data-member-name="${escapeHtml(m.name)}">Preview as</button>`;
       return `
         <tr>
           <td>
@@ -685,6 +689,7 @@
           <td class="col-notes">${detailHtml}</td>
           <td class="col-joined joined-cell">${fmtDate(m.createdAt)}</td>
           <td class="actions-cell">
+            ${previewBtn}
             ${planLink}
             <a class="btn-mini" href="${escapeHtml(m.editHref)}">Edit</a>
           </td>
@@ -705,6 +710,23 @@
   searchEl.addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(renderTable, 80);
+  });
+
+  // "Preview as <member>" — set the sessionStorage flag and navigate
+  // to dashboard.html. The banner in app.js will pick it up; helpers
+  // in admin.js (getEffectiveMemberProfile, getEffectiveAuthUserId)
+  // route data lookups to that member.
+  document.getElementById('members-tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action="preview-as"]');
+    if (!btn) return;
+    const memberId = btn.dataset.memberId;
+    if (!memberId) return;
+    if (typeof setPreviewMode === 'function') {
+      setPreviewMode(memberId);
+    } else {
+      try { sessionStorage.setItem('viewAsMemberId', memberId); } catch (_) {}
+    }
+    window.location.href = 'dashboard.html';
   });
 
   renderTable();

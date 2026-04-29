@@ -377,7 +377,8 @@
       </div>
       <div class="save-actions">
         <a href="#" class="btn btn-ghost" id="back-btn">← Back</a>
-        <a href="#" class="btn btn-ghost" id="preview-btn" target="_blank" rel="noopener">Preview as member →</a>
+        <a href="#" class="btn btn-ghost" id="preview-btn" target="_blank" rel="noopener" title="Open the program viewer with the current draft (unpublished work)">Preview draft →</a>
+        <button type="button" class="btn btn-ghost" id="preview-as-member-btn" title="See exactly what this member sees in their dashboard right now (uses the published plan)">View as member →</button>
         <button class="btn btn-primary" id="publish-btn" style="display:none;">Publish changes →</button>
       </div>
     </div>
@@ -607,10 +608,11 @@
   document.getElementById('back-btn').textContent =
     planKey === 'custom' ? '← Back to members' : '← Back to programs';
 
-  /* ---- Preview as member ----
-     Opens program.html in preview mode, in a new tab. The page's own
-     URL-param parser does the rest (loading the draft, showing the
-     banner). For Custom plans we have to pass the member id too. */
+  /* ---- Preview draft (legacy "Preview as member" button) ----
+     Opens program.html in preview mode, in a new tab. Loads the
+     UNPUBLISHED draft so Mick can see his in-progress work in the
+     program viewer. Distinct from "View as member" below, which
+     loads the published plan in the full member dashboard. */
   const previewBtn = document.getElementById('preview-btn');
   if (previewBtn) {
     let href;
@@ -624,6 +626,32 @@
       previewBtn.style.display = 'none';
     }
     if (href) previewBtn.setAttribute('href', href);
+  }
+
+  /* ---- View as member ----
+     Sets the sessionStorage preview flag and navigates to
+     dashboard.html. The coach gets the FULL member experience
+     (dashboard, program, etc.) showing the PUBLISHED plan, with
+     the yellow "Previewing as <Member>" banner at the top.
+     Custom only — Progressive members are previewed via the
+     admin-members.html row buttons since admin-edit for Progressive
+     edits a discipline-wide template, not a per-member plan. */
+  const viewAsMemberBtn = document.getElementById('preview-as-member-btn');
+  if (viewAsMemberBtn) {
+    if (planKey === 'custom' && member && member.id) {
+      viewAsMemberBtn.addEventListener('click', () => {
+        if (typeof setPreviewMode === 'function') {
+          setPreviewMode(member.id);
+        } else {
+          try { sessionStorage.setItem('viewAsMemberId', member.id); } catch (_) {}
+        }
+        window.location.href = 'dashboard.html';
+      });
+    } else {
+      // Hide the button for Progressive editing — there's no
+      // per-member context to preview into.
+      viewAsMemberBtn.style.display = 'none';
+    }
   }
 
   /* ---- Copy programs from another discipline ----
