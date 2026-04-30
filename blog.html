@@ -79,21 +79,13 @@
   .post-card:hover .read-more::after { margin-left: 4px; }
   @media (max-width: 880px) { .posts-grid { grid-template-columns: 1fr; } }
 
-  .pagination {
-    display: flex; justify-content: center; gap: 0.4rem;
-    margin-top: 3rem;
-  }
-  .pagination a, .pagination span {
-    display: inline-grid; place-items: center;
-    width: 38px; height: 38px; border-radius: 8px;
-    font-size: 0.9rem; font-weight: 500;
-    color: var(--text-2); border: 1px solid var(--border);
-    background: var(--surface); transition: all .15s;
+  .section-label {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-3);
+    margin: 3rem 0 1.25rem;
+    padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--border);
   }
-  .pagination a:hover { border-color: var(--brand); color: var(--brand-700); }
-  .pagination a.active { background: var(--brand-700); color: white; border-color: var(--brand-700); }
-  .pagination a.nav { width: auto; padding: 0 0.9rem; }
 </style>
 </head>
 <body>
@@ -128,6 +120,8 @@
       </div>
     </div>
 
+    <!-- Recent articles -->
+    <div class="section-label">Recent articles</div>
     <div class="posts-grid">
 
       <article class="post-card">
@@ -192,26 +186,250 @@
 
       <article class="post-card">
         <div class="post-thumb">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         </div>
         <div class="post-body">
-          <div class="date">More articles</div>
-          <h3>From the archive</h3>
-          <p>Four more years of training posts on goal setting, strength programming, race-specific work, and mid-season adjustments.</p>
-          <a href="#" class="read-more">Browse archive</a>
+          <div class="date">November 2023</div>
+          <h3>Training Intensity Blindness</h3>
+          <p>Most paddlers train too hard on easy days and not hard enough on hard days. Here's how to break out of the intensity grey zone.</p>
+          <a href="articles/training-intensity-blindness.html" class="read-more">Read article</a>
         </div>
       </article>
 
     </div>
 
-    <div class="pagination">
-      <span class="nav" style="opacity:0.4;cursor:not-allowed;">← Prev</span>
-      <a href="#" class="active">1</a>
-      <a href="#">2</a>
-      <a href="#">3</a>
-      <a href="#">4</a>
-      <a href="#">5</a>
-      <a href="#" class="nav">Next →</a>
+    <!-- Archive -->
+    <div class="section-label">From the archive</div>
+    <div class="posts-grid">
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,17 9,11 13,15 21,7"/><polyline points="14,7 21,7 21,14"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">October 2023</div>
+          <h3>Training Intensities Using Stroke Rates</h3>
+          <p>How stroke rate maps to training zones — and why it's a reliable field metric when GPS pace is unavailable.</p>
+          <a href="articles/training-intensities-using-stroke-rates.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">September 2023</div>
+          <h3>2×2 Progression Training Programs</h3>
+          <p>The 2×2 structure — two easy weeks followed by two progressive weeks — and why it outperforms linear loading for most athletes.</p>
+          <a href="articles/2x2-progression-training-programs.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">August 2023</div>
+          <h3>Finding Functional Training Intensities</h3>
+          <p>Using field tests to determine the training speeds that will drive the most meaningful adaptations for your current fitness level.</p>
+          <a href="articles/finding-functional-training-intensities.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">July 2023</div>
+          <h3>Using Functional Training Pace</h3>
+          <p>How to translate your field test results into daily training prescriptions that target the right physiological systems.</p>
+          <a href="articles/using-functional-training-pace.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">June 2023</div>
+          <h3>The Science Behind the Training Programs</h3>
+          <p>The physiological research that underpins every All Paddling program — from VO₂max and lactate threshold to economy and tlimVO₂max.</p>
+          <a href="articles/the-science-behind-the-training-programs.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">May 2023</div>
+          <h3>Feeling the Load to Consistent Progression</h3>
+          <p>Why subjective effort (RPE) matters as much as objective data — and how to calibrate your sense of load for consistent long-term progress.</p>
+          <a href="articles/feeling-the-load-to-consistent-progression.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">April 2023</div>
+          <h3>Want to Become Your Own Coach?</h3>
+          <p>The knowledge and self-awareness you need to monitor your own training and make smart adjustments without external guidance.</p>
+          <a href="articles/want-to-become-your-own-coach.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">March 2023</div>
+          <h3>Opening the Door to a Successful Season</h3>
+          <p>How to set up your training year — goal selection, periodisation structure, and the habits that separate good seasons from great ones.</p>
+          <a href="articles/opening-the-door-to-a-successful-season.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">February 2023</div>
+          <h3>Personalise Your Own Training Program</h3>
+          <p>No two paddlers are alike. How to adapt a structured program to fit your schedule, race calendar, and individual physiology.</p>
+          <a href="articles/personalise-your-own-training-program.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">January 2023</div>
+          <h3>It's You Versus You</h3>
+          <p>Racing against your own benchmarks rather than other athletes — and why that mindset produces better long-term results.</p>
+          <a href="articles/its-you-versus-you.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">December 2022</div>
+          <h3>40/20 Interval Training</h3>
+          <p>The science and application of 40-second work / 20-second rest intervals — one of the most time-efficient formats for building aerobic power.</p>
+          <a href="articles/40-20-interval-training.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">November 2022</div>
+          <h3>Mastering Training to Become a Successful Master Paddler</h3>
+          <p>How training needs to evolve as you age — and why masters athletes who adapt their approach continue to improve well into their 50s and 60s.</p>
+          <a href="articles/mastering-training-to-become-a-successful-master-paddler.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">October 2022</div>
+          <h3>How Do You Rate Your Training Exertion?</h3>
+          <p>A practical guide to RPE (Rate of Perceived Exertion) and how to use it alongside pace and heart rate for complete session monitoring.</p>
+          <a href="articles/how-do-you-rate-your-training-exertion.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">September 2022</div>
+          <h3>Is Your Training Virtual or Is It Real?</h3>
+          <p>The difference between going through the motions and training with genuine intent — and the markers that tell you which one you're doing.</p>
+          <a href="articles/is-your-training-virtual-or-is-it-real.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">August 2022</div>
+          <h3>Periodization Is Key to Aerobic Power</h3>
+          <p>Why structuring your training year into distinct phases — rather than doing the same thing year-round — produces dramatically better fitness gains.</p>
+          <a href="articles/periodization-is-key-to-aerobic-power.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">July 2022</div>
+          <h3>Feeling Pace and Exertion</h3>
+          <p>Developing the internal calibration to know — without looking at a GPS — when you're in the right training zone.</p>
+          <a href="articles/feeling-pace-and-exertion.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">June 2022</div>
+          <h3>32 Minutes · 32 Miles</h3>
+          <p>Race pacing strategy for the Molokai to Oahu — how to break a long-distance ocean race into manageable psychological segments.</p>
+          <a href="articles/32-minutes-32-miles.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,13 8,13 10,9 14,17 16,13 21,13"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">May 2022</div>
+          <h3>Finding Your Training Pace</h3>
+          <p>A step-by-step guide to establishing the GPS speeds that define your five training zones on the water.</p>
+          <a href="articles/finding-your-training-pace.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
+      <article class="post-card">
+        <div class="post-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
+        </div>
+        <div class="post-body">
+          <div class="date">April 2022</div>
+          <h3>Improve Your Down-Wind Paddling Skills</h3>
+          <p>Reading and catching bumps, positioning on the wave, and the specific training sessions that build confidence in ocean swell.</p>
+          <a href="articles/improve-your-down-wind-paddling-skills.html" class="read-more">Read article</a>
+        </div>
+      </article>
+
     </div>
 
   </div>
