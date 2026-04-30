@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Staying in the Moment During Training and Racing — All Paddling</title>
+<meta name="description" content="An athlete's ability to manage emotion under pressure is often the difference between winning and finishing. Here's how to train your control level." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .breadcrumb a:hover { opacity: 1; border-bottom-color: white; }
+  .article-hero .tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem;
+    border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0;
+    font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Mental Performance</div>
+    <span class="tag">Mental Performance</span>
+    <h1>Staying in the Moment During Training and Racing</h1>
+    <p class="lead">An athlete's ability to manage emotion under pressure is often the difference between winning and finishing. Training your control level is a skill — here's how to build it.</p>
+    <div class="meta">
+      <span>December 20, 2023</span>
+      <span>6 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+
+      <p>An athlete's ability to maintain control of their emotions in the face of adversity — and remain positive while doing it — is essential to winning. Two emotions consistently associated with poor performance are anxiety and anger. Both can claim your concentration and narrow your attentional focus at exactly the wrong moment.</p>
+
+      <p>Identifying when you feel a particular emotion and understanding the reason for it is the first step toward gaining emotional control. This is a trainable skill, not a fixed personality trait.</p>
+
+      <h2>Concentration</h2>
+
+      <p>Concentration is the ability to sustain attention on selected stimuli. It can be disrupted by our own thoughts and feelings that distract us from the task at hand. And importantly: intense concentration requires emotional energy. The harder athletes try to concentrate, the more it can slip away.</p>
+
+      <p>Effective concentration is an effortless process. It comes naturally when the mind is completely consumed by the immediate situation — when the athlete is absorbed in the competition, paying attention to just the right cues (interval intensities, stroke rate, water conditions) to perform well.</p>
+
+      <div class="callout">
+        <strong>Key insight:</strong> Concentration is dynamic — it constantly shifts from one point to another. A loss of concentration occurs when attention divides or shifts to something irrelevant. Race-specific training creates the familiarity that keeps attention anchored to what matters.
+      </div>
+
+      <h2>Confidence</h2>
+
+      <p>Elite athletes often say that confidence is fragile, especially under pressure. Confidence allows the athlete to focus on essential tasks — and fluctuations can mean the difference between a best and worst performance.</p>
+
+      <p>Sport psychology breaks self-confidence into two basic categories:</p>
+      <ul>
+        <li><strong>Trait confidence</strong> — the general belief in your ability to succeed across situations</li>
+        <li><strong>State confidence</strong> — the belief that you can succeed in this particular moment, in this race, at this distance</li>
+      </ul>
+
+      <p>A well-structured training plan builds both, but <strong>state confidence</strong> is developed specifically through skill-specific drills at racing intensities. The more times you've been in a situation, the more confident you become that you can handle it.</p>
+
+      <h2>Building Race-Specific Mental Strength</h2>
+
+      <p>If you want to win — or simply perform at your personal best consistently — the approach is clear: use training programs that strengthen concentration and build confidence through repeated exposure to racing conditions.</p>
+
+      <p>The method is <strong>race-specific interval training</strong>: breaking the race into shortened intervals and completing repetitions at various intensities. This creates maximum adaptation both physiologically and psychologically.</p>
+
+      <p>By using multiple repeats of race-segment intervals with controlled rest periods, the athlete experiences racing conditions many times over — under less pressure than competition, but at enough stress to create genuine adaptation. The result is that on race day, the body and mind have already been there. The situation is familiar. The emotions are manageable.</p>
+
+      <p>More simply: <em>the more times you have been in that situation, the more you can physically and psychologically cope with it.</em></p>
+
+    </div>
+
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Balancing the Physiological and Psychological</h4>
+        <a href="balancing-physiological-and-psychological.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Find Your Correct Training Zones</h4>
+        <a href="find-your-correct-training-zones.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">May 20, 2024</div>
+        <h4>The Training Zone</h4>
+        <a href="the-training-zone.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

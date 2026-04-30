@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Using Pace over Heart Rate — All Paddling</title>
+<meta name="description" content="Heart rate tells you how your body responded. Pace tells you what you actually did. For distance paddling and interval work, pace is the better primary metric." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb {
+    font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8;
+  }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .breadcrumb a:hover { opacity: 1; border-bottom-color: white; }
+  .article-hero .tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem;
+    border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0;
+    font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip {
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Training Metrics</div>
+    <span class="tag">Training Metrics</span>
+    <h1>Using Pace over Heart Rate</h1>
+    <p class="lead">Heart rate tells you how your body responded. Pace tells you what you actually did. For distance paddling and interval work, pace is the better primary metric — here's why, and how to transition your training.</p>
+    <div class="meta">
+      <span>June 19, 2024</span>
+      <span>5 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+
+      <p>Using a heart rate monitor is a good indicator of your body's response to exercise — but it's not the most accurate tool for monitoring training intensity while paddling distance or interval sessions.</p>
+
+      <p>The better method for maintaining training intensities on the water is <strong>pace</strong>, tracked via your GPS or heart rate watch. You can still observe your heart rate after completing distance or high-intensity work to see how quickly it recovers as your aerobic fitness improves — but pace should be your primary intensity guide during the session itself.</p>
+
+      <h2>Why Heart Rate Lags Behind on the Water</h2>
+
+      <p>Heart rate monitors simply don't react quickly enough to high-intensity exercise. If you paddle in Training Zone 4 (high intensity) for 30 seconds, your monitor won't read the correct heart rate until after those 30 seconds are finished — and it won't decrease in time for the next effort. This makes HR monitoring largely useless for short interval work.</p>
+
+      <p>During distance paddling, additional factors cause heart rate to drift upward even when you're holding the same effort: wind and ocean conditions, heat, cold, hydration levels, and your current conditioning all push HR up over time. If you were to chase predetermined heart rate zones during a distance session, you'd have to slow your paddle to keep HR in range — the opposite of building threshold.</p>
+
+      <h2>The Case for Pace + RPE</h2>
+
+      <div class="callout">
+        <strong>Key principle:</strong> When we paddle, we have an innate ability to feel intensity — not what our heart rate is or what pace we're moving at. Training with pace and RPE (rate of perceived exertion) together gives you the most accurate and precise indication of your speed over water.
+      </div>
+
+      <p>You can visualise your pace on your watch and simultaneously tune into the intensity you're producing (RPE). This feedback loop is immediate and doesn't suffer the lag that heart rate monitoring does.</p>
+
+      <p>If you were to use heart rate alone, you'd constantly be trying to decrease your intensity to stay in predetermined HR zones — even a few minutes into a session. The end result: you're not increasing your threshold to paddling intensity, you're working against it.</p>
+
+      <h2>Practical Application</h2>
+
+      <p>For instant feedback on paddling intensity and to track genuine progression in fitness, use <strong>pace and RPE as your primary training metrics</strong>. Use heart rate as a secondary check — review it after sessions, watch recovery trends over weeks, and use it as a longer-term fitness marker.</p>
+
+      <p>This shift takes some getting used to if you've been heart-rate-focused for years. But the discipline of holding a target pace — and learning to feel what that pace costs you at different stages of a session — develops the precise awareness that separates good paddlers from great ones.</p>
+
+    </div>
+
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">May 20, 2024</div>
+        <h4>The Training Zone</h4>
+        <a href="the-training-zone.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Find Your Correct Training Zones</h4>
+        <a href="find-your-correct-training-zones.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Training Methodology to Paddling Faster for Longer</h4>
+        <a href="training-methodology-faster-for-longer.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

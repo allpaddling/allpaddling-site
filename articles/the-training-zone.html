@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Training Zone — All Paddling</title>
+<meta name="description" content="Aerobic speed is critical for endurance paddling. A closer look at how each training zone builds toward race-day performance — and why TZ2 is the engine room." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .breadcrumb a:hover { opacity: 1; border-bottom-color: white; }
+  .article-hero .tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem;
+    border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0;
+    font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Training Zones</div>
+    <span class="tag">Training Zones</span>
+    <h1>The Training Zone</h1>
+    <p class="lead">Aerobic speed is a critical aspect of a paddler's requirements, especially in endurance racing. The faster you can paddle at an aerobic level, the higher your top-end speed potential.</p>
+    <div class="meta">
+      <span>May 20, 2024</span>
+      <span>7 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+
+      <p>Aerobic speed is a critical aspect of a paddler's requirements, especially in endurance racing. It's a simple yet profound principle: the faster you can paddle at an aerobic level, the higher your top-end speed potential. This long-term development of aerobic speed hinges on the disciplined nurturing of the aerobic system through consistent interval training — particularly <strong>Training Zone 2</strong> (88%–94% of aerobic threshold pace).</p>
+
+      <h2>Speed, Power, Strength</h2>
+
+      <p>Speed in sport is a multifaceted element, crucial for peak performance across all paddling disciplines. Developing speed is more than quick movements — it's about integrating several components that collectively enhance your speed in a sustainable, functional way.</p>
+
+      <p>Effective training plans must address speed development, emphasising its practical application, innovative methods for enhancing it, the strategic use of the five training zones, and the overall importance of speed in a paddler's regime.</p>
+
+      <p>Paddlers need to critically assess whether their speed aligns with their sport's requirements. It's vital to develop speed that is not just impressive in numbers but practical and applicable to the specific demands of their discipline. This functional approach ensures that paddlers aren't chasing unattainable numbers that don't translate into actual race performance.</p>
+
+      <h2>Key Principles of Aerobic Speed Development</h2>
+
+      <h3>Use the right training zones</h3>
+      <p>Understanding and utilising different training zones at various intensities is a crucial skill. This knowledge allows paddlers to push their physical boundaries in a structured and controlled manner, enabling them to adapt to specific racing scenarios and demands.</p>
+
+      <h3>Relax at speed</h3>
+      <p>Learning the art of relaxing while maintaining speed is a game-changer. It's a misconception that higher speed always requires more tension. In fact, relaxing the muscles — especially facial muscles — during speed work conserves energy and improves endurance.</p>
+
+      <h3>Don't overdo the threshold</h3>
+      <p>While training at or near the anaerobic threshold (FTP) is beneficial, overdoing it is counterproductive. Training smartly in TZ2 means touching the threshold without causing excessive fatigue, fostering gradual and sustainable improvement in speed at this training intensity.</p>
+
+      <h3>Form first</h3>
+      <p>Effective aerobic speed is not just about the act itself but how it's executed. Good form — characterised by efficiency and smooth movements — is a prerequisite for achieving and sustaining high speed.</p>
+
+      <div class="callout">
+        <strong>Recovery quality matters:</strong> The rate and quality of recovery between speed sessions are indicative of a paddler's form and endurance. Developing a recovery strategy that includes aerobic speed pace (TZ2) rather than just a slow pace (TZ1) can enhance aerobic capacity and improve overall speed endurance.
+      </div>
+
+      <h2>Avoiding Grey-Area Sessions</h2>
+
+      <p>Athletes should be wary of incorporating too many "grey area" sessions that don't effectively contribute to threshold stimulation or aerobic capacity enhancement. These sessions can lead to stagnation, hinder speed development, and increase the risk of overuse injuries.</p>
+
+      <h2>The TZ2–TZ4 Connection</h2>
+
+      <p>Speed is often a product of robust aerobic power, not just isolated speed sessions. Recognising the connection between TZ2 and TZ4 is vital for understanding how top paddlers maintain high speeds over extended periods.</p>
+
+      <p>Athletes capable of paddling fast distances at relatively aerobic heart rates exemplify the true measure of aerobic power. This power is fundamental for both beginners and world champions — it's the gauge of a paddler's ability to perform sustainably in ocean conditions.</p>
+
+      <p><strong>Fallback pace</strong> — the speed you naturally revert to when not paddling at optimal intensity (TZ4) — is an essential aspect of training. A well-conditioned aerobic system with good speed ensures a reliable fallback pace (TZ2), crucial for maintaining performance during challenging moments in a race.</p>
+
+      <h2>The Payoff</h2>
+
+      <p>Developing aerobic strength is not just about enhancing endurance — it's about creating a well-rounded paddler capable of sustaining high performance under challenging conditions. This strength is built through training that emphasises technique, efficient use of natural resistance, balanced training environments, and an understanding of the body's responses.</p>
+
+      <p>Dedication to developing aerobic speed yields noticeable improvements in performance, often surprising competitors and observers alike. The principle is simple: the effort you invest in disciplined aerobic training directly translates into the results you achieve on race day.</p>
+
+    </div>
+
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">June 19, 2024</div>
+        <h4>Using Pace over Heart Rate</h4>
+        <a href="using-pace-over-heart-rate.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Find Your Correct Training Zones</h4>
+        <a href="find-your-correct-training-zones.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Training Methodology to Paddling Faster for Longer</h4>
+        <a href="training-methodology-faster-for-longer.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Training Methodology to Paddling Faster for Longer — All Paddling</title>
+<meta name="description" content="Low intensity versus high intensity — what each actually achieves, and how a well-designed plan uses both without either dominating. The five training zones explained." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .breadcrumb a:hover { opacity: 1; border-bottom-color: white; }
+  .article-hero .tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem;
+    border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0;
+    font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+
+  .tz-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.95rem; }
+  .tz-table th { text-align: left; padding: 0.6rem 0.9rem; background: var(--surface-2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+  .tz-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+  .tz-table tr:last-child td { border-bottom: none; }
+  .tz-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: white; background: var(--brand-700); }
+
+  .phase-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.93rem; }
+  .phase-table th { text-align: left; padding: 0.6rem 0.9rem; background: var(--surface-2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+  .phase-table td { padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-2); }
+  .phase-table tr:last-child td { border-bottom: none; }
+
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Training Methodology</div>
+    <span class="tag">Training Methodology</span>
+    <h1>Training Methodology to Paddling Faster for Longer</h1>
+    <p class="lead">Low intensity versus high intensity — what each actually achieves, and how a well-designed plan uses both in the right proportions. The five training zones explained.</p>
+    <div class="meta">
+      <span>December 20, 2023</span>
+      <span>10 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+
+      <p>Low intensity training fits into most exercise categories — walking, shopping, paddling at a comfortable pace. On a scale of 1 to 5, it sits in Training Zones 1 or 2. Its benefits are real but limited: maintaining aerobic conditioning and supporting cardiovascular health. High intensity training, by contrast, is anaerobic exercise that doesn't exclusively use oxygen as fuel — it also burns carbohydrates, and more fat than low intensity work does.</p>
+
+      <p>So which one should you do? The answer — for every paddler, from beginner to competitor — is <em>both</em>, in the right proportions and at the right times.</p>
+
+      <h2>What Each Intensity Actually Does</h2>
+
+      <h3>Low intensity (TZ1–TZ2)</h3>
+      <p>Steady-state training falls into the low-to-moderate range and produces better adaptations than pure low-level training. Done continuously in the aerobic zone, it strengthens the aerobic system, improves cardiac health, and builds the base that all higher-intensity work depends on.</p>
+
+      <h3>High intensity (TZ4–TZ5)</h3>
+      <p>Regular high-intensity intervals (HIT) improve your ability to withstand the rigours of demanding training. The muscle soreness that accompanies a hard sprint becomes less intense over time, allowing you to work at a higher intensity with less rest. Your ability to transition between burning fat (at rest and during recovery) and carbohydrates (during work intervals) improves with HIT training — a metabolic benefit that drives both health and race performance.</p>
+
+      <div class="callout">
+        <strong>The key rule:</strong> If your resting heart rate is below 60 bpm, you can safely experiment with high-intensity training. If it's above 65, prioritise more low-intensity / steady-state work first. Use resting HR as a simple ongoing check — if it climbs above 65 during a training block, scale back intensity and return to aerobic work.
+      </div>
+
+      <h2>Putting It All Together: The Five Training Zones</h2>
+
+      <p>I liken the five training zones to gears in a car. A well-trained paddler moves between them efficiently — like a finely tuned automatic gearbox — without grinding into failure at any zone.</p>
+
+      <table class="tz-table">
+        <thead>
+          <tr><th>Zone</th><th>RPE</th><th>Feel</th><th>Primary Benefit</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tz-badge">TZ1</span></td>
+            <td>1–2</td>
+            <td>Very relaxed. Able to carry on a conversation.</td>
+            <td>Regeneration, recovery, base endurance</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ2</span></td>
+            <td>3–4</td>
+            <td>Working. Feel warmer. HR and respiration up. May sweat.</td>
+            <td>Aerobic efficiency</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ3</span></td>
+            <td>5</td>
+            <td>Hard work. HR and respiration elevated. CO₂ build-up. Breathing hard.</td>
+            <td>Sustainable aerobic power</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ4</span></td>
+            <td>6–7</td>
+            <td>Stressed. Panting. Sweating freely. Very stressed at 7 — gasping, sweating heavily.</td>
+            <td>Push threshold, sustain a percentage of maximal aerobic power</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ5</span></td>
+            <td>8–10</td>
+            <td>Heavily stressed. Gasping. Sweating heavily.</td>
+            <td>Sprint power output</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Overcoming Intensity Blindness</h2>
+
+      <p>Many athletes get stuck in a middle zone — not easy enough to be genuinely restorative, not hard enough to drive real adaptation. Overcoming this "intensity blindness" requires constant monitoring of relevant intensity metrics: heart rate, pace, stroke rate, and RPE.</p>
+
+      <p>The transition to doing low-intensity sessions actually low, and high-intensity sessions actually high, is surprisingly challenging. Athletes find it difficult to believe that slowing down in their easy sessions will actually benefit them. But those who make the shift are always well rewarded:</p>
+      <ul>
+        <li>First, low-intensity sessions feel more comfortable and enjoyable</li>
+        <li>Then, high-intensity sessions feel fresher and produce better outputs</li>
+        <li>Next, fitness development accelerates</li>
+        <li>Finally, race performance improves</li>
+      </ul>
+
+      <h2>Training Volume and Intensity Balance</h2>
+
+      <p>The latest research indicates that volume is not primary and intensity secondary — it's the <em>balance</em> that matters. In a 2014 study, Seiler found that athletes who ran just 35 miles per week with the volume and intensity in the correct balanced split improved their 10K race times by twice as much as runners who did half their training at moderate intensity (the typical recreational pattern).</p>
+
+      <p>Volume and intensity balance is optimal for all endurance athletes. The optimal volume for each athlete is the amount that yields the best results — and because low-intensity training is gentle, this amount will be relatively high for everyone, tending to increase as the athlete develops.</p>
+
+      <h2>Setting Out a Training Plan</h2>
+
+      <p>The first thing to establish is your goal and goal date — then work backward to your start date. The longer the runway, the better the results. Olympians prepare in four-year blocks to get maximum results across all training phases. Most of us operate on a shorter timeframe, but the structure remains the same:</p>
+
+      <table class="phase-table">
+        <thead>
+          <tr><th>Phase</th><th>% of Plan</th><th>Duration (20-week example)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>General Preparation</td><td>40%</td><td>8 weeks</td></tr>
+          <tr><td>Specific Preparation</td><td>30%</td><td>6 weeks</td></tr>
+          <tr><td>Pre-Competition</td><td>20%</td><td>4 weeks</td></tr>
+          <tr><td>Competition Phase</td><td>10%</td><td>2 weeks</td></tr>
+        </tbody>
+      </table>
+
+      <p>This layout applies to a single goal event — Molokai to Oahu, PPG, and similar. Paddlers competing in multiple races across a season will use a different percentage breakdown, typically over a longer overall plan, but the phases remain the same.</p>
+
+      <p>Using different training intensities adds variety to sessions and is the key to developing paddling-specific conditioning that improves performance. The five training zones combined with progressive volume loading create the adaptation that lets you paddle faster, for longer, in calm or rough water.</p>
+
+    </div>
+
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">June 19, 2024</div>
+        <h4>Using Pace over Heart Rate</h4>
+        <a href="using-pace-over-heart-rate.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">May 20, 2024</div>
+        <h4>The Training Zone</h4>
+        <a href="the-training-zone.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Find Your Correct Training Zones</h4>
+        <a href="find-your-correct-training-zones.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>
