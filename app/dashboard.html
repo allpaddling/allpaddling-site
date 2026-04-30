@@ -254,28 +254,79 @@
 
   /* If the loader served a primer (because we're in the first-4-weeks
      window), surface a small banner so the member knows they're on
-     the settling-in plan rather than the calendar-cohort block. */
+     the settling-in plan rather than the calendar-cohort block.
+     The banner also exposes a "Move to cohort training" CTA that
+     calls the graduate_from_primer() RPC — flipping
+     progressive_members.primer_completed = true on the caller's row.
+     The CTA is hidden in coach-preview mode (profile is null or the
+     coach's own profile) because Mick already has a coach-side toggle
+     on admin-progressive.html. */
   if (program.isPrimer) {
     const banner = document.createElement('div');
     banner.setAttribute('role', 'status');
     banner.style.cssText = `
       background: #ecfeff; color: #155e75; border: 1px solid #cffafe;
-      padding: 0.7rem 1.1rem; border-radius: 8px;
+      padding: 0.85rem 1.1rem; border-radius: 8px;
       font-size: 0.92rem; line-height: 1.5;
       margin-bottom: 1.25rem;
-      display: flex; align-items: center; gap: 0.6rem;
+      display: flex; align-items: flex-start; gap: 0.7rem; flex-wrap: wrap;
     `;
+    // Only show the self-graduate button when we're rendering a real
+    // member's dashboard (profile is set + type is 'progressive'). For
+    // a coach inspecting without preview (profile null) we skip it —
+    // graduating from a coach's session would either no-op or, worse,
+    // mutate the coach's own row if they happen to also be a member.
+    const showGraduate = !!(profile && profile.type === 'progressive' && profile.id);
     banner.innerHTML = `
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0; margin-top:2px;">
         <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
       </svg>
-      <span>You're on the <strong>Primer block</strong> — your settling-in plan for the first 4 weeks. After that you'll join the calendar cohort. <a href="getting-started.html" style="color:inherit; text-decoration:underline;">Read more</a></span>
+      <div style="flex:1 1 240px;">
+        You're on the <strong>Primer block</strong> — your settling-in plan for the first 4 weeks. After that you'll join the calendar cohort.
+        <a href="getting-started.html" style="color:inherit; text-decoration:underline;">Read more</a>
+      </div>
+      ${showGraduate ? `
+      <button type="button" id="primer-graduate-btn" class="btn btn-ghost" style="
+        font-size: 0.85rem; padding: 0.45rem 0.9rem;
+        border: 1px solid #0e7490; color: #0e7490; background: white;
+        border-radius: 6px; cursor: pointer; flex-shrink: 0;
+        font-family: 'Inter', sans-serif; font-weight: 600;
+      ">Move to cohort training →</button>` : ''}
     `;
     const upNext = document.getElementById('up-next-card');
     if (upNext && upNext.parentNode) {
       upNext.parentNode.insertBefore(banner, upNext);
     } else {
       document.querySelector('.app-main').insertBefore(banner, document.querySelector('.app-main').firstChild);
+    }
+
+    if (showGraduate) {
+      const btn = document.getElementById('primer-graduate-btn');
+      btn.addEventListener('click', async function () {
+        const ok = window.confirm(
+          "Move to cohort training?\n\n"
+          + "You'll leave the Primer block and start the current "
+          + "4-week cohort plan for your discipline.\n\n"
+          + "This is a one-way move — if you'd like to come back, "
+          + "your coach can flip you back from the admin side. "
+          + "Continue?"
+        );
+        if (!ok) return;
+        btn.disabled = true;
+        btn.textContent = 'Moving you across…';
+        try {
+          const { error } = await sb.rpc('graduate_from_primer');
+          if (error) throw error;
+          // Successful graduation — reload so loadCurrentPlan sees
+          // primerCompleted=true and serves the cohort plan.
+          window.location.reload();
+        } catch (ex) {
+          console.error('graduate_from_primer failed', ex);
+          btn.disabled = false;
+          btn.textContent = 'Move to cohort training →';
+          window.alert("Sorry — couldn't move you across just now. Please refresh and try again, or message your coach if it keeps happening.");
+        }
+      });
     }
   }
 
