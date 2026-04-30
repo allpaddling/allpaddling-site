@@ -134,14 +134,54 @@
   .pill.discipline  { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
   .notes-cell, .detail-cell {
-    max-width: 240px;
+    max-width: 260px;
     color: var(--text-2); font-size: 0.86rem; line-height: 1.45;
     overflow: hidden; text-overflow: ellipsis;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   }
   .notes-cell.empty, .detail-cell.empty { color: var(--text-3); font-style: italic; }
-  .detail-cell.goal { color: var(--brand-700); font-weight: 500; -webkit-line-clamp: 1; }
-  .detail-cell.goal svg { color: var(--brand-700); }
+  /* Goal-race detail: stacked layout so race name + date + meta are all
+     visible at a glance (replaces the old single-line clamp that hid
+     the date behind ellipsis). Three lines:
+       1. star icon + race name (truncates if long)
+       2. formatted date + T-Nd countdown pill
+       3. muted "X hrs/wk · Ability" training meta */
+  .detail-cell.goal {
+    display: flex; flex-direction: column; gap: 0.18rem;
+    -webkit-line-clamp: unset; -webkit-box-orient: unset;
+    overflow: visible;
+  }
+  .detail-cell.goal .detail-line-primary {
+    display: flex; align-items: center; gap: 0.3rem;
+    color: var(--brand-700); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .detail-cell.goal .detail-line-primary svg { color: var(--brand-700); flex-shrink: 0; }
+  .detail-cell.goal .detail-line-primary .race-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .detail-cell .detail-line-secondary {
+    display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+    font-size: 0.82rem; color: var(--text-2);
+  }
+  .detail-cell .detail-meta {
+    font-size: 0.78rem; color: var(--text-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* Countdown pill — "T-185d" by default, amber if <90 days, red if
+     <30 days. Gives Mick a quick urgency read without doing date math
+     in his head. Past-dated races just don't render a pill. */
+  .race-countdown {
+    display: inline-block;
+    padding: 0.05rem 0.4rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em;
+    background: var(--surface-2); color: var(--text-2);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .race-countdown.soon  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .race-countdown.urgent { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+  .race-countdown.past  { background: var(--surface-2); color: var(--text-3); }
 
   .onboard-badge {
     display: inline-block; margin-top: 0.2rem;
@@ -590,6 +630,49 @@
     return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  // Whole days between today (local midnight) and the goal-race date.
+  // Negative for past races. Returns null if the input isn't parseable.
+  function daysUntilRace (iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    d.setHours(0, 0, 0, 0);
+    return Math.round((d.getTime() - today.getTime()) / 86400000);
+  }
+
+  // Render the countdown pill HTML for a given days-until value.
+  // Buckets: past → muted 'Past', <30d → red 'urgent', <90d → amber
+  // 'soon', otherwise neutral. Matches CSS in the style block above.
+  function renderCountdownPill (days) {
+    if (days === null) return '';
+    if (days < 0)   return `<span class="race-countdown past" title="Race date has passed">Past</span>`;
+    if (days === 0) return `<span class="race-countdown urgent" title="Race is today">Today</span>`;
+    const cls = days < 30 ? 'urgent' : days < 90 ? 'soon' : '';
+    return `<span class="race-countdown ${cls}" title="${days} day${days === 1 ? '' : 's'} until race">T-${days}d</span>`;
+  }
+
+  // Format the muted "6 hrs/wk · Competitive" training meta line shown
+  // under the goal/notes. Returns '' if neither field is set so the
+  // line is omitted entirely (no empty separators).
+  const ABILITY_LABELS = {
+    new:          'New',
+    recreational: 'Recreational',
+    competitive:  'Competitive',
+    elite:        'Elite',
+  };
+  function formatTrainingMeta (weeklyHours, abilityLevel) {
+    const parts = [];
+    if (weeklyHours != null && weeklyHours !== '' && Number(weeklyHours) > 0) {
+      parts.push(`${Number(weeklyHours)} hrs/wk`);
+    }
+    if (abilityLevel) {
+      parts.push(ABILITY_LABELS[abilityLevel] || abilityLevel);
+    }
+    return parts.join(' · ');
+  }
+
   function renderTable () {
     const q = searchEl.value.trim().toLowerCase();
     const filtered = allMembers.filter(m => {
@@ -646,19 +729,44 @@
         planBadge = `<span class="plan-badge awaiting" title="No plan started yet — member sees the empty state on their dashboard">Awaiting plan</span>`;
       }
 
-      // "Detail" column prefers goal race info when set (signal from
-      // onboarding), then notes, then "—". Gives Mick the most useful
-      // glance value per row.
+      // "Detail" column surfaces the most useful pre-plan context for
+      // Mick: goal race name + date + countdown when set, otherwise
+      // notes; with an optional "X hrs/wk · Ability" meta line under
+      // either when the member has filled those out in onboarding.
+      // Race name truncates if very long but the date + countdown
+      // always render on their own line so they're never hidden.
+      const trainingMeta = formatTrainingMeta(m.weeklyHours, m.abilityLevel);
+      const trainingMetaHtml = trainingMeta
+        ? `<div class="detail-meta" title="${escapeHtml(trainingMeta)}">${escapeHtml(trainingMeta)}</div>`
+        : '';
       let detailHtml;
       if (m.goalRaceName || m.goalRaceDate) {
-        const date = m.goalRaceDate ? fmtDate(m.goalRaceDate) : '';
-        const bits = [m.goalRaceName, date].filter(Boolean).join(' · ');
-        detailHtml = `<div class="detail-cell goal" title="Goal race: ${escapeHtml(bits)}">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; vertical-align:-2px; margin-right:4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          ${escapeHtml(bits)}
+        const dateStr   = m.goalRaceDate ? fmtDate(m.goalRaceDate) : '';
+        const days      = daysUntilRace(m.goalRaceDate);
+        const pillHtml  = renderCountdownPill(days);
+        const titleBits = [m.goalRaceName, dateStr].filter(Boolean).join(' · ');
+        const starSvg   = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+        // Primary: race name with star icon (or "Goal race" placeholder
+        // if only the date is set — rare but possible). Secondary:
+        // formatted date + countdown pill, always its own line.
+        const primaryName = m.goalRaceName || 'Goal race';
+        const secondaryHtml = (dateStr || pillHtml)
+          ? `<div class="detail-line-secondary">${dateStr ? escapeHtml(dateStr) : ''}${pillHtml}</div>`
+          : '';
+        detailHtml = `<div class="detail-cell goal" title="Goal race: ${escapeHtml(titleBits)}">
+          <div class="detail-line-primary">${starSvg}<span class="race-name">${escapeHtml(primaryName)}</span></div>
+          ${secondaryHtml}
+          ${trainingMetaHtml}
         </div>`;
       } else if (m.notes) {
-        detailHtml = `<div class="detail-cell" title="${escapeHtml(m.notes)}">${escapeHtml(m.notes)}</div>`;
+        detailHtml = `<div class="detail-cell" title="${escapeHtml(m.notes)}">
+          <div>${escapeHtml(m.notes)}</div>
+          ${trainingMetaHtml}
+        </div>`;
+      } else if (trainingMetaHtml) {
+        // No goal race, no notes — but the member did fill in training
+        // hours / ability. Still worth showing instead of an em-dash.
+        detailHtml = `<div class="detail-cell">${trainingMetaHtml}</div>`;
       } else {
         detailHtml = `<div class="detail-cell empty">—</div>`;
       }
