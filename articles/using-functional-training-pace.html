@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Using Functional Training Pace — All Paddling</title>
+<meta name="description" content="Functional Threshold Pace is the maximum effort you can maintain while your body can still clear the lactate your muscles produce. Here's why it's the cornersto" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .tag {
+    display: inline-block; background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem; border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0; font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+  .tz-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.95rem; }
+  .tz-table th { text-align: left; padding: 0.6rem 0.9rem; background: var(--surface-2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+  .tz-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+  .tz-table tr:last-child td { border-bottom: none; }
+  .tz-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: white; background: var(--brand-700); }
+  .interval-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; margin: 1rem 0; font-family: monospace; font-size: 0.92rem;
+    color: var(--text-2); line-height: 1.7;
+  }
+  .interval-block strong { color: var(--text); font-family: inherit; }
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Training Metrics</div>
+    <span class="tag">Training Metrics</span>
+    <h1>Using Functional Training Pace</h1>
+    <p class="lead">Functional Threshold Pace is the maximum effort you can maintain while your body can still clear the lactate your muscles produce. Here's why it's the cornerstone of endurance training — and how to find yours.</p>
+    <div class="meta">
+      <span>December 20, 2023</span>
+      <span>7 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+      <p>Lactate Threshold Pace, Heart Rate, or Power — all refer to the same thing: the maximum effort you can maintain while your body can still remove the lactate acid being used by your muscles. For most trained athletes, this is similar to the maximum effort they can maintain for an hour. Going above this threshold will result in a "burn" in the muscles, and after a few minutes, force you to slow or stop until the lactate clears. This is also called Functional Threshold Pace, or FTP.</p>
+
+      <h2>Why FTP Matters More Than VO₂max</h2>
+
+      <p>Unlike VO₂max, which relies largely on genetically predisposed physiological characteristics (lung capacity, body mass), lactate threshold can be <strong>consistently improved through training</strong>. Training both below and above threshold improves the body's ability to clear lactate and to tolerate higher lactate concentrations. As you gain fitness, your threshold rises — and with it, the pace you can sustain for long distances.</p>
+
+      <p>Your training zones are all determined as a percentage of your FTP threshold. This makes finding it essential.</p>
+
+      <h2>How to Determine Your FTP</h2>
+
+      <h3>Lab testing</h3>
+      <p>In a lab, a graded test with blood or oxygen exchange samples identifies the exact effort at which you can no longer clear acid as fast as you're producing it. This is the most accurate method.</p>
+
+      <h3>Field testing (without a lab)</h3>
+      <p>The next most accurate approach: a maximal 1-hour solo effort. If a full 60-minute test isn't feasible, Joe Friel and TrainingPeaks recommend a 30-minute maximal effort and using the average pace for the <strong>last 20 minutes</strong> as your lactate threshold estimate.</p>
+
+      <div class="callout">
+        <strong>Important:</strong> Field tests should be done in sheltered, consistent conditions — same location, same time, same warm-up protocol each time. Test alone, not with a group that may push you above or below your actual threshold.
+      </div>
+
+      <h2>Building Stamina Through FTP Training</h2>
+
+      <p>Stamina in endurance sports is the ability — physically and mentally — to keep performing for a long period. It's measured as a percentage of maximum capacity, with most individuals falling in the 75–85% range.</p>
+
+      <p>To build stamina, include 3–5 workouts per training cycle (3–4 weeks) focused specifically on raising threshold performance. These sessions should target RPE 5–6 and Zone 3–4 (just below FTP pace). This approach pushes threshold upward from below — increasing the ceiling while maintaining an aerobic focus.</p>
+
+      <h2>Monitoring Progression</h2>
+
+      <p>By combining FTP-based pace targets with stroke rate (as a percentage of your maximum strokes per minute) and RPE, you can monitor training intensity with confidence in almost any conditions. Retest every 4–6 weeks to track increases in pace and adjust your zone targets as your threshold rises.</p>
+
+      <p>The goal is simple: over time, the pace that feels like TZ3 today becomes a pace you can hold for longer, more comfortably. That's stamina — and that's what gets you across a 32-mile channel feeling capable rather than depleted.</p>
+    </div>
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>It's You Versus You</h4>
+        <a href="its-you-versus-you.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Finding Functional Training Intensities</h4>
+        <a href="finding-functional-training-intensities.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>32 Minutes: 32 Miles</h4>
+        <a href="32-minutes-32-miles.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="site-footer"></div>
+<script src="../assets/site.js"></script>
+</body>
+</html>

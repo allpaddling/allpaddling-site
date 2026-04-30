@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Feeling the Load to Consistent Progression — All Paddling</title>
+<meta name="description" content="External load tells you how much work you did. Internal load tells you how hard it actually was. Understanding the relationship between the two is how you get f" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .tag {
+    display: inline-block; background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem; border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0; font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+  .tz-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.95rem; }
+  .tz-table th { text-align: left; padding: 0.6rem 0.9rem; background: var(--surface-2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+  .tz-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+  .tz-table tr:last-child td { border-bottom: none; }
+  .tz-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: white; background: var(--brand-700); }
+  .interval-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; margin: 1rem 0; font-family: monospace; font-size: 0.92rem;
+    color: var(--text-2); line-height: 1.7;
+  }
+  .interval-block strong { color: var(--text); font-family: inherit; }
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Training Metrics</div>
+    <span class="tag">Training Metrics</span>
+    <h1>Feeling the Load to Consistent Progression</h1>
+    <p class="lead">External load tells you how much work you did. Internal load tells you how hard it actually was. Understanding the relationship between the two is how you get fitter — not overtrained.</p>
+    <div class="meta">
+      <span>December 20, 2023</span>
+      <span>5 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+      <p>There are two basic kinds of training load. <strong>External training load</strong> is an objective measure of how much work you did: distance covered, pace, power output. <strong>Internal training load</strong> represents how hard you — as an individual — had to work to complete that session. It might be measured by average heart rate, or simply by your subjective sense of effort and fatigue.</p>
+
+      <p>Both matter. But it's the internal load — the actual level of physiological stress your body experiences — that determines whether you'll get fitter or overtrained.</p>
+
+      <h2>The Fundamental Question</h2>
+
+      <p>How hard was that workout you just finished? There are many ways to answer it — heart rate monitors, GPS pace, gut feeling. One way or another, you need a sense of how hard you're working to make good decisions about how to distribute your efforts each session and week, and how to gradually increase your training load over months.</p>
+
+      <div class="callout">
+        <strong>The simplest internal load tool:</strong> During and shortly after each interval or session, ask yourself: "How hard was that?" on a scale from 1 to 10. This is the RPE scale — Rate of Perceived Exertion. It's free, immediate, and never runs out of batteries.
+      </div>
+
+      <p>Research has shown that a well-calibrated RPE assessment gives as much information about training effort as sophisticated physiological analysis. Your internal computer is as sensitively tuned to the subtleties of effort as any external gadget — the trick is developing the habit of reading it accurately.</p>
+
+      <h2>Internal and External Together</h2>
+
+      <p>The message here isn't to ditch your GPS or heart rate monitor — it's that neither internal nor external data is complete on its own. What matters is the <em>relationship</em> between the two:</p>
+      <ul>
+        <li>In training, it's meaningless to know your internal load is going up if you don't also know whether you're going faster or slower</li>
+        <li>In racing, it's counterproductive to chase a target pace without considering how you feel that day, or the conditions — currents, wind, tides — you're actually paddling in</li>
+      </ul>
+
+      <p>So the goal is to trust your feel (RPE) and trust in it — while using external data to validate and contextualise what you're sensing. When internal and external data agree, you're training well. When they diverge significantly, something important is happening: either you're getting fitter (same RPE at higher pace) or accumulating more fatigue than the numbers suggest (same pace at higher RPE).</p>
+
+      <p>Developing that awareness — the ability to read the relationship between how hard it feels and what it's actually producing — is what consistent, long-term progression is built on.</p>
+    </div>
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">June 19, 2024</div>
+        <h4>Using Pace over Heart Rate</h4>
+        <a href="using-pace-over-heart-rate.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>How Do You Rate Your Training Exertion?</h4>
+        <a href="how-do-you-rate-your-training-exertion.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Training Intensity Blindness</h4>
+        <a href="training-intensity-blindness.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="site-footer"></div>
+<script src="../assets/site.js"></script>
+</body>
+</html>

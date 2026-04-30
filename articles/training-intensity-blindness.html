@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Training Intensity Blindness — All Paddling</title>
+<meta name="description" content="Most of the interval sessions we think we're doing at low/moderate intensity are actually done at high intensity. Science calls it intensity blindness — and it'" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .tag {
+    display: inline-block; background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem; border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0; font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+  .tz-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.95rem; }
+  .tz-table th { text-align: left; padding: 0.6rem 0.9rem; background: var(--surface-2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+  .tz-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+  .tz-table tr:last-child td { border-bottom: none; }
+  .tz-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: white; background: var(--brand-700); }
+  .interval-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; margin: 1rem 0; font-family: monospace; font-size: 0.92rem;
+    color: var(--text-2); line-height: 1.7;
+  }
+  .interval-block strong { color: var(--text); font-family: inherit; }
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Intensity Balance</div>
+    <span class="tag">Intensity Balance</span>
+    <h1>Training Intensity Blindness</h1>
+    <p class="lead">Most of the interval sessions we think we're doing at low/moderate intensity are actually done at high intensity. Science calls it intensity blindness — and it's the most common mistake in training.</p>
+    <div class="meta">
+      <span>December 20, 2023</span>
+      <span>6 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+      <p>If you ask any coach or athlete to name the most common training mistake, they'll probably say "paddling too hard on easier intervals" — not getting through the full session at consistent intensities. Science backs this up through countless research studies. In short, most of the interval sessions we think we're doing at low or moderate intensity are in fact done at high intensity. This is what I call <strong>intensity blindness</strong>.</p>
+
+      <p>Spending nearly half of total training time at high intensity wouldn't be a problem if it were an effective way to train — but it isn't. Research has shown that elite endurance athletes in every discipline, from running to rowing, do <strong>80% of their training at low/moderate intensity</strong> and the remaining 20% at high intensities. This universal pattern is the result of generations of trial and error at the highest levels of endurance sport. Virtually every approach to balancing training intensities has been tried — only the 80/20 balance has survived, because it works best.</p>
+
+      <h2>Does the 80/20 Rule Apply to Non-Elite Athletes?</h2>
+
+      <p>Studies have also demonstrated that athletes of all experience and ability levels improve most when they follow the 80/20 rule of intensity balance. Breaking out of a 50/50 split and shifting toward 80/20 can take time — and it requires lowering your training ego.</p>
+
+      <h2>Step 1: Find Your Intensity Zones</h2>
+
+      <p>To spend 80% of training time at low/moderate intensity and 20% at high intensity, you need to know what those intensities actually are for you. Using a five-zone system: Zones 1 and 2 are low intensity, Zone 3 is moderate, and Zones 4 and 5 are high intensity.</p>
+
+      <h2>Step 2: Plan 80/20 Training Weeks</h2>
+
+      <p>This is simple maths. If you train 5 hours per week (300 minutes), 80% of that is 240 minutes — 4 hours at low/moderate intensity, leaving 1 hour at high intensity.</p>
+
+      <h2>Step 3: Monitor and Control Intensity</h2>
+
+      <p>It's one thing to plan the perfect 80/20 week; another to actually execute it. Many athletes intend to do most training at prescribed intensities but when they get on the water, they do something else — without even realising it. Fixing this requires actively monitoring intensity throughout every interval and staying in the targeted zone.</p>
+
+      <div class="callout">
+        <strong>The RPE advantage:</strong> Many athletes get caught up with heart rate monitors and find their training intensities become erratic and time-consuming. A preferred method is the RPE scale (Rate of Perceived Exertion) — it's immediate, free, and always accurate.
+      </div>
+
+      <table class="tz-table">
+        <thead><tr><th>Zone</th><th>RPE</th><th>Feel</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tz-badge">TZ1</span></td><td>1–2</td><td>Very relaxed. Can carry on a conversation.</td><td>Regeneration, recovery, base endurance</td></tr>
+          <tr><td><span class="tz-badge">TZ2</span></td><td>3–4</td><td>Working. Feel warmer. HR and respiration up. May sweat.</td><td>Improve efficiency</td></tr>
+          <tr><td><span class="tz-badge">TZ3</span></td><td>5</td><td>Hard work. CO₂ build-up. Sweating. Breathing hard.</td><td>Improve sustainable aerobic power</td></tr>
+          <tr><td><span class="tz-badge">TZ4</span></td><td>6–7</td><td>Stressed. Panting. Sweating freely / gasping.</td><td>Push threshold, sustain maximal aerobic power</td></tr>
+          <tr><td><span class="tz-badge">TZ5</span></td><td>8–10</td><td>Heavily stressed. Gasping. Sweating heavily.</td><td>Increase sprint power output</td></tr>
+        </tbody>
+      </table>
+
+      <p>Being disciplined about intensity can be surprisingly difficult at first. But if you take the leap of faith and follow through on slowing your easy sessions down, you'll be well rewarded. The first thing you'll notice is less fatigue from day to day. Then you'll find you can train faster and more comfortably in higher-intensity workouts.</p>
+    </div>
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Training Methodology to Paddling Faster for Longer</h4>
+        <a href="training-methodology-faster-for-longer.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Find Your Correct Training Zones</h4>
+        <a href="find-your-correct-training-zones.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">June 19, 2024</div>
+        <h4>Using Pace over Heart Rate</h4>
+        <a href="using-pace-over-heart-rate.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="site-footer"></div>
+<script src="../assets/site.js"></script>
+</body>
+</html>

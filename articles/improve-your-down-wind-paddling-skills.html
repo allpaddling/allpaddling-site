@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Improve Your Down Wind Paddling Skills — All Paddling</title>
+<meta name="description" content="You don't need Molokai Channel conditions to develop your down wind skills. A simple into-wind and back approach in any onshore conditions will build the stroke" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .tag {
+    display: inline-block; background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem; border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0; font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+  .tz-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.95rem; }
+  .tz-table th { text-align: left; padding: 0.6rem 0.9rem; background: var(--surface-2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+  .tz-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+  .tz-table tr:last-child td { border-bottom: none; }
+  .tz-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: white; background: var(--brand-700); }
+  .interval-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; margin: 1rem 0; font-family: monospace; font-size: 0.92rem;
+    color: var(--text-2); line-height: 1.7;
+  }
+  .interval-block strong { color: var(--text); font-family: inherit; }
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Race Preparation</div>
+    <span class="tag">Race Preparation</span>
+    <h1>Improve Your Down Wind Paddling Skills</h1>
+    <p class="lead">You don't need Molokai Channel conditions to develop your down wind skills. A simple into-wind and back approach in any onshore conditions will build the stroke timing and board control you need.</p>
+    <div class="meta">
+      <span>December 20, 2023</span>
+      <span>4 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+      <p>Training for any paddling event requires specific training intensities and the ability to cover volumes approaching the race distance. The first step is designing a Training Plan: find a start date, know your race date, and work out what happens in between.</p>
+
+      <p>For an event like Molokai to Oahu, I'd typically start around 1 March and race on 30 July — then build specific training phases within that window to develop the strength and endurance to paddle 32 miles. During those phases, the goal is to progressively add intensity and volume until you have the strength to hold your best pace over the full distance. That's endurance.</p>
+
+      <h2>The Most Common Down Wind Training Excuse</h2>
+
+      <p>Every year, the same question comes up: "But I don't get the same conditions as the Molokai Channel, so I can't practice my down wind skills."</p>
+
+      <p>Here's the good news: you don't need them.</p>
+
+      <h2>The Tip That Works</h2>
+
+      <div class="callout">
+        <strong>Tip #1 — Into-wind and back:</strong> The best way to develop stroke timing and board control for down wind and rough water paddling is to do half your paddling sessions <em>into</em> the wind, then paddle back <em>down</em> wind. The wind conditions don't need to be strong to get the benefits, and the distances don't need to be long.
+      </div>
+
+      <p>By repeating intervals into the wind and then coming back, you develop two things simultaneously:</p>
+      <ul>
+        <li><strong>Into-wind:</strong> strength, stroke efficiency, and the discipline to hold pace against resistance</li>
+        <li><strong>Down wind:</strong> stroke timing, board reading, and the ability to accelerate onto and hold runs</li>
+      </ul>
+
+      <p>This approach works perfectly for paddlers who get onshore wind days during their preparation period and don't need transport up or down the coastline. Even light onshore conditions are sufficient. Get out there when the wind is on — and hone the skills you'll need in rough water racing.</p>
+
+      <p>The channel won't practise for you. The preparation period is your window to build the timing, board feel, and confidence that makes the difference when the conditions are genuinely challenging.</p>
+    </div>
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>32 Minutes: 32 Miles</h4>
+        <a href="32-minutes-32-miles.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Periodization is Key to Aerobic Power</h4>
+        <a href="periodization-is-key-to-aerobic-power.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Training Methodology to Paddling Faster for Longer</h4>
+        <a href="training-methodology-faster-for-longer.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="site-footer"></div>
+<script src="../assets/site.js"></script>
+</body>
+</html>

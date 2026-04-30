@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finding Functional Training Intensities — All Paddling</title>
+<meta name="description" content="A reference guide to the five training zones — RPE, stroke rate percentages, physiological purpose, and the performance adaptations each zone produces." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article-hero {
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    color: white; padding: 4rem 0 3rem;
+  }
+  .article-hero .breadcrumb { font-size: 0.85rem; margin-bottom: 1.25rem; opacity: 0.8; }
+  .article-hero .breadcrumb a { color: white; border-bottom: 1px solid rgba(255,255,255,0.4); }
+  .article-hero .tag {
+    display: inline-block; background: rgba(255,255,255,0.2); color: white;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.35rem 0.75rem; border-radius: 999px; margin-bottom: 1rem;
+  }
+  .article-hero h1 { color: white; font-size: clamp(1.9rem, 4vw, 2.8rem); max-width: 700px; margin-bottom: 1rem; line-height: 1.15; }
+  .article-hero .lead { color: rgba(255,255,255,0.88); font-size: 1.08rem; max-width: 640px; line-height: 1.65; margin-bottom: 1.5rem; }
+  .article-hero .meta { font-size: 0.85rem; color: rgba(255,255,255,0.65); }
+  .article-hero .meta span + span::before { content: ' · '; }
+  .article-body { max-width: 720px; margin: 0 auto; }
+  .article-body p { font-size: 1.05rem; line-height: 1.8; color: var(--text-2); margin-bottom: 1.4rem; }
+  .article-body p:first-child { font-size: 1.12rem; color: var(--text); font-weight: 500; }
+  .article-body h2 { font-size: 1.45rem; color: var(--text); margin: 2.5rem 0 0.9rem; }
+  .article-body h3 { font-size: 1.15rem; color: var(--text); margin: 2rem 0 0.6rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.4rem 1.5rem; }
+  .article-body li { font-size: 1.05rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.4rem; }
+  .article-body strong { color: var(--text); }
+  .article-body .callout {
+    background: var(--brand-50); border-left: 4px solid var(--brand-700);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.25rem 1.5rem; margin: 2rem 0; font-size: 1rem; color: var(--text-2); line-height: 1.7;
+  }
+  .article-body .callout strong { color: var(--brand-700); }
+  .tz-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.95rem; }
+  .tz-table th { text-align: left; padding: 0.6rem 0.9rem; background: var(--surface-2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+  .tz-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+  .tz-table tr:last-child td { border-bottom: none; }
+  .tz-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: white; background: var(--brand-700); }
+  .interval-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; margin: 1rem 0; font-family: monospace; font-size: 0.92rem;
+    color: var(--text-2); line-height: 1.7;
+  }
+  .interval-block strong { color: var(--text); font-family: inherit; }
+  .article-footer {
+    border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .article-footer .back-link { color: var(--brand-700); font-weight: 500; font-size: 0.95rem; }
+  .article-footer .back-link::before { content: '← '; }
+  .author-chip { display: flex; align-items: center; gap: 0.75rem; }
+  .author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-700), #0891b2);
+    display: grid; place-items: center; color: white; font-weight: 700; font-size: 0.9rem;
+  }
+  .author-chip .name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  .author-chip .role { font-size: 0.8rem; color: var(--text-3); }
+  .more-articles { background: var(--surface-2); }
+  .more-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .more-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem; display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s;
+  }
+  .more-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .more-card .date { font-size: 0.8rem; color: var(--text-3); font-weight: 500; margin-bottom: 0.5rem; }
+  .more-card h4 { font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.35; flex-grow: 1; }
+  .more-card .link { color: var(--brand-700); font-weight: 500; font-size: 0.9rem; margin-top: 0.75rem; }
+  .more-card .link::after { content: ' →'; }
+  @media (max-width: 720px) { .more-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<header class="article-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="../blog.html">Blog</a> / Training Metrics</div>
+    <span class="tag">Training Metrics</span>
+    <h1>Finding Functional Training Intensities</h1>
+    <p class="lead">A reference guide to the five training zones — RPE, stroke rate percentages, physiological purpose, and the performance adaptations each zone produces.</p>
+    <div class="meta">
+      <span>December 20, 2023</span>
+      <span>4 min read</span>
+      <span>By Mick Di Betta</span>
+    </div>
+  </div>
+</header>
+<section class="panel">
+  <div class="container">
+    <div class="article-body">
+      <p>Knowing what training zone you're in — and what that zone is actually doing for your physiology — is the foundation of smart training. The table below maps each zone to its RPE feel, percentage of maximum stroke rate, physiological purpose, and the performance adaptation it produces.</p>
+
+      <h2>The Five Training Zones</h2>
+
+      <table class="tz-table">
+        <thead>
+          <tr><th>Zone</th><th>RPE</th><th>Feel</th><th>% MSPM</th><th>Purpose</th><th>Adaptation</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tz-badge">TZ1</span></td>
+            <td>1–2</td>
+            <td>Very relaxed. Able to carry on a conversation.</td>
+            <td>~52%</td>
+            <td>Regeneration and base endurance</td>
+            <td>Increases blood flow to muscles; improves fat metabolism; prepares body for harder training; improves economy</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ2</span></td>
+            <td>3–4</td>
+            <td>Working. Feel warmer. HR and respiration up. May sweat.</td>
+            <td>~64%</td>
+            <td>Improve efficiency</td>
+            <td>Improves ability to use oxygen and produce power; increases efficiency; more power with same effort</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ3</span></td>
+            <td>5–6</td>
+            <td>Hard work. HR and respiration up. CO₂ build-up. Sweating. Breathing hard.</td>
+            <td>~76%</td>
+            <td>Improve sustainable aerobic power</td>
+            <td>Improves carbohydrate metabolism; converts some fast-twitch muscle to slow-twitch; improves sustainable power for all paddling events</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ4</span></td>
+            <td>7–8</td>
+            <td>Stressed. Panting. Sweating freely. Very stressed, gasping, sweating heavily at RPE 8.</td>
+            <td>~88%</td>
+            <td>Push threshold; sustain maximal aerobic power</td>
+            <td>Develops cardiovascular system and VO₂max; improves anaerobic energy production; improves sustainable race pace</td>
+          </tr>
+          <tr>
+            <td><span class="tz-badge">TZ5</span></td>
+            <td>9–10</td>
+            <td>Heavily stressed. Gasping. Sweating heavily.</td>
+            <td>100%</td>
+            <td>Increase sprint power output</td>
+            <td>Increases maximum muscle power; develops neural control at specific stroke rate; develops race-specific skills, starting power, sprint speed</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>How to use this table:</strong> Start by finding your FTP (Functional Threshold Pace) — the pace you can sustain for approximately one hour. That's your TZ3 benchmark. From there, calculate your zone targets as percentages. Retest every 4–6 weeks and adjust as your fitness improves.
+      </div>
+
+      <p>The key insight: each zone targets a specific physiological system. Training exclusively in one zone — even a productive one — leaves others underdeveloped. A well-designed progressive plan moves through all five zones, using volume and intensity in the right proportions to drive continuous adaptation without overtraining.</p>
+    </div>
+    <div class="article-footer">
+      <a href="../blog.html" class="back-link">Back to Blog</a>
+      <div class="author-chip">
+        <div class="author-avatar">M</div>
+        <div>
+          <div class="name">Mick Di Betta</div>
+          <div class="role">Head Coach, All Paddling</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel more-articles">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem;">More from the blog</h2>
+    <div class="more-grid">
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>Find Your Correct Training Zones</h4>
+        <a href="find-your-correct-training-zones.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>It's You Versus You</h4>
+        <a href="its-you-versus-you.html" class="link">Read article</a>
+      </div>
+      <div class="more-card">
+        <div class="date">December 20, 2023</div>
+        <h4>How Do You Rate Your Training Exertion?</h4>
+        <a href="how-do-you-rate-your-training-exertion.html" class="link">Read article</a>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="site-footer"></div>
+<script src="../assets/site.js"></script>
+</body>
+</html>
