@@ -18,6 +18,11 @@ Add to "Up next" any time something comes up between meetings. After the meeting
 
 > Most important / most urgent at the top. Drag stuff up/down.
 
+- [ ] **Two new features shipped 2026-05-01 — heads-up only.**
+   - *Block-freshness reminders on Coach Admin.* Each cohort tile (Prone/SUP/OC/Ski) on `/app/admin.html` now shows a colored dot — green <21d since publish, amber 21–28d, red >28d — and a top-of-page banner lists any blocks due/overdue. Primer is excluded (it doesn't roll on the calendar). Currently everything's green (last publish 2026-04-27).
+   - *Members can self-graduate from the Primer block.* The settling-in banner on the dashboard now has a "Move to cohort training →" button that flips `progressive_members.primer_completed=true` for that member. **One-way for the member**: if they regret it, Mick can flip them back from `admin-progressive.html` (coach UPDATE policy still grants this). Confirm dialog warns them. No effect on Custom members.
+   - Behind the scenes: new RPC `graduate_from_primer()` + migrations 013/014.
+
 - [ ] **Inbound email fan-out from Mick to Jake.** Walk Mick through setting up a Gmail filter on `dibetta1@gmail.com` so customer replies to `hello@allpaddling.online` (which currently route only to him) auto-forward to `jakedibetta@gmail.com`. Steps for Mick:
    1. Gmail → ⚙ Settings → "See all settings" → "Forwarding and POP/IMAP" tab → "Add a forwarding address" → enter `jakedibetta@gmail.com` → confirm code (Jake will get an email to confirm).
    2. Then Settings → "Filters and Blocked Addresses" → "Create a new filter" → From: `*@allpaddling.online` → "Forward it to: jakedibetta@gmail.com" → Create.
@@ -69,6 +74,24 @@ Add to "Up next" any time something comes up between meetings. After the meeting
 ## Future / parked — revisit after migration is complete
 
 > Topics worth thinking about later but deliberately deprioritised right now. Promote into "Up next" when the time is right.
+
+### Validate Google Auth flow for returning members (parked 2026-04-28)
+
+**Context:** New self-signups come in via anon-mode (email-only modal → magic-link). Their auth.users row is created with no Google identity attached. If they sign out later and try to sign back in via "Sign in with Google" (same email), Supabase needs to resolve them to the *same* auth.users row — not create a duplicate, which would orphan their plan + member_profiles + subscription.
+
+**Why parked:** Jake wants to test this with a friend's real Gmail rather than a `+anontestN@gmail.com` alias. Easier to give the friend a Stripe promotion code and have them go through the full UI than to fake it.
+
+**When to revisit:** When Jake has a willing tester. Plan:
+
+1. Create a single-use Stripe promotion code (e.g. `MATETEST` — 100% off, once, applies to all products).
+2. Mate signs up via anon-mode (email modal) on a Progressive plan.
+3. Mate goes through onboarding, lands on welcome → getting-started.
+4. Mate signs out from the dashboard sidebar.
+5. Mate clicks "Sign in with Google" using the same Gmail.
+6. **Pass criteria:** lands back on their dashboard, sees their preferred_name in the sidebar, sees their plan content, no "set up your account" detour. Same `auth.users.id` as before — verify in Supabase Studio.
+7. **Fail mode to look for:** new auth.users row with same email, fresh onboarding form prompted, or "no member row" error from trigger-welcome-email.
+
+**If it fails,** the fix is in Supabase Auth settings → enable **Identity Linking** (or "Allow same email across providers"). Configure once and re-test.
 
 ### Win-back the ~50 historical Shopify customers (parked 2026-04-29)
 
