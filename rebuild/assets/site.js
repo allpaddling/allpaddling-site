@@ -104,6 +104,7 @@ function renderFooter() {
         <div class="footer-bottom">
           <span>© ${new Date().getFullYear()} All Paddling. All rights reserved.</span>
           <span class="footer-legal">
+            <span>ABN 52 173 453 156</span>
             <a href="/privacy.html">Privacy Policy</a>
             <a href="/terms.html">Terms &amp; Conditions</a>
           </span>
