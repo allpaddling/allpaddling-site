@@ -4,7 +4,36 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-01 (Fri afternoon)
+## ⭐⭐⭐ LATEST — 2026-05-01 (Fri afternoon) — fix-up round
+
+After the initial pause/cancel ship (commit `9340de3d` earlier today), shipped a follow-up commit [`5913782f`](https://github.com/allpaddling/allpaddling-site/commit/5913782f) that closes 3 of the 4 follow-ups flagged. Smoke-tested and working as of 01:40 UTC.
+
+### What shipped in this round
+
+- **Stripe API 2025+ field-move fix.** `stripe-webhook` now reads `invoice.subscription` from `invoice.parent.subscription_details.subscription` (with fallback to deprecated top-level), and `subscription.current_period_*` from `subscription.items.data[0].current_period_*` (with fallback). Closes the silent-no-op race that left `+pausetest` stuck at `status='incomplete'`. Also closes the cosmetic "—" dates in the new Settings UI — `Cancelling on Sun 1 Jun` etc. now displays correctly.
+- **Action emails wired** — 4 of 5 new templates fire now:
+  - `subscription-pause-scheduled` — sent from `manage-subscription` after Confirm Pause
+  - `subscription-cancel-scheduled` — after Confirm Cancel
+  - `subscription-resumed` — after Resume now (manual case)
+  - `subscription-canceled` — sent from `stripe-webhook` on `customer.subscription.deleted`
+- **`undo_cancel` and `change_resume_date` deliberately don't email** — minor adjustments, member sees the state in the UI.
+
+Function versions live: `stripe-webhook` v25 (`verify_jwt: false` ✓), `manage-subscription` v2 (`verify_jwt: true` ✓).
+
+### Still deferred
+
+1. **`subscription-resuming-soon`** (3-day-before reminder) — needs cron. Setup pg_cron extension, add `pause_resume_reminder_sent_at` column, schedule a daily scan.
+2. **Auto-resume detection in webhook.** When Stripe auto-resumes a paused sub at `pause_resumes_at`, the resulting `subscription.updated` event should trigger `subscription-resumed` email. Currently only the manual-resume case is wired. Needs state-diff in the webhook (was paused, now active) plus idempotency to avoid double-sending if manual resume already fired.
+3. **Coach-side admin pause/cancel** — Mick can't pause/cancel on a member's behalf via admin pages.
+4. **Stripe Customer Portal integration** for `unpaid` status.
+
+### Webhook race issue is now closed
+
+The +pausetest stuck-incomplete bug from the morning was caused by `invoice.subscription` being null in the new Stripe API payload, which made `handleInvoicePaid` take the early-return path with error=null. The field-move fix above closes this. New signups should no longer get stuck.
+
+---
+
+## ⭐⭐ EARLIER TODAY — 2026-05-01 (Fri afternoon)
 
 ### What shipped today
 
