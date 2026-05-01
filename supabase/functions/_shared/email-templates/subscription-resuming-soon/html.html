@@ -1,0 +1,75 @@
+<!--
+  Resume-soon email — sent ~3 days before pause_resumes_at.
+  Triggered by a scheduled task (cron) that scans subscriptions for
+  pause_resumes_at within the next 72 hours and hasn't been notified.
+
+  Placeholders:
+    {{member_name}}        preferred name
+    {{plan_name}}          "Custom Race Plan" / "Progressive Surf Ski Plan"
+    {{plan_price}}         "A$80" / "A$140"
+    {{auto_resume_date}}   formatted date
+    {{card_last4}}         last 4 of the card on file
+    {{settings_url}}       link to /app/settings.html
+    {{coach_name}}         "Mick"
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>Your membership resumes soon</title>
+<style>
+  @media only screen and (max-width: 600px) { .container { width: 100% !important; } .px { padding-left: 20px !important; padding-right: 20px !important; } }
+  @media (prefers-color-scheme: dark) { body, .bg { background-color: #0f172a !important; } .surface { background-color: #1e293b !important; } .text-primary { color: #f1f5f9 !important; } .text-muted { color: #cbd5e1 !important; } .divider { border-color: #334155 !important; } .footer-bg { background-color: #1e293b !important; } }
+</style>
+</head>
+<body class="bg" style="margin:0; padding:0; background-color:#f1f5f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">Your {{plan_name}} resumes on {{auto_resume_date}}.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg" style="background-color:#f1f5f9;">
+  <tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container surface" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden;">
+
+      <tr><td class="px divider" style="padding:28px 32px; border-bottom:1px solid #e2e8f0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td valign="middle" style="padding-right:12px;"><img src="https://allpaddling.online/assets/email-logo-mark.png" alt="All Paddling" width="32" height="32" style="display:block; width:32px; height:32px; border-radius:6px;" /></td>
+            <td valign="middle">
+              <div class="text-primary" style="font-size:18px; font-weight:700; color:#0f172a; line-height:1.2;">All Paddling</div>
+              <div class="text-muted" style="font-size:11px; color:#64748b; letter-spacing:0.14em; text-transform:uppercase; font-weight:500; margin-top:2px;">Paddle Specific Training</div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <tr><td class="px text-primary" style="padding:36px 32px 8px; color:#0f172a;">
+        <h1 style="margin:0 0 12px; font-size:24px; font-weight:700; line-height:1.3; color:#0f172a;">Coming back in 3 days.</h1>
+        <p class="text-primary" style="margin:0 0 16px; font-size:16px; line-height:1.6; color:#0f172a;">Hi {{member_name}},</p>
+        <p class="text-muted" style="margin:0 0 16px; font-size:16px; line-height:1.6; color:#475569;">Quick heads up — your <strong style="color:#0f172a;">{{plan_name}}</strong> membership is set to auto-resume on <strong style="color:#0f172a;">{{auto_resume_date}}</strong>, and we'll charge <strong style="color:#0f172a;">{{plan_price}}</strong> to your card ending {{card_last4}} on that date.</p>
+        <p class="text-muted" style="margin:0 0 24px; font-size:16px; line-height:1.6; color:#475569;">If you're not ready to come back yet, you can change the resume date — or pause indefinitely — from Settings.</p>
+      </td></tr>
+
+      <tr><td class="px" style="padding:0 32px 12px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="border-radius:8px; background-color:#155e75;">
+            <a href="{{settings_url}}" style="display:inline-block; padding:14px 28px; font-size:15px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:8px;">Manage subscription</a>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td class="px text-muted" style="padding:24px 32px 36px; color:#475569;">
+        <p style="margin:0; font-size:15px; line-height:1.6; color:#475569;">If everything's good, no action needed. We'll see you back on the water.</p>
+      </td></tr>
+
+      <tr><td class="px footer-bg divider text-muted" style="padding:24px 32px; background-color:#f8fafc; border-top:1px solid #e2e8f0; font-size:13px; color:#64748b; text-align:center; line-height:1.5;">
+        <p style="margin:0 0 6px; color:#64748b;">All Paddling — coaching by {{coach_name}} Di Betta.</p>
+        <p style="margin:0; color:#64748b;">Reply to this email and it goes straight to {{coach_name}}.</p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

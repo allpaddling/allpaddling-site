@@ -1,0 +1,13 @@
+Hi {{member_name}},
+
+Your {{plan_name}} membership ended today. The program is locked, but your account is still here — your training history, threshold pace and onboarding answers are saved if you'd like to come back.
+
+If you change your mind, you can rejoin any time at:
+{{rejoin_url}}
+
+Same email, same training data — no need to redo onboarding.
+
+Thanks for paddling with us. If there's anything we could have done better, just reply to this email — it lands with {{coach_name}} directly.
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.

@@ -597,6 +597,14 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
     current_period_end:   sub.current_period_end   ? new Date(sub.current_period_end   * 1000).toISOString() : null,
     cancel_at:            sub.cancel_at            ? new Date(sub.cancel_at            * 1000).toISOString() : null,
     stripe_price_id:      sub.items?.data?.[0]?.price?.id ?? null,
+    // Pause/cancel mirror — added 2026-05-01 with the member-driven
+    // pause+cancel feature. Stripe's pause_collection mechanism fires
+    // customer.subscription.updated rather than dedicated paused/resumed
+    // events, so this handler is the right place to mirror both.
+    cancel_at_period_end: sub.cancel_at_period_end ?? false,
+    pause_resumes_at:     sub.pause_collection?.resumes_at
+                            ? new Date(sub.pause_collection.resumes_at * 1000).toISOString()
+                            : null,
   };
   if (!isDowngrade) {
     updates.status = sub.status;
@@ -612,7 +620,9 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
     `customer.subscription.updated: ${sub.id} → ` +
     (isDowngrade
       ? `status kept as ${existing.status} (refused downgrade to ${sub.status})`
-      : sub.status)
+      : sub.status) +
+    (sub.cancel_at_period_end ? ' [cancel_at_period_end=true]' : '') +
+    (sub.pause_collection?.resumes_at ? ` [pause_resumes_at=${new Date(sub.pause_collection.resumes_at * 1000).toISOString()}]` : '')
   );
 }
 

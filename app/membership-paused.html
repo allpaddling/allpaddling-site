@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Membership paused — All Paddling</title>
+<meta name="description" content="Your membership is paused. Resume any time." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  /* Focused single-column layout (no sidebar) — same shape as onboarding.html.
+     A paused/canceled member shouldn't see app navigation that won't work for
+     them; we give them a clean, dignified landing page with only the actions
+     they can take. */
+  .locked-shell {
+    max-width: 560px; margin: 0 auto; padding: 3.5rem 1.5rem 4rem;
+  }
+  .locked-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--brand-50);
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 1.25rem;
+  }
+  .locked-icon svg { width: 30px; height: 30px; stroke: var(--brand-700); }
+  .locked-h {
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    font-size: 1.7rem; font-weight: 600; margin: 0 0 0.6rem;
+    letter-spacing: -0.01em; line-height: 1.2;
+  }
+  .locked-sub { color: var(--text-3); margin: 0 0 1.75rem; font-size: 1rem; line-height: 1.55; }
+  .locked-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; box-shadow: var(--shadow-sm);
+    margin-bottom: 1.5rem;
+  }
+  .locked-kv {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 0.6rem 0; border-bottom: 1px solid var(--surface-2);
+    font-size: 0.92rem;
+  }
+  .locked-kv:last-of-type { border-bottom: 0; }
+  .locked-kv .k { color: var(--text-3); }
+  .locked-kv .v { color: var(--text); font-weight: 500; }
+  .locked-actions {
+    display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.5rem;
+  }
+  .btn-resume {
+    flex: 1 1 auto; min-width: 200px;
+    padding: 0.85rem 1.25rem;
+    background: var(--brand-700); border: 1px solid var(--brand-700); color: #fff;
+    border-radius: var(--radius-sm); font: 600 0.95rem 'Inter', sans-serif;
+    cursor: pointer; transition: opacity .15s;
+  }
+  .btn-resume:hover { opacity: 0.9; }
+  .btn-resume:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary {
+    padding: 0.85rem 1.25rem;
+    background: var(--surface); border: 1px solid var(--border-strong); color: var(--text);
+    border-radius: var(--radius-sm); font: 500 0.95rem 'Inter', sans-serif;
+    cursor: pointer;
+  }
+  .btn-secondary:hover { border-color: var(--text-2); }
+  .locked-footer {
+    margin-top: 2rem; font-size: 0.85rem; color: var(--text-3);
+    text-align: center; line-height: 1.6;
+  }
+  .locked-footer a { color: var(--brand-700); }
+  .toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff; padding: 0.7rem 1.2rem;
+    border-radius: 8px; font-size: 0.9rem; opacity: 0; pointer-events: none;
+    transition: opacity .2s; z-index: 1000;
+  }
+  .toast.show { opacity: 1; }
+  .err { color: #b91c1c; font-size: 0.88rem; margin-top: 0.5rem; }
+
+  /* Logo strip at top — minimal app branding without full sidebar nav */
+  .locked-brand {
+    display: flex; align-items: center; gap: 0.65rem;
+    padding: 1.25rem 0; margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .locked-brand-mark {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+    color: white; border-radius: 8px;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .locked-brand-mark svg { width: 18px; height: 18px; }
+  .locked-brand-text {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 1rem; color: var(--text); line-height: 1.15;
+  }
+  .locked-brand-text small {
+    display: block; font-family: 'Inter', sans-serif;
+    font-size: 0.7rem; font-weight: 500; color: var(--text-3); margin-top: 3px;
+  }
+  .signout-link {
+    margin-left: auto; font-size: 0.85rem; color: var(--text-3);
+    background: none; border: none; cursor: pointer; padding: 0.4rem 0.7rem;
+  }
+  .signout-link:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="locked-shell">
+
+  <div class="locked-brand">
+    <div class="locked-brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12c2-3 5-3 7 0s5 3 7 0 5-3 7 0"/><path d="M3 18c2-3 5-3 7 0s5 3 7 0 5-3 7 0"/>
+      </svg>
+    </div>
+    <div class="locked-brand-text">All Paddling<small>Paddle Specific Training</small></div>
+    <button class="signout-link" id="signout-btn" type="button">Sign out</button>
+  </div>
+
+  <div class="locked-icon" id="status-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  </div>
+  <h1 class="locked-h" id="status-title">Your membership is paused</h1>
+  <p class="locked-sub" id="status-sub">Welcome back. Your program will unlock as soon as you resume — your training history and threshold pace are exactly where you left them.</p>
+
+  <div class="locked-card" id="status-card" style="display:none;">
+    <div class="locked-kv"><span class="k">Plan</span><span class="v" id="kv-plan">—</span></div>
+    <div class="locked-kv" id="kv-paused-row" style="display:none;"><span class="k">Paused since</span><span class="v" id="kv-paused">—</span></div>
+    <div class="locked-kv" id="kv-resume-row" style="display:none;"><span class="k">Auto-resume</span><span class="v" id="kv-resume">—</span></div>
+    <div class="locked-kv" id="kv-canceled-row" style="display:none;"><span class="k">Canceled on</span><span class="v" id="kv-canceled">—</span></div>
+  </div>
+
+  <div class="locked-actions" id="action-row" style="display:none;">
+    <!-- Buttons rendered by JS based on subscription state -->
+  </div>
+
+  <div class="err" id="err-msg" style="display:none;"></div>
+
+  <p class="locked-footer">
+    Questions? <a href="mailto:mick@allpaddling.online">Email Mick</a>
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script>
+/* ============================================================
+   Membership-paused / canceled landing page
+   ------------------------------------------------------------
+   This page is the redirect target for enforceMemberGates() when
+   a member's subscription has lapsed (status = 'paused' /
+   'canceled' / 'unpaid' / 'incomplete_expired'). It does NOT
+   call enforceMemberGates itself — that would create an infinite
+   redirect loop.
+   ============================================================ */
+
+(async function () {
+  // Auth check (manual, not via enforceMemberGates).
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user?.email) {
+    location.href = '/login.html';
+    return;
+  }
+  const userId = session.user.id;
+  const email  = session.user.email.toLowerCase();
+
+  // Coaches shouldn't be on this page — bounce them to admin.
+  const { data: coachRow } = await sb.from('coaches').select('email').eq('email', email).maybeSingle();
+  if (coachRow) { location.href = '/app/admin.html'; return; }
+
+  // Look up subscription state.
+  const { data: subRow } = await sb
+    .from('subscriptions')
+    .select('status, stripe_subscription_id, current_period_end, canceled_at, pause_resumes_at, cancel_at_period_end, stripe_price_id, progressive_member_id, custom_member_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // No subscription row at all = legacy member or some edge case. Bounce to dashboard;
+  // the gate will figure it out from there.
+  if (!subRow) { location.href = '/app/dashboard.html'; return; }
+
+  // Derive plan name from the linked member row.
+  let planLabel = '—';
+  if (subRow.progressive_member_id) {
+    const { data: pm } = await sb
+      .from('progressive_members')
+      .select('plan_key')
+      .eq('id', subRow.progressive_member_id)
+      .maybeSingle();
+    const PLAN = { prone: 'Prone Paddleboard', sup: 'Stand Up Paddleboard', oc: 'Outrigger Canoe', ski: 'Surf Ski' };
+    planLabel = `Progressive · ${PLAN[pm?.plan_key] || pm?.plan_key || ''}`;
+  } else if (subRow.custom_member_id) {
+    planLabel = 'Custom Race Plan';
+  }
+
+  // ---- State render ----
+  const status = subRow.status;
+  const isCanceled  = status === 'canceled' || status === 'incomplete_expired';
+  const isPaused    = status === 'paused';
+  const isUnpaid    = status === 'unpaid';
+
+  document.getElementById('status-card').style.display = 'block';
+  document.getElementById('action-row').style.display = 'flex';
+  document.getElementById('kv-plan').textContent = planLabel;
+
+  const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+
+  if (isPaused) {
+    // Headline + body already match this state in the HTML — no change needed.
+    if (subRow.current_period_end) {
+      document.getElementById('kv-paused-row').style.display = 'flex';
+      document.getElementById('kv-paused').textContent = fmtDate(subRow.current_period_end);
+    }
+    if (subRow.pause_resumes_at) {
+      document.getElementById('kv-resume-row').style.display = 'flex';
+      document.getElementById('kv-resume').textContent = fmtDate(subRow.pause_resumes_at);
+    }
+
+    // Actions: Resume now + Change resume date
+    document.getElementById('action-row').innerHTML = `
+      <button class="btn-resume" id="resume-btn" type="button">Resume now</button>
+      <button class="btn-secondary" id="change-date-btn" type="button">${subRow.pause_resumes_at ? 'Change resume date' : 'Set auto-resume date'}</button>
+    `;
+    document.getElementById('resume-btn').addEventListener('click', resumeSub);
+    document.getElementById('change-date-btn').addEventListener('click', changeResumeDate);
+
+  } else if (isCanceled) {
+    document.getElementById('status-title').textContent = 'Your membership has ended';
+    document.getElementById('status-sub').textContent = `Your training history is saved — sign up again any time at allpaddling.online.`;
+    if (subRow.canceled_at) {
+      document.getElementById('kv-canceled-row').style.display = 'flex';
+      document.getElementById('kv-canceled').textContent = fmtDate(subRow.canceled_at);
+    }
+    document.getElementById('action-row').innerHTML = `
+      <a href="/plans.html"><button class="btn-resume" type="button">Sign up again</button></a>
+    `;
+
+  } else if (isUnpaid) {
+    document.getElementById('status-title').textContent = 'Your last payment didn\'t go through';
+    document.getElementById('status-sub').textContent = `We tried your card a few times but the charge didn't succeed. Update your payment method to keep your membership active.`;
+    document.getElementById('action-row').innerHTML = `
+      <a href="https://billing.stripe.com/p/login/test_xxx" id="portal-link" target="_blank"><button class="btn-resume" type="button">Update payment method</button></a>
+    `;
+    // NB: TODO — Stripe Customer Portal URL needs to be created via stripe.billingPortal.sessions.create
+    // before launch. For now, link them to email Mick.
+    document.getElementById('portal-link').href = 'mailto:mick@allpaddling.online';
+
+  } else {
+    // Defensive — shouldn't reach here, but show generic fallback
+    document.getElementById('status-title').textContent = 'Your membership status needs attention';
+    document.getElementById('status-sub').textContent = `Please email Mick to sort this out.`;
+    document.getElementById('action-row').innerHTML = `
+      <a href="mailto:mick@allpaddling.online"><button class="btn-resume" type="button">Email Mick</button></a>
+    `;
+  }
+
+  // ---- Sign out ----
+  document.getElementById('signout-btn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    location.href = '/login.html';
+  });
+
+  // ---- Action handlers ----
+  async function resumeSub () {
+    const btn = document.getElementById('resume-btn');
+    btn.disabled = true;
+    btn.textContent = 'Resuming…';
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-subscription`, {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${session.access_token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'resume' }),
+      });
+      const out = await res.json();
+      if (!res.ok || !out.ok) {
+        throw new Error(out.detail || out.error || 'Failed to resume');
+      }
+      showToast('Welcome back!');
+      // Give Stripe + webhook a moment to mirror state, then bounce to dashboard.
+      setTimeout(() => { location.href = '/app/dashboard.html'; }, 1500);
+    } catch (e) {
+      showError(e.message);
+      btn.disabled = false;
+      btn.textContent = 'Resume now';
+    }
+  }
+
+  async function changeResumeDate () {
+    // Open a simple inline date prompt. Modal could come later.
+    const current = subRow.pause_resumes_at
+      ? new Date(subRow.pause_resumes_at).toISOString().slice(0,10)
+      : new Date(Date.now() + 90*24*3600*1000).toISOString().slice(0,10);
+    const newDate = prompt('When should your membership auto-resume? (YYYY-MM-DD)', current);
+    if (!newDate) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+      showError('Please use YYYY-MM-DD format.');
+      return;
+    }
+    const iso = new Date(newDate + 'T00:00:00Z').toISOString();
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-subscription`, {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${session.access_token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'change_resume_date', resumes_at: iso }),
+      });
+      const out = await res.json();
+      if (!res.ok || !out.ok) {
+        throw new Error(out.detail || out.error || 'Failed to update resume date');
+      }
+      showToast('Resume date updated');
+      setTimeout(() => location.reload(), 1000);
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+
+  function showToast (msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+  function showError (msg) {
+    const e = document.getElementById('err-msg');
+    e.textContent = msg;
+    e.style.display = 'block';
+    setTimeout(() => { e.style.display = 'none'; }, 4500);
+  }
+})();
+</script>
+</body>
+</html>

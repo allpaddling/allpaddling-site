@@ -1,0 +1,11 @@
+Hi {{member_name}},
+
+Welcome back. Your {{plan_name}} membership is active again — your training history, threshold pace and program progress are exactly where you left them.
+
+Pick up where you left off:
+{{plan_url}}
+
+Got a question, a quirk in your training week, or a goal race you want to flag? Just reply to this email — it lands with {{coach_name}} directly.
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.

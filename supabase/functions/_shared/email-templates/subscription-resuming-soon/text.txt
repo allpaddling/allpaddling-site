@@ -1,0 +1,12 @@
+Hi {{member_name}},
+
+Quick heads up — your {{plan_name}} membership is set to auto-resume on {{auto_resume_date}}, and we'll charge {{plan_price}} to your card ending {{card_last4}} on that date.
+
+If you're not ready to come back yet, you can change the resume date — or pause indefinitely — from Settings:
+{{settings_url}}
+
+If everything's good, no action needed. We'll see you back on the water.
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.
+Reply to this email and it goes straight to {{coach_name}}.

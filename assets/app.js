@@ -273,9 +273,9 @@ function getMember() {
    handles that. */
 async function enforceMemberGates () {
   if (typeof sb === 'undefined' || !sb) return;
-  // Onboarding.html is one of the redirect targets; never gate it.
+  // Onboarding.html and membership-paused.html are redirect targets — never gate them.
   const here = (location.pathname.split('/').pop() || '').toLowerCase();
-  if (here === 'onboarding.html') return;
+  if (here === 'onboarding.html' || here === 'membership-paused.html') return;
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session?.user?.email) return;
@@ -305,6 +305,33 @@ async function enforceMemberGates () {
       // would loop through this gate again).
       location.href = '/plans.html';
       return;
+    }
+
+    // SUBSCRIPTION STATUS GATE — paused or canceled members go to the
+    // friendly locked-out page, not /plans.html (existing members have
+    // history, threshold, and a one-click resume path; we don't want
+    // to treat them like fresh visitors).
+    //
+    // Active / trialing / past_due  → allow.
+    // Active with cancel_at_period_end=true → allow until period ends.
+    // Active with pause_collection scheduled → allow until period ends.
+    // Status='paused'              → lock (Stripe activated the pause).
+    // Status='canceled'            → lock (sub deleted; access ended).
+    // Status='unpaid' / 'incomplete_expired' → lock (defensive).
+    // No subscriptions row found = legacy member (manually-added by Mick) → fall through.
+    const { data: subRow } = await sb
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (subRow) {
+      const blockedStatuses = ['paused', 'canceled', 'unpaid', 'incomplete_expired'];
+      if (blockedStatuses.includes(subRow.status)) {
+        location.href = '/app/membership-paused.html';
+        return;
+      }
     }
 
     // ONBOARDING GATE — paid member but profile incomplete.
