@@ -1056,3 +1056,88 @@ async function getEffectiveAuthUserId (session) {
   }
   return (session && session.user && session.user.id) || null;
 }
+
+/* ============================================================
+   Admin mobile nav
+   Injects a sticky mobile header (hamburger + brand) and a
+   drawer-close scrim into every admin page. Works by prepending
+   into the existing .app-main inside #admin-shell — the shell
+   starts hidden, so the header only becomes visible once auth
+   succeeds and the shell is revealed. The CSS drawer system
+   (app-sidebar.open, .app-scrim.visible) already exists in
+   app.css; this just wires it up for admin pages.
+   ============================================================ */
+function mountAdminMobile () {
+  const shell = document.getElementById('admin-shell');
+  if (!shell) return;
+  const main    = shell.querySelector('.app-main');
+  const sidebar = shell.querySelector('.app-sidebar');
+  if (!main || !sidebar) return;
+
+  // ---- Mobile header ----
+  const hdr = document.createElement('div');
+  hdr.className = 'app-mobile-header';
+  hdr.id = 'admin-mobile-header';
+  hdr.innerHTML = `
+    <button class="app-menu-toggle" id="admin-menu-toggle" aria-label="Open navigation menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span class="brand-mark-sm" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"
+                fill="currentColor" stroke="none"/>
+          <polyline points="3,13 8,13 10,9 14,17 16,13 21,13"
+                    stroke="#155e75" stroke-width="2.4" fill="none"/>
+        </svg>
+      </span>
+      <strong style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;">All Paddling</strong>
+      <span style="display:inline-flex;align-items:center;background:var(--brand-50);
+                   color:var(--brand-700);font-size:0.68rem;font-weight:700;letter-spacing:0.05em;
+                   padding:0.15rem 0.45rem;border-radius:5px;margin-left:0.1rem;">ADMIN</span>
+    </div>`;
+  main.prepend(hdr);
+
+  // ---- Scrim (behind open drawer) ----
+  let scrim = document.getElementById('admin-mobile-scrim');
+  if (!scrim) {
+    scrim = document.createElement('div');
+    scrim.className = 'app-scrim';
+    scrim.id = 'admin-mobile-scrim';
+    document.body.appendChild(scrim);
+  }
+
+  // ---- Toggle wiring ----
+  const toggle = document.getElementById('admin-menu-toggle');
+
+  function closeDrawer () {
+    sidebar.classList.remove('open');
+    scrim.classList.remove('visible');
+  }
+  function openDrawer () {
+    sidebar.classList.add('open');
+    scrim.classList.add('visible');
+  }
+
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      if (sidebar.classList.contains('open')) closeDrawer(); else openDrawer();
+    });
+  }
+  scrim.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeDrawer();
+  });
+  // Close when a nav link is tapped (navigating away)
+  sidebar.querySelectorAll('a').forEach(function (a) {
+    a.addEventListener('click', function () { setTimeout(closeDrawer, 60); });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', mountAdminMobile);
