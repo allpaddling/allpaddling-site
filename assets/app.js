@@ -282,13 +282,27 @@ async function enforceMemberGates () {
     const email  = session.user.email.toLowerCase();
     const userId = session.user.id;
 
-    // Coaches bypass both gates.
+    // Coaches bypass the subscription gate. But if they're also a paying
+    // member who hasn't completed onboarding yet, send them through it —
+    // so Mick gets the full onboarding experience when he signs up for
+    // his own training. If there's no member_profiles row at all (coach
+    // without a membership), the check is a no-op and they bypass as normal.
     const { data: coachRow } = await sb
       .from('coaches')
       .select('email')
       .eq('email', email)
       .maybeSingle();
-    if (coachRow) return;
+    if (coachRow) {
+      const { data: mp } = await sb
+        .from('member_profiles')
+        .select('completed_onboarding_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (mp && !mp.completed_onboarding_at) {
+        location.href = 'onboarding.html';
+      }
+      return;
+    }
 
     // SUBSCRIPTION GATE — match by auth_user_id OR email. The latter
     // catches members whose auth_user_id was never linked (e.g. rows
