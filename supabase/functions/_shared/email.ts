@@ -69,6 +69,7 @@ export const TEMPLATE_NAMES = [
   'subscription-resumed',
   'subscription-cancel-scheduled',
   'subscription-canceled',
+  'subscription-cancel-reversed',
 ] as const;
 export type TemplateName = typeof TEMPLATE_NAMES[number];
 

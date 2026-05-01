@@ -1,0 +1,8 @@
+Hi {{member_name}},
+
+Quick confirmation — you've reversed your cancellation. Your {{plan_name}} membership continues without interruption, and your next billing date is unchanged.
+
+Glad to keep training with you. If anything changed your mind in the moment that we should know about, just hit reply — {{coach_name}} reads them all.
+
+—
+All Paddling — coaching by {{coach_name}} Di Betta.

@@ -18,7 +18,7 @@ import os, json
 
 names = ['welcome', 'payment-receipt', 'plan-ready', 'block-delivered', 'payment-failed', 'upcoming-renewal',
          'subscription-pause-scheduled', 'subscription-resuming-soon', 'subscription-resumed',
-         'subscription-cancel-scheduled', 'subscription-canceled']
+         'subscription-cancel-scheduled', 'subscription-canceled', 'subscription-cancel-reversed']
 print("// ============================================================")
 print("// supabase/functions/_shared/email-templates.gen.ts")
 print("//")

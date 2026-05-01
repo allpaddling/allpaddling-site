@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
           cancel_at_period_end: false,
         });
         console.log(`manage-subscription: undid scheduled cancel for ${subscriptionId}`);
-        // No email — nothing to confirm; just goes back to active.
+        await trySendEmail('subscription-cancel-reversed', memberCtx, {});
         return jsonResponse({ ok: true, action: 'undo_cancel', subscription_id: subscriptionId });
       }
 

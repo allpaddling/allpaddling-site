@@ -526,12 +526,51 @@
         return false;
       }
       if (successMsg && !silent) showToast(successMsg);
-      // Reload after a brief pause so webhook can mirror the new state into the row.
-      setTimeout(() => location.reload(), 1100);
+      // Wait until the webhook has mirrored the new state into the row, then
+      // reload — otherwise the page can race the DB and render stale state
+      // (especially after pause, whose webhook round-trip is the slowest).
+      await waitForStateMirror(action, payload);
+      location.reload();
       return true;
     } catch (e) {
       if (!silent) showToast('Network error — please try again.', /*err*/true);
       return false;
+    }
+  }
+
+  // Poll the subscriptions table for up to ~3.5s waiting for the expected
+  // mirror of the action's effect. Returns as soon as the change is visible
+  // (typically <1s for cancel/resume, ~1.5–2.5s for pause). Falls through
+  // after max retries so we still reload — page will just show stale state
+  // briefly until the user clicks something else.
+  async function waitForStateMirror (action, payload) {
+    const matches = (row) => {
+      if (!row) return false;
+      switch (action) {
+        case 'pause':
+          return payload?.resumes_at ? row.pause_resumes_at !== null : true;
+        case 'resume':
+          return row.pause_resumes_at === null;
+        case 'cancel':
+          return row.cancel_at_period_end === true;
+        case 'undo_cancel':
+          return row.cancel_at_period_end === false;
+        case 'change_resume_date':
+          return row.pause_resumes_at !== null;
+        default:
+          return true;
+      }
+    };
+    for (let i = 0; i < 6; i++) {
+      await new Promise((r) => setTimeout(r, 600));
+      const { data: row } = await sb
+        .from('subscriptions')
+        .select('cancel_at_period_end, pause_resumes_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (matches(row)) return;
     }
   }
 
