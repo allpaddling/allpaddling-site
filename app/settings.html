@@ -367,7 +367,7 @@
     document.getElementById('row-pause-resumes').style.display = 'none';
     document.getElementById('row-access-ends').style.display = 'none';
     document.getElementById('row-canceled-on').style.display = 'none';
-    document.getElementById('row-next-billing').style.display = 'flex';
+    document.getElementById('row-next-billing').style.display = 'grid';
 
     // Default text
     document.getElementById('sub-next').textContent = row?.current_period_end ? fmtDate(row.current_period_end) : '—';
@@ -392,7 +392,7 @@
       const resumeStr = row.pause_resumes_at ? `<strong>${fmtDate(row.pause_resumes_at)}</strong>` : 'when you click Resume';
       banner.innerHTML = `Your membership will pause at the end of your current billing period. You'll keep full access until <strong>${fmtDate(row.current_period_end)}</strong>. We'll automatically resume on ${resumeStr}.`;
       if (row.pause_resumes_at) {
-        document.getElementById('row-pause-resumes').style.display = 'flex';
+        document.getElementById('row-pause-resumes').style.display = 'grid';
         document.getElementById('sub-pause-resumes').textContent = fmtDate(row.pause_resumes_at);
       }
       actions.innerHTML = `
@@ -411,10 +411,10 @@
       const resumeStr = row.pause_resumes_at ? `<strong>${fmtDate(row.pause_resumes_at)}</strong>` : 'when you click Resume';
       banner.innerHTML = `Your membership is paused. You won't be charged, and the program is locked until you resume. Auto-resume is set for ${resumeStr} — you can resume earlier any time.`;
       document.getElementById('row-next-billing').style.display = 'none';
-      document.getElementById('row-paused-since').style.display = 'flex';
+      document.getElementById('row-paused-since').style.display = 'grid';
       document.getElementById('sub-paused-since').textContent = fmtDate(row.current_period_end);
       if (row.pause_resumes_at) {
-        document.getElementById('row-pause-resumes').style.display = 'flex';
+        document.getElementById('row-pause-resumes').style.display = 'grid';
         document.getElementById('sub-pause-resumes').textContent = fmtDate(row.pause_resumes_at);
       }
       actions.innerHTML = `
@@ -433,7 +433,7 @@
       banner.className = 'sub-banner warn';
       banner.style.display = 'block';
       banner.innerHTML = `Your membership will end on <strong>${fmtDate(row.current_period_end)}</strong>. You'll keep full access until then. After that, the program will be locked but your account, history and threshold are preserved.`;
-      document.getElementById('row-access-ends').style.display = 'flex';
+      document.getElementById('row-access-ends').style.display = 'grid';
       const daysLeft = Math.max(0, Math.ceil((new Date(row.current_period_end) - new Date()) / (24*3600*1000)));
       document.getElementById('sub-access-ends').textContent = `${fmtDate(row.current_period_end)} · in ${daysLeft} days`;
       actions.innerHTML = `
@@ -456,7 +456,7 @@
       banner.style.display = 'block';
       banner.innerHTML = `You ended your membership on <strong>${fmtDate(row.canceled_at)}</strong>. The program is locked, but your training history, threshold pace and onboarding answers are saved.`;
       document.getElementById('row-next-billing').style.display = 'none';
-      document.getElementById('row-canceled-on').style.display = 'flex';
+      document.getElementById('row-canceled-on').style.display = 'grid';
       document.getElementById('sub-canceled-on').textContent = fmtDate(row.canceled_at);
       actions.innerHTML = `
         <a href="/plans.html"><button class="btn-rejoin" type="button">Rejoin All Paddling</button></a>
