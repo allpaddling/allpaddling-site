@@ -64,6 +64,11 @@ export const TEMPLATE_NAMES = [
   'block-delivered',
   'payment-failed',
   'upcoming-renewal',
+  'subscription-pause-scheduled',
+  'subscription-resuming-soon',
+  'subscription-resumed',
+  'subscription-cancel-scheduled',
+  'subscription-canceled',
 ] as const;
 export type TemplateName = typeof TEMPLATE_NAMES[number];
 

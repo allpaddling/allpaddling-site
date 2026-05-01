@@ -449,7 +449,17 @@ async function handleCheckoutSessionCompleted (session: Stripe.Checkout.Session)
 }
 
 async function handleInvoicePaid (invoice: Stripe.Invoice): Promise<void> {
-  const subscriptionId = invoice.subscription as string | null;
+  // Stripe API 2025-03-31 moved invoice.subscription to invoice.parent.subscription_details.subscription.
+  // Older API versions still send it at the top level. Read from both with fallback.
+  // This was the bug behind +pausetest's stuck-incomplete state on 2026-05-01: invoice.subscription
+  // was null in the new payload, handler returned silently with error=null, status never flipped to active.
+  // deno-lint-ignore no-explicit-any
+  const inv = invoice as any;
+  const subscriptionId =
+    (invoice.subscription as string | null) ??
+    (inv.parent?.subscription_details?.subscription as string | undefined) ??
+    (inv.lines?.data?.[0]?.subscription as string | undefined) ??
+    null;
   if (!subscriptionId) {
     // Some invoices are not subscription-linked (e.g. one-off charges).
     // We don't currently issue any of those, so log and skip.
@@ -592,10 +602,20 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
     ['active', 'trialing', 'past_due'].includes(existing.status) &&
     ['incomplete', 'incomplete_expired'].includes(sub.status);
 
+  // Stripe API 2025-03-31 moved subscription.current_period_start/end to
+  // subscription.items.data[0].current_period_start/end. Read from both
+  // with fallback so we capture the period regardless of API version.
+  // deno-lint-ignore no-explicit-any
+  const itemPeriodStart = (sub as any).items?.data?.[0]?.current_period_start as number | undefined;
+  // deno-lint-ignore no-explicit-any
+  const itemPeriodEnd   = (sub as any).items?.data?.[0]?.current_period_end   as number | undefined;
+  const periodStartTs = sub.current_period_start ?? itemPeriodStart ?? null;
+  const periodEndTs   = sub.current_period_end   ?? itemPeriodEnd   ?? null;
+
   const updates: Record<string, unknown> = {
-    current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
-    current_period_end:   sub.current_period_end   ? new Date(sub.current_period_end   * 1000).toISOString() : null,
-    cancel_at:            sub.cancel_at            ? new Date(sub.cancel_at            * 1000).toISOString() : null,
+    current_period_start: periodStartTs ? new Date(periodStartTs * 1000).toISOString() : null,
+    current_period_end:   periodEndTs   ? new Date(periodEndTs   * 1000).toISOString() : null,
+    cancel_at:            sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null,
     stripe_price_id:      sub.items?.data?.[0]?.price?.id ?? null,
     // Pause/cancel mirror — added 2026-05-01 with the member-driven
     // pause+cancel feature. Stripe's pause_collection mechanism fires
@@ -642,4 +662,18 @@ async function handleSubscriptionDeleted (sub: Stripe.Subscription): Promise<voi
   if (updErr) throw new Error(`customer.subscription.deleted: ${updErr.message}`);
 
   console.log(`customer.subscription.deleted: ${sub.id} → canceled`);
+
+  // Send the goodbye email. Wrapped in try/catch so a Resend hiccup
+  // doesn't fail the webhook and trigger a Stripe retry.
+  try {
+    const ctx = await resolveSubscription(sub.id);
+    await sendTransactional('subscription-canceled', ctx.email, {
+      member_name: ctx.preferred_name,
+      plan_name:   ctx.member.planLabel,
+      rejoin_url:  `${APP_BASE_URL}/plans.html`,
+      coach_name:  COACH_NAME,
+    });
+  } catch (emailErr) {
+    console.warn(`subscription-canceled email send failed for ${sub.id}:`, emailErr);
+  }
 }

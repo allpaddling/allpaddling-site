@@ -44,11 +44,29 @@
 
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { sendTransactional } from '../_shared/email.ts';
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')         ?? '';
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')              ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')         ?? '';
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const APP_BASE_URL      = Deno.env.get('APP_BASE_URL')              ?? 'https://allpaddling.online';
+
+const SETTINGS_URL = `${APP_BASE_URL}/app/settings.html`;
+const PLAN_URL     = `${APP_BASE_URL}/app/program.html`;
+const COACH_NAME   = 'Mick';
+
+const DISCIPLINE_LABELS: Record<string, string> = {
+  prone: 'Prone Paddle Board',
+  sup:   'Stand Up Paddle Board',
+  oc:    'Outrigger Canoe',
+  ski:   'Surf Ski',
+};
+
+const PLAN_PRICE: Record<string, string> = {
+  progressive: 'A$80',
+  custom:      'A$140',
+};
 
 if (!STRIPE_SECRET_KEY || !SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_ROLE_KEY) {
   console.error('manage-subscription: missing required environment variable(s)');
@@ -116,12 +134,17 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'missing_action', detail: 'action field is required' }, 400);
   }
 
-  // --- Look up the member's subscription ---
+  // --- Look up the member's subscription + linked member row for email ctx ---
   // We use the service-role client so we can read the row even if
   // RLS policies are tightened later. Confirm ownership manually.
   const { data: subRow, error: subErr } = await sbAdmin
     .from('subscriptions')
-    .select('id, user_id, stripe_subscription_id, status, cancel_at_period_end, pause_resumes_at')
+    .select(`
+      id, user_id, stripe_subscription_id, status, cancel_at_period_end, pause_resumes_at,
+      progressive_member_id, custom_member_id,
+      progressive_members ( email, name, plan_key ),
+      custom_members      ( email, name )
+    `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -140,6 +163,7 @@ Deno.serve(async (req) => {
   }
 
   const subscriptionId = subRow.stripe_subscription_id;
+  const memberCtx = resolveMemberContext(subRow);
 
   // --- Dispatch ---
   try {
@@ -162,6 +186,13 @@ Deno.serve(async (req) => {
         }
         const updated = await stripe.subscriptions.update(subscriptionId, params);
         console.log(`manage-subscription: paused ${subscriptionId} (resumes_at=${body.resumes_at ?? 'manual'})`);
+        await trySendEmail('subscription-pause-scheduled', memberCtx, {
+          access_end_date: formatDate(getPeriodEnd(updated)),
+          resume_line: body.resumes_at
+            ? `We'll automatically resume on ${formatDate(parseIsoToUnix(body.resumes_at))} and charge ${memberCtx.planPrice} then.`
+            : `You'll resume manually — we won't charge you again until you click Resume.`,
+          settings_url: SETTINGS_URL,
+        });
         return jsonResponse({ ok: true, action: 'pause', subscription_id: subscriptionId, resumes_at: body.resumes_at ?? null });
       }
 
@@ -172,14 +203,21 @@ Deno.serve(async (req) => {
           pause_collection: '',
         } as Stripe.SubscriptionUpdateParams);
         console.log(`manage-subscription: resumed ${subscriptionId}`);
+        await trySendEmail('subscription-resumed', memberCtx, {
+          plan_url: PLAN_URL,
+        });
         return jsonResponse({ ok: true, action: 'resume', subscription_id: subscriptionId });
       }
 
       case 'cancel': {
-        await stripe.subscriptions.update(subscriptionId, {
+        const updated = await stripe.subscriptions.update(subscriptionId, {
           cancel_at_period_end: true,
         });
         console.log(`manage-subscription: scheduled cancel for ${subscriptionId} at period end`);
+        await trySendEmail('subscription-cancel-scheduled', memberCtx, {
+          access_end_date: formatDate(getPeriodEnd(updated) ?? updated.cancel_at),
+          settings_url: SETTINGS_URL,
+        });
         return jsonResponse({ ok: true, action: 'cancel', subscription_id: subscriptionId });
       }
 
@@ -188,6 +226,7 @@ Deno.serve(async (req) => {
           cancel_at_period_end: false,
         });
         console.log(`manage-subscription: undid scheduled cancel for ${subscriptionId}`);
+        // No email — nothing to confirm; just goes back to active.
         return jsonResponse({ ok: true, action: 'undo_cancel', subscription_id: subscriptionId });
       }
 
@@ -207,6 +246,7 @@ Deno.serve(async (req) => {
           },
         });
         console.log(`manage-subscription: changed resume date for ${subscriptionId} to ${body.resumes_at}`);
+        // No email — minor adjustment, member sees it in the UI.
         return jsonResponse({ ok: true, action: 'change_resume_date', subscription_id: subscriptionId, resumes_at: body.resumes_at });
       }
 
@@ -230,6 +270,85 @@ Deno.serve(async (req) => {
 // ------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------
+
+interface MemberCtx {
+  email: string;
+  preferredName: string;
+  planLabel: string;       // "Custom Race Plan" / "Progressive Surf Ski Plan"
+  planPrice: string;       // "A$80" / "A$140"
+  planType: 'progressive' | 'custom' | null;
+}
+
+// deno-lint-ignore no-explicit-any
+function resolveMemberContext (subRow: any): MemberCtx {
+  // Relation arrays from PostgREST may come back as object or single-item array.
+  // deno-lint-ignore no-explicit-any
+  const pm: any = Array.isArray(subRow.progressive_members) ? subRow.progressive_members[0] : subRow.progressive_members;
+  // deno-lint-ignore no-explicit-any
+  const cm: any = Array.isArray(subRow.custom_members)      ? subRow.custom_members[0]      : subRow.custom_members;
+
+  if (subRow.progressive_member_id && pm) {
+    const label = DISCIPLINE_LABELS[pm.plan_key as string] ?? pm.plan_key;
+    const name  = (pm.name as string | null) || (pm.email as string).split('@')[0];
+    return {
+      email:         pm.email,
+      preferredName: name.split(' ')[0] || (pm.email as string).split('@')[0],
+      planLabel:     `Progressive ${label} Plan`,
+      planPrice:     PLAN_PRICE.progressive,
+      planType:      'progressive',
+    };
+  }
+  if (subRow.custom_member_id && cm) {
+    const name = (cm.name as string | null) || (cm.email as string).split('@')[0];
+    return {
+      email:         cm.email,
+      preferredName: name.split(' ')[0] || (cm.email as string).split('@')[0],
+      planLabel:     'Custom Race Plan',
+      planPrice:     PLAN_PRICE.custom,
+      planType:      'custom',
+    };
+  }
+  // Defensive fallback — should never hit because the constraint requires one.
+  return { email: '', preferredName: '', planLabel: '—', planPrice: '—', planType: null };
+}
+
+// Period end with API 2025+ fallback (subscription items level).
+function getPeriodEnd (sub: Stripe.Subscription): number | null {
+  // deno-lint-ignore no-explicit-any
+  const itemEnd = (sub as any).items?.data?.[0]?.current_period_end as number | undefined;
+  return sub.current_period_end ?? itemEnd ?? null;
+}
+
+function formatDate (ts: number | string | null | undefined): string {
+  if (!ts) return '';
+  const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Send a templated email, swallowing errors so a Resend hiccup doesn't fail
+// the action (the Stripe state already changed; the email is best-effort).
+async function trySendEmail (
+  templateName: string,
+  ctx: MemberCtx,
+  extraVars: Record<string, string | number>,
+): Promise<void> {
+  if (!ctx.email) {
+    console.warn(`trySendEmail: skipping ${templateName}, no member email in context`);
+    return;
+  }
+  try {
+    await sendTransactional(templateName, ctx.email, {
+      member_name: ctx.preferredName,
+      plan_name:   ctx.planLabel,
+      coach_name:  COACH_NAME,
+      ...extraVars,
+    });
+  } catch (e) {
+    console.warn(`trySendEmail: ${templateName} failed for ${ctx.email}:`, e);
+  }
+}
+
 function parseIsoToUnix (iso: string): number | null {
   const ms = Date.parse(iso);
   if (isNaN(ms)) return null;
