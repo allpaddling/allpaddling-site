@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Overview — All Paddling Admin</title>
-<meta name="description" content="At-a-glance view of new signups, onboarding state, and (once Stripe is live) subscription health." />
+<meta name="description" content="At-a-glance view of new signups, onboarding state, custom plan status, and subscription alerts." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -205,7 +205,7 @@
   <main class="app-main">
     <div class="app-page-header">
       <h1 style="margin-bottom:0.15rem;">Overview</h1>
-      <p class="lead" style="margin:0;">At-a-glance numbers across signups, onboarding, and (when Stripe is live) subscriptions.</p>
+      <p class="lead" style="margin:0;">At-a-glance view of signups, onboarding, plan status, and subscription alerts.</p>
     </div>
 
     <!-- ============ Live tiles ============ -->
@@ -236,31 +236,31 @@
       </div>
     </div>
 
-    <!-- ============ Subscription tiles (placeholder until Stripe is live) ============ -->
-    <div class="ov-section-head">
-      <h2>Subscriptions <span class="ov-soon-tag">live when Stripe is wired</span></h2>
-      <span class="hint">Backed by the <code>subscriptions</code> table</span>
+    <!-- ============ Member health tiles ============ -->
+    <div class="ov-section-head" style="margin-top:1.75rem;">
+      <h2>Member health</h2>
+      <span class="hint">Plan status (Custom) and subscription alerts</span>
     </div>
-    <div class="ov-tile-row" id="sub-tiles">
-      <div class="ov-tile" id="t-active-tile">
-        <div class="label">Active subscriptions</div>
-        <div class="value" id="t-active">—</div>
-        <div class="breakdown" id="t-active-sub">No data yet</div>
+    <div class="ov-tile-row" id="health-tiles">
+      <div class="ov-tile" id="t-awaiting-tile">
+        <div class="label">Custom — awaiting plan</div>
+        <div class="value" id="t-awaiting">—</div>
+        <div class="breakdown" id="t-awaiting-sub">&nbsp;</div>
       </div>
-      <div class="ov-tile" id="t-mrr-tile">
-        <div class="label">Monthly recurring revenue</div>
-        <div class="value" id="t-mrr">—</div>
-        <div class="breakdown" id="t-mrr-sub">No data yet</div>
+      <div class="ov-tile" id="t-published-tile">
+        <div class="label">Custom — plan published</div>
+        <div class="value" id="t-published">—</div>
+        <div class="breakdown" id="t-published-sub">&nbsp;</div>
       </div>
-      <div class="ov-tile" id="t-past-due-tile">
-        <div class="label">Past-due subscriptions</div>
-        <div class="value" id="t-past-due">—</div>
-        <div class="breakdown" id="t-past-due-sub">No data yet</div>
+      <div class="ov-tile" id="t-paused-tile">
+        <div class="label">Paused memberships</div>
+        <div class="value" id="t-paused">—</div>
+        <div class="breakdown" id="t-paused-sub">&nbsp;</div>
       </div>
-      <div class="ov-tile" id="t-churn-tile">
-        <div class="label">Churn last 30 days</div>
-        <div class="value" id="t-churn">—</div>
-        <div class="breakdown" id="t-churn-sub">No data yet</div>
+      <div class="ov-tile" id="t-cancelling-tile">
+        <div class="label">Cancelling at period end</div>
+        <div class="value" id="t-cancelling">—</div>
+        <div class="breakdown" id="t-cancelling-sub">&nbsp;</div>
       </div>
     </div>
 
@@ -339,12 +339,13 @@
   }
 
   // ---- Load data in parallel ----
-  const [, , profilesRes, subsRes, coachesRes] = await Promise.all([
+  const [, , profilesRes, subsRes, coachesRes, customPlansRes] = await Promise.all([
     loadProgressiveMembers(),
     loadCustomData(),
     sb.from('member_profiles').select('user_id, completed_onboarding_at'),
-    sb.from('subscriptions').select('user_id, status, current_period_end, canceled_at, stripe_price_id'),
+    sb.from('subscriptions').select('user_id, status, cancel_at_period_end, pause_resumes_at, custom_member_id, progressive_member_id'),
     sb.from('coaches').select('email'),
+    sb.from('custom_plans').select('member_id, published_at'),
   ]);
 
   // Coaches (Mick + Jake) are also seeded as Progressive members so they
@@ -361,16 +362,16 @@
     ...customMembers.map(m => ({ ...m, type: 'custom' })),
   ];
 
-  // Build sets / counts. Subscriptions: also filter out coach-owned subs
-  // for the same reason (a coach test sub would inflate Active / MRR).
-  // Subscriptions only stores user_id, so cross-reference via the member
-  // tables (which carry auth_user_id) — anything with a user_id we don't
-  // recognise as a real member is treated as a coach/test row and dropped.
+  // Build sets / counts. Subscriptions: filter out coach-owned subs
+  // so a coach test sub doesn't pollute the health tiles.
   const profiles = (profilesRes.data || []);
   const realMemberUserIds = new Set(allMembers.map(m => m.authUserId).filter(Boolean));
   const subs = (subsRes.data || []).filter(s =>
     !s.user_id || realMemberUserIds.has(s.user_id),
   );
+
+  // Build custom_plans lookup: member_id → published_at
+  const customPlanMap = new Map((customPlansRes.data || []).map(p => [p.member_id, p.published_at]));
 
   // ---- Member tiles (always populated from member tables) ----
   const total = allMembers.length;
@@ -415,36 +416,69 @@
     document.getElementById('t-pending-sub').innerHTML = `<span>No members signed in yet</span>`;
   }
 
-  // ---- Subscription tiles ----
-  // If the subscriptions table is empty, mark all four as placeholders so it's
-  // visually obvious they're awaiting Stripe wiring. As soon as a single row
-  // exists, swap to live numbers.
-  const hasSubs = subs.length > 0;
-  if (!hasSubs) {
-    ['t-active', 't-mrr', 't-past-due', 't-churn'].forEach(placeholderTile);
-  } else {
-    const active   = subs.filter(s => s.status === 'active').length;
-    const pastDue  = subs.filter(s => s.status === 'past_due').length;
-    const canceled30d = subs.filter(s => s.canceled_at && Date.parse(s.canceled_at) >= _30d).length;
-    document.getElementById('t-active').textContent  = active;
-    document.getElementById('t-active-sub').textContent = active > 0 ? `${subs.length} total ever` : 'None yet';
-    document.getElementById('t-past-due').textContent = pastDue;
-    document.getElementById('t-past-due-sub').textContent = pastDue > 0 ? 'Cards declined this period' : 'All payments current';
-    document.getElementById('t-churn').textContent = canceled30d;
-    document.getElementById('t-churn-sub').textContent = canceled30d > 0 ? 'Subscriptions ended in last 30 days' : 'No churn last 30 days';
-    // MRR — best-effort estimate (no price catalog lookup yet).
-    // BOTH plans bill every 4 weeks (Progressive $80, Custom $140), so
-    // each member generates 13 cycles per 52-week year → divide by 12
-    // calendar months to get monthly equivalent:
-    //   Progressive: $80 × 13 / 12 ≈ $86.67 / calendar month
-    //   Custom:      $140 × 13 / 12 ≈ $151.67 / calendar month
-    // Jake clarified Custom cadence (2026-04-28): not monthly, every 4
-    // weeks just like Progressive.
-    const activeProgressive = subs.filter(s => s.status === 'active' && s.stripe_price_id && /prog/i.test(s.stripe_price_id)).length;
-    const activeCustom      = subs.filter(s => s.status === 'active').length - activeProgressive;
-    const monthlyRev = Math.round((activeProgressive * 80 + activeCustom * 140) * 13 / 12);
-    document.getElementById('t-mrr').textContent = `$${monthlyRev.toLocaleString('en-AU')}`;
-    document.getElementById('t-mrr-sub').textContent = `Estimated · ${active} active subs`;
+  // ---- Member health tiles ----
+  // Tile 1 & 2: Custom plan status (awaiting vs published)
+  // Only Custom members get individual plans — Progressive members share a
+  // published plan, so there's nothing for Mick to action there.
+  const customAwaitingPlan = customMembers.filter(m => {
+    const publishedAt = customPlanMap.get(m.id);
+    return !publishedAt; // no plan row OR plan row with no published_at
+  });
+  const customPublishedPlan = customMembers.filter(m => {
+    const publishedAt = customPlanMap.get(m.id);
+    return !!publishedAt;
+  });
+
+  document.getElementById('t-awaiting').textContent = customAwaitingPlan.length;
+  document.getElementById('t-awaiting-sub').innerHTML = customAwaitingPlan.length > 0
+    ? `<span>Action required — <a href="admin-members.html">view members</a></span>`
+    : `<span>All custom plans published</span>`;
+  if (customAwaitingPlan.length > 0) {
+    document.getElementById('t-awaiting-tile').style.setProperty('border-color', '#fca5a5');
+    document.getElementById('t-awaiting-tile').style.setProperty('background', '#fff7f7');
+  }
+
+  document.getElementById('t-published').textContent = customPublishedPlan.length;
+  document.getElementById('t-published-sub').innerHTML =
+    customCount > 0
+      ? `<span><b>${customPublishedPlan.length}</b> of <b>${customCount}</b> Custom members</span>`
+      : `<span>No Custom members yet</span>`;
+
+  // Tile 3: Paused memberships
+  const pausedSubs = subs.filter(s => s.status === 'paused');
+  document.getElementById('t-paused').textContent = pausedSubs.length;
+  document.getElementById('t-paused-sub').innerHTML = pausedSubs.length > 0
+    ? `<span>Access suspended until resume</span>`
+    : `<span>No paused memberships</span>`;
+
+  // Tile 4: Cancelling at period end (cancel_at_period_end = true, still active)
+  const cancellingSubs = subs.filter(s => s.cancel_at_period_end === true);
+  document.getElementById('t-cancelling').textContent = cancellingSubs.length;
+  document.getElementById('t-cancelling-sub').innerHTML = cancellingSubs.length > 0
+    ? `<span>Scheduled to cancel this period</span>`
+    : `<span>No pending cancellations</span>`;
+
+  // Build a subscription lookup by custom_member_id and progressive_member_id
+  // so the feed can show subscription status badges.
+  const subByCustomId     = new Map(subs.filter(s => s.custom_member_id).map(s => [s.custom_member_id, s]));
+  const subByProgressiveId = new Map(subs.filter(s => s.progressive_member_id).map(s => [s.progressive_member_id, s]));
+
+  function subStatusBadge(m) {
+    const sub = m.type === 'custom'
+      ? subByCustomId.get(m.id)
+      : subByProgressiveId.get(m.id);
+    if (!sub) return '';
+    if (sub.status === 'paused') return '<span class="pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db;">Paused</span>';
+    if (sub.cancel_at_period_end) return '<span class="pill" style="background:#fef3c7;color:#92400e;">Cancelling</span>';
+    if (sub.status === 'past_due') return '<span class="pill" style="background:#fee2e2;color:#991b1b;">Past due</span>';
+    return '';
+  }
+
+  function planStatusBadge(m) {
+    if (m.type !== 'custom') return '';
+    const publishedAt = customPlanMap.get(m.id);
+    if (publishedAt) return '<span class="pill" style="background:#dcfce7;color:#166534;">Plan published</span>';
+    return '<span class="pill" style="background:#fee2e2;color:#991b1b;">Awaiting plan</span>';
   }
 
   // ---- Recent signups feed ----
@@ -458,7 +492,7 @@
   } else {
     feedEl.innerHTML = sorted.map(m => {
       const name = m.name || '(no name)';
-      const pill = m.type === 'progressive'
+      const typePill = m.type === 'progressive'
         ? '<span class="pill progressive">Progressive</span>'
         : '<span class="pill custom">Custom</span>';
       return `
@@ -470,7 +504,7 @@
           </div>
           <div class="ov-feed-meta">
             ${escapeHtml(relTime(m.createdAt))}
-            ${pill}
+            ${typePill}${planStatusBadge(m)}${subStatusBadge(m)}
           </div>
         </div>
       `;
