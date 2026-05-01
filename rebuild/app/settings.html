@@ -239,9 +239,16 @@
   const session = await getCurrentSession();
   if (!session) { location.href = '../login.html'; return; }
   const userId = session.user.id;
-  const profile = await getCurrentMemberProfile();
+  // getEffectiveMemberProfile + getEffectiveAuthUserId honour the
+  // coach "Preview as <member>" sessionStorage flag — they return
+  // the previewed member's data when the flag is set AND the caller
+  // is a coach; otherwise they behave identically to the originals.
+  const profile = await getEffectiveMemberProfile();
   const isCoachUser = await isCurrentUserCoach();
   if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+  const effectiveUserId = await getEffectiveAuthUserId(session);
+  // isPreviewMode is true when a coach is viewing as a specific member.
+  const isPreviewMode = isCoachUser && !!effectiveUserId && effectiveUserId !== userId;
   if (profile && profile.type === 'progressive') {
     setSessionPlanKey(profile.planKey);
     const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
@@ -260,10 +267,17 @@
   const disciplineSel = document.getElementById('discipline');
 
   // ---- Account panel ----
-  document.getElementById('acct-name').textContent  = member.name;
-  document.getElementById('acct-email').textContent = member.email;
-  document.getElementById('acct-joined').textContent =
-    new Date(member.joinedAt).toLocaleDateString('en-AU', { year:'numeric', month:'long', day:'numeric' });
+  // In preview mode, profile holds the previewed member's name/email/createdAt
+  // from the member table (via getEffectiveMemberProfile). Fall back to the
+  // MOCK_MEMBER stub only when no better source is available.
+  const displayName   = (profile && profile.name)  || member.name;
+  const displayEmail  = (profile && profile.email) || member.email;
+  const displayJoined = (profile && profile.createdAt)
+    ? new Date(profile.createdAt).toLocaleDateString('en-AU', { year:'numeric', month:'long', day:'numeric' })
+    : new Date(member.joinedAt).toLocaleDateString('en-AU', { year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('acct-name').textContent  = displayName;
+  document.getElementById('acct-email').textContent = displayEmail;
+  document.getElementById('acct-joined').textContent = displayJoined;
 
   // ---- Discipline panel ----
   disciplineSel.value = state.discipline;
@@ -292,10 +306,12 @@
       : 'Cancel anytime';
 
   // Read live subscription state (if no row, assume legacy active).
+  // Use effectiveUserId so a coach previewing as a member sees that
+  // member's subscription row, not their own (or no row at all).
   const { data: subRow } = await sb
     .from('subscriptions')
     .select('id, stripe_subscription_id, status, current_period_end, canceled_at, cancel_at_period_end, pause_resumes_at')
-    .eq('user_id', userId)
+    .eq('user_id', effectiveUserId || userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -326,6 +342,17 @@
 
   // ---- Render ----
   renderSubCard(uiState, subRow);
+
+  // In preview mode a coach must not pause / cancel the member's
+  // subscription on their behalf — replace the action buttons with a
+  // read-only notice so the subscription state is still visible.
+  if (isPreviewMode) {
+    const actionsEl = document.getElementById('sub-actions');
+    if (actionsEl) actionsEl.innerHTML =
+      '<em style="color:var(--text-3);font-size:0.88rem;">Subscription actions are hidden in preview mode.</em>';
+    const miniEl = document.getElementById('sub-mini');
+    if (miniEl) miniEl.textContent = '';
+  }
 
   function renderSubCard (st, row) {
     const banner    = document.getElementById('sub-banner');
