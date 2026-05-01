@@ -4,7 +4,30 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-01 (Fri afternoon) — fix-up round
+## ⭐⭐⭐ LATEST — 2026-05-01 (Fri afternoon) — final polish
+
+After +pausetest2 testing on a fresh Custom signup, three small issues fixed in commit [`d5e609ec`](https://github.com/allpaddling/allpaddling-site/commit/d5e609ec):
+
+- **UI race on pause** — settings.html now polls the subscriptions table (max ~3.5s) waiting for the webhook to mirror state, instead of a fixed 1100ms timeout. Returns as soon as the change lands. Closes the bug where pausing showed Active state on the first reload.
+- **`subscription-cancel-reversed` email** — new template, fires from manage-subscription on undo_cancel. Previously silent; now confirms to the member their cancellation was reversed.
+- **Receipt emails for the 4 pre-fix signups** (Daniel/Pat/Paora/Ian) — Jake's call: skip the backfill, they can ask if they want them. The +pausetest2 test confirmed receipts now fire correctly post-fix.
+
+Function versions live as of session end: `stripe-webhook` v25, `manage-subscription` v3. 6 templates total in the subscription family (5 + cancel-reversed).
+
+### Pause/cancel status: SHIPPED + verified
+
+End-to-end smoke tested twice (Progressive plan via +pausetest, Custom plan via +pausetest2). All actions, all UI states, all emails working. The ZERO-impact-to-existing-customers commitment held throughout the deploy.
+
+### Still parked for future commits
+
+1. **`subscription-resuming-soon`** (3-day-before reminder) — needs cron + new column `pause_resume_reminder_sent_at` for idempotency.
+2. **Auto-resume detection in webhook.** When Stripe auto-resumes a paused sub at `pause_resumes_at`, the resulting event should trigger `subscription-resumed` email. Currently only the manual-resume case is wired.
+3. **Coach-side admin pause/cancel** — Mick can't do this on a member's behalf yet.
+4. **Stripe Customer Portal integration** for `unpaid` status.
+
+---
+
+## ⭐⭐ EARLIER 2026-05-01 (Fri afternoon) — fix-up round
 
 After the initial pause/cancel ship (commit `9340de3d` earlier today), shipped a follow-up commit [`5913782f`](https://github.com/allpaddling/allpaddling-site/commit/5913782f) that closes 3 of the 4 follow-ups flagged. Smoke-tested and working as of 01:40 UTC.
 
