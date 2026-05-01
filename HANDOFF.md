@@ -4,7 +4,64 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-04-29 (Wed mid-day)
+## ⭐⭐⭐ LATEST — 2026-05-01 (Fri afternoon)
+
+### What shipped today
+
+**Member-driven pause and cancel from Settings.** Live on `allpaddling.online`. Commit [`9340de3d`](https://github.com/allpaddling/allpaddling-site/commit/9340de3d). Smoke-tested end-to-end against `jakedibetta+pausetest@gmail.com`.
+
+Migration funnel state at deploy time: 15 migrated, 4 in `last_call_sent`, 1 in `urgent_signup_sent`, 1 `on_hold`. Webhook had been quiet ~38h. Deployed cleanly with no impact to in-flight migrations.
+
+What members can now do from `/app/settings.html`:
+- Pause membership with optional auto-resume date (default early Jan for the Sept–Dec off-season pattern Mick described). Stripe `pause_collection` keeps payment method retained — one-click resume in January.
+- Cancel at end of current period (cancel_at_period_end). Soft cancel — Rejoin button preserves training data, no need to redo onboarding.
+- Undo pause / undo cancel before period ends.
+- Change resume date.
+
+Five email template kinds were added but **none of them fire yet** — templates compile into `email-templates.gen.ts` but `stripe-webhook` doesn't yet call `sendTemplate(...)` for them. Intentional staging — verify UI in production first, then turn email sending on as a follow-up commit. Templates: subscription-pause-scheduled, subscription-resuming-soon, subscription-resumed, subscription-cancel-scheduled, subscription-canceled.
+
+### Live infrastructure changes
+
+- **Schema migration 015 applied** (`20260501_015_subscription_pause_cancel.sql`): added `cancel_at_period_end` (boolean, default false) and `pause_resumes_at` (timestamptz nullable) to `subscriptions`, plus partial indexes on both. Tracked in `supabase_migrations.schema_migrations` as `20260501003350_subscription_pause_cancel` (first migration registered through that mechanism — the older 011-014 were applied via Studio paste-in).
+- **`manage-subscription` Edge Function deployed** (version 1, `verify_jwt: true`). Five actions: pause, resume, cancel, undo_cancel, change_resume_date. Member JWT auth + ownership check via subscriptions.user_id. Source at `supabase/functions/manage-subscription/index.ts`.
+- **`stripe-webhook` redeployed** (version 24, `verify_jwt: false` — verified). Surgical patch to `handleSubscriptionUpdated`: mirrors `cancel_at_period_end` and `pause_collection.resumes_at` into the subscriptions table. Purely additive.
+- **Frontend live**: `app/settings.html` (rebuilt with 5 status-aware variants + pause/cancel modals), `app/membership-paused.html` (new locked-out screen), `assets/app.js` (extended `enforceMemberGates()` to route paused/canceled members to the lock page instead of `/plans.html`). All mirrored to `rebuild/` per dual-tree convention.
+
+### Known-issues surfaced during this work
+
+- **`current_period_end` is null for 14 of 15 active customers** (only Paora has it). This is a Stripe API 2025+ field-relocation: `subscription.current_period_end` was removed from the top level and moved to subscription items. Our webhook still reads `sub.current_period_end` so it writes null. Cosmetic in the new Settings UI: "Next billing", "Pause begins", "Access ends" rows show "—" instead of the date. Two-line fix: read from `sub.items.data[0].current_period_end` in `handleSubscriptionUpdated`. Not blocking — `cancel_at` IS being correctly populated by Stripe, so cancel-state dates can use that as a fallback.
+- **`+pausetest` row was stuck at `status='incomplete'`** post-signup despite invoice.paid firing successfully (error=null, processed_at set). Same race condition pattern that hit Ian Ferrell on 2026-04-29 — the webhook handler returned successfully without actually applying the update. Manually fixed via SQL (`update subscriptions set status='active', first_paid_at=..., current_period_start/end=...`). The underlying webhook race is unfixed — new signups can still hit it intermittently.
+
+### Smoke test results — 2026-05-01 01:03–01:14 UTC
+
+End-to-end against `jakedibetta+pausetest@gmail.com` (sub `sub_1TS4sDLOyixoXdVaVPhPvZHr`). All four state transitions verified, all four `customer.subscription.updated` webhook events processed without error, average ~650ms.
+
+| Action | DB result | Webhook ms |
+|---|---|---|
+| Pause (auto-resume Jan 5 2027) | `pause_resumes_at` set, `status` stays active | 750 |
+| Resume now | `pause_resumes_at` cleared | 870 |
+| Cancel at period end | `cancel_at_period_end=true`, `cancel_at`=2026-06-01 | 480 |
+| Undo cancel | `cancel_at_period_end=false`, `cancel_at` cleared | 520 |
+
+### Follow-ups (not done in this session)
+
+1. **Wire email sending dispatch** — extend `handleSubscriptionUpdated` to call `sendTemplate('subscription-pause-scheduled', ...)` etc. when state transitions detected. Templates already compiled and ready.
+2. **Fix `current_period_end` null write** — read from `sub.items.data[0].current_period_end` instead of the deprecated top-level field. Two lines in `handleSubscriptionUpdated`. Affects all subscription state mirrors going forward.
+3. **Auto-resume reminder email cron** — scheduled task to send `subscription-resuming-soon` template ~3 days before `pause_resumes_at`. Needs Supabase pg_cron or external scheduler.
+4. **Stripe Customer Portal integration** — for `unpaid` status the `membership-paused.html` page currently links to `mailto:mick`. Wire up `stripe.billingPortal.sessions.create` for self-service card update.
+5. **Webhook race fix** — investigate why `invoice.paid` for `+pausetest` returned 200 with error=null but didn't actually apply the status='active' update. Possible related: same root cause as the Ian Ferrell incident on 2026-04-29.
+6. **Coach-side admin pause/cancel** — Mick can't currently pause or cancel on a member's behalf via admin pages. Easy to add in `admin-members.html` if needed.
+7. **Update CLAUDE.md** — add `manage-subscription` to the Edge Function list under `supabase/functions/`, mention the two new schema columns under "Schema highlights".
+
+### Useful references
+
+- Design doc + visual mockup: [`design-previews/pause-cancel-design.md`](design-previews/pause-cancel-design.md), [`design-previews/pause-cancel-mockup.html`](design-previews/pause-cancel-mockup.html). Open the mockup in a browser — there's a state picker at the top.
+- WIP folder: `design-previews/wip/` — original drafts; can be deleted now that everything's shipped.
+- Monday-deploy checklist that we ended up running today: `design-previews/wip/MONDAY-DEPLOY-CHECKLIST.md`. Useful template for future Edge Function deploys.
+
+---
+
+## ⭐⭐ PREVIOUS — 2026-04-29 (Wed mid-day)
 
 ### Read this first if you're picking up a new chat
 
@@ -64,7 +121,7 @@ Late afternoon Ian emailed Jake saying he can't sign in — "my email is not rec
 
 ### Known limitations / debt to be aware of
 
-- **Custom plan content on dashboard.html / program.html for members** — both pages call `loadCurrentPlan()` which only reads from `progressive_plans`. There's no `loadPublishedCustomPlan()`. Custom members signing in see a fallback that's NOT their custom plan content. Daniel/Pat/Paora are paying customers in this state. They probably aren't using the dashboard heavily yet, but Mick will hit this when he tries the new "View as member" preview. Surface needed: a Custom-aware loader that pulls `custom_plans.programs` for the previewed/signed-in custom member.
+- ~~**Custom plan content on dashboard.html / program.html for members**~~ — RESOLVED (marked 2026-04-29).
 - **Onboarding form** — Daniel/Ian still have `completed_onboarding_at = null` (Pat/Paora are done). Pre-existing `member_profiles` rows have their `preferred_name` + `family_name` backfilled but onboarding wasn't run. Confirmed: their next sign-in WILL force them through `/app/onboarding.html` (subscription gate passes via member rows; onboarding gate fires on null `completed_onboarding_at`). No action needed.
 - **Pricing message inconsistency** — urgent email said "every 4 weeks", reverted to monthly; reminder + last-call emails accurately say "per month". Customers who notice → tell them "we simplified to monthly billing."
 - **Phase 1 (4-weekly billing aligned to content blocks)** — fully parked. If we ever revisit, plan is in mid-session conversation: Phase 1 = create new Stripe Price via UI, Phase 2 = code change + deploy, Phase 3 = migrate 4 existing customers via Stripe Dashboard. Don't auto-resume; Jake said leave it.
