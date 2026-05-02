@@ -190,10 +190,11 @@
   // their onboarding form. The signed-in user is a coach (we checked
   // above) so the redirect would be inappropriate anyway. ===
   let memberPreferredName = null;
+  let memberProfileDiscipline = null;  // from member_profiles.discipline (all member types)
   if (profile && !isCoachUser && effectiveUserId) {
     const { data: mp } = await sb
       .from('member_profiles')
-      .select('completed_onboarding_at, preferred_name')
+      .select('completed_onboarding_at, preferred_name, discipline')
       .eq('user_id', effectiveUserId)
       .maybeSingle();
     if (!mp || !mp.completed_onboarding_at) {
@@ -201,21 +202,24 @@
       return;
     }
     memberPreferredName = (mp.preferred_name || '').trim() || null;
+    memberProfileDiscipline = mp.discipline || null;
   } else if (profile && isCoachUser && effectiveUserId && effectiveUserId !== session.user.id) {
     // Coach previewing as a real member — pull the previewed member's
-    // preferred_name so the greeting/avatar reflect them, not the coach.
+    // preferred_name + discipline so the greeting/avatar/sidebar reflect
+    // them, not the coach's own localStorage state.
     const { data: mp } = await sb
       .from('member_profiles')
-      .select('preferred_name')
+      .select('preferred_name, discipline')
       .eq('user_id', effectiveUserId)
       .maybeSingle();
     memberPreferredName = (mp && mp.preferred_name && mp.preferred_name.trim()) || null;
+    memberProfileDiscipline = (mp && mp.discipline) || null;
   }
 
+  const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
   if (profile && profile.type === 'progressive') {
     setSessionPlanKey(profile.planKey);
     // Sync localStorage so sidebar / settings reflect the locked discipline
-    const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
     const _s = loadMemberState();
     if (_s.discipline !== PLAN_KEY_TO_DISC[profile.planKey]) {
       _s.discipline = PLAN_KEY_TO_DISC[profile.planKey];
@@ -226,6 +230,20 @@
     // rendered with stale localStorage. This brings it back in sync.)
     const _planEl = document.querySelector('.app-member-meta .plan');
     if (_planEl) _planEl.textContent = 'Progressive · ' + PLAN_KEY_TO_DISC[profile.planKey];
+  } else if (profile && profile.type === 'custom' && memberProfileDiscipline) {
+    // Custom members: sync member_profiles.discipline → localStorage so the
+    // sidebar chip and empty-state text reflect their actual discipline rather
+    // than the localStorage default ('Prone'). This is the equivalent of the
+    // progressive sync above but sourced from onboarding answers, not plan_key.
+    const discLabel = PLAN_KEY_TO_DISC[memberProfileDiscipline] || memberProfileDiscipline.toUpperCase();
+    const _s = loadMemberState();
+    if (_s.discipline !== discLabel) {
+      _s.discipline = discLabel;
+      saveMemberState(_s);
+    }
+    // Patch the already-rendered sidebar chip (same timing issue as progressive).
+    const _planEl = document.querySelector('.app-member-meta .plan');
+    if (_planEl) _planEl.textContent = 'Custom · ' + discLabel;
   }
 
   const member = getMember();
