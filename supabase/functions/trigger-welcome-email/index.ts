@@ -104,19 +104,25 @@ Deno.serve(async (req) => {
     return jsonResponse(401, { error: 'unauthorized' });
   }
 
-  // Pull profile + member rows server-side (don't trust client-supplied data).
-  const [profileRes, pmRes, cmRes] = await Promise.all([
+  // Pull profile + subscription in parallel. We resolve plan type from the
+  // subscriptions table (not by checking which member table has a row) because
+  // subscriptions.custom_member_id / progressive_member_id are set by the
+  // webhook at purchase time and are the authoritative source of truth. Using
+  // member table presence caused a bug where a coach with a stale test row in
+  // progressive_members was incorrectly labelled as a Progressive member.
+  const [profileRes, subRes] = await Promise.all([
     sbAdmin.from('member_profiles')
       .select('preferred_name, welcome_email_sent_at')
       .eq('user_id', userId)
       .maybeSingle(),
-    sbAdmin.from('progressive_members')
-      .select('name, plan_key')
-      .eq('email', email)
-      .maybeSingle(),
-    sbAdmin.from('custom_members')
-      .select('name')
-      .eq('email', email)
+    sbAdmin.from('subscriptions')
+      .select(`
+        custom_member_id,
+        progressive_member_id,
+        progressive_members ( name, plan_key ),
+        custom_members      ( name )
+      `)
+      .eq('user_id', userId)
       .maybeSingle(),
   ]);
 
@@ -125,29 +131,42 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { already_sent: true, sent_at: profileRes.data.welcome_email_sent_at });
   }
 
-  // Resolve member context: progressive vs custom + plan label.
+  const sub = subRes?.data;
+  if (!sub) {
+    // No subscription row yet — payment may not have landed or the webhook
+    // is still in-flight. Don't send and don't mark sent; a retry will pick
+    // it up once the subscription row exists.
+    console.warn(`trigger-welcome-email: no subscription row found for user ${userId} (${email}). Skipping.`);
+    return jsonResponse(404, { error: 'no_subscription', detail: 'Pay first; welcome email fires after that.' });
+  }
+
+  // Resolve member context: plan type is authoritative from subscription FKs.
   let planType: 'progressive' | 'custom';
   let planLabel: string;
-  if (pmRes?.data) {
-    planType = 'progressive';
-    const DISCIPLINE: Record<string, string> = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
-    const disc = DISCIPLINE[pmRes.data.plan_key as string] ?? pmRes.data.plan_key;
-    planLabel = `Progressive ${disc} Plan`;
-  } else if (cmRes?.data) {
-    planType = 'custom';
+  let stripeName: string | null = null;
+
+  if (sub.custom_member_id) {
+    planType  = 'custom';
     planLabel = 'Custom Season Race Plan';
+    const cm  = Array.isArray(sub.custom_members) ? sub.custom_members[0] : sub.custom_members;
+    stripeName = (cm as any)?.name?.trim() ?? null;
+  } else if (sub.progressive_member_id) {
+    planType = 'progressive';
+    const pm = Array.isArray(sub.progressive_members) ? sub.progressive_members[0] : sub.progressive_members;
+    const DISCIPLINE: Record<string, string> = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+    const planKey  = (pm as any)?.plan_key as string | undefined;
+    const disc     = planKey ? (DISCIPLINE[planKey] ?? planKey) : 'Unknown';
+    planLabel  = `Progressive ${disc} Plan`;
+    stripeName = (pm as any)?.name?.trim() ?? null;
   } else {
-    // No member row for this user. They might not have actually
-    // paid yet (e.g. abandoned signup, or the webhook is racing).
-    // Don't send and don't mark sent — let a retry pick it up.
-    console.warn(`trigger-welcome-email: no member row found for ${email} (user ${userId}). Skipping.`);
-    return jsonResponse(404, { error: 'no_member_row', detail: 'Pay first; welcome email fires after that.' });
+    // Subscription exists but both FKs are null — data inconsistency.
+    console.warn(`trigger-welcome-email: subscription for ${email} has no member FK. Data inconsistency.`);
+    return jsonResponse(404, { error: 'no_member_row', detail: 'Subscription exists but no member FK set.' });
   }
 
   // Resolve display name with the same hierarchy as the dashboard
   // sidebar: preferred_name > Stripe billing name > email prefix.
-  const preferred  = profileRes?.data?.preferred_name?.trim();
-  const stripeName = pmRes?.data?.name?.trim() || cmRes?.data?.name?.trim();
+  const preferred = profileRes?.data?.preferred_name?.trim();
   const emailPrefix = email.split('@')[0];
   const memberName = preferred || (stripeName ? stripeName.split(' ')[0] : '') || emailPrefix;
 

@@ -480,12 +480,19 @@
   if (coachesRes.error)     console.warn('admin-members: coaches load failed', coachesRes.error);
   if (customPlansRes.error) console.warn('admin-members: custom_plans load failed', customPlansRes.error);
 
-  // Coaches (Mick + Jake) are also seeded as Progressive members so they
-  // can preview the member-side UI. They shouldn't appear in this list
-  // because they're staff, not customers — and showing them inflates
-  // counts + confuses the "click edit on Mick's row" mental model.
-  // Coaches still preview the member experience via the "Member view"
-  // pill in the sidebar; they don't need to see themselves here.
+  // Coaches (Mick + Jake) are seeded as Progressive members so they can
+  // preview the member-side UI. Those progressive rows are staff/test rows
+  // and should not appear in this list (they'd inflate counts and create a
+  // confusing duplicate of the coach's own account).
+  //
+  // However, a coach can also be a *genuine paying member* — e.g. Mick signs
+  // up on a Custom plan to use the platform for his own training. In that case
+  // the custom_members row has a real auth_user_id (set by the webhook at
+  // purchase time) and SHOULD appear here so the plan can be managed.
+  //
+  // Rule: exclude coach emails from progressive_members always (those are
+  // preview-only rows); include coach emails in custom_members only when
+  // auth_user_id is set (i.e. a real Stripe-originated signup).
   const coachEmailSet = new Set((coachesRes.data || []).map(r => (r.email || '').toLowerCase()));
   const isCoachEmail  = (email) => coachEmailSet.has((email || '').toLowerCase());
 
@@ -555,10 +562,11 @@
     };
   }
 
-  // Unified row shape for the table — coach rows excluded (see note above).
+  // Unified row shape for the table. Progressive coach rows excluded always.
+  // Custom coach rows included only when auth_user_id is set (real signup).
   const allMembers = [
     ...getProgressiveMembers().filter(m => !isCoachEmail(m.email)).map(m => buildRow(m, 'progressive')),
-    ...getCustomMembers().filter(m      => !isCoachEmail(m.email)).map(m => buildRow(m, 'custom')),
+    ...getCustomMembers().filter(m => !isCoachEmail(m.email) || m.authUserId).map(m => buildRow(m, 'custom')),
   ];
 
   // Sort newest first
