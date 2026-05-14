@@ -2,8 +2,17 @@
    ALL PADDLING — shared nav / footer mount + mobile menu toggle
    Each page has <div id="site-header"></div> and
    <div id="site-footer"></div> placeholders. This script
-   fills them in and wires up the mobile nav toggle.
+   fills them in, wires up the mobile nav toggle, and handles
+   the footer newsletter signup (POSTs to newsletter-signup
+   Edge Function — public, honeypot-protected, anon key OK).
    ============================================================ */
+
+// Supabase project URL + anon key. Hardcoded here because public
+// pages don't all load supabase-config.js, and the anon key is
+// safe to expose (RLS enforces real access on the server).
+const SITE_SUPABASE_URL      = 'https://crlukzkgmydyqpwndjvc.supabase.co';
+const SITE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNybHVremtnbXlkeXFwd25kanZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNzM2OTUsImV4cCI6MjA5MjY0OTY5NX0.aBKWLnu5frWDNfNuJhw9xkRuvhyduslaLnuMsWm95V4';
+const NEWSLETTER_SIGNUP_URL  = `${SITE_SUPABASE_URL}/functions/v1/newsletter-signup`;
 
 const BRAND_MARK_SVG = `
   <span class="brand-mark" aria-hidden="true">
@@ -95,9 +104,12 @@ function renderFooter() {
           <div class="footer-col footer-subscribe">
             <h4>Get training tips</h4>
             <p style="color:#94a3b8;font-size:0.88rem;">Occasional updates on pacing, programming and race prep. No spam.</p>
-            <form onsubmit="event.preventDefault(); alert('Newsletter signup coming soon.');">
-              <input type="email" placeholder="your@email.com" required />
-              <button type="submit">Subscribe</button>
+            <form id="newsletter-signup-form" novalidate>
+              <input type="email" id="newsletter-signup-email" placeholder="your@email.com" autocomplete="email" required />
+              <!-- Honeypot: hidden from humans, bots fill it. Server returns 200 silently if filled. -->
+              <input type="text" id="newsletter-signup-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
+              <button type="submit" id="newsletter-signup-submit">Subscribe</button>
+              <p id="newsletter-signup-msg" role="status" style="display:none;font-size:0.85rem;margin-top:0.6rem;line-height:1.4;"></p>
             </form>
           </div>
         </div>
@@ -124,6 +136,75 @@ function mountSiteChrome() {
   if (toggle && nav) {
     toggle.addEventListener('click', () => nav.classList.toggle('open'));
   }
+
+  wireNewsletterSignup();
+}
+
+function wireNewsletterSignup () {
+  const form    = document.getElementById('newsletter-signup-form');
+  const input   = document.getElementById('newsletter-signup-email');
+  const hp      = document.getElementById('newsletter-signup-hp');
+  const submit  = document.getElementById('newsletter-signup-submit');
+  const msg     = document.getElementById('newsletter-signup-msg');
+  if (!form || !input || !submit || !msg) return;
+
+  function showMsg (text, ok) {
+    msg.textContent = text;
+    msg.style.display = '';
+    msg.style.color = ok ? '#86efac' : '#fca5a5';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.style.display = 'none';
+
+    const email = (input.value || '').trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showMsg('Please enter a valid email address.', false);
+      input.focus();
+      return;
+    }
+
+    const originalLabel = submit.textContent;
+    submit.disabled = true;
+    submit.textContent = 'Subscribing…';
+
+    try {
+      const res = await fetch(NEWSLETTER_SIGNUP_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          // Edge Function requires apikey + bearer even on --no-verify-jwt
+          // routes — these route the request to the project, not auth.
+          'apikey':        SITE_SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          email,
+          source: 'public_footer',
+          _hp:    (hp && hp.value) || '',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const err = (data && data.error) || `HTTP ${res.status}`;
+        showMsg('Sorry — ' + err + '. Try again, or email hello@allpaddling.online.', false);
+        submit.disabled = false;
+        submit.textContent = originalLabel;
+        return;
+      }
+
+      // Success: replace the form contents with a thanks message so
+      // the user gets clear confirmation and can't double-submit.
+      form.innerHTML = '<p style="color:#86efac;font-size:0.9rem;line-height:1.5;margin:0;">Thanks — you\'re on the list. Look out for the next update.</p>';
+    } catch (err) {
+      console.error('newsletter-signup fetch failed:', err);
+      showMsg('Network error. Try again, or email hello@allpaddling.online.', false);
+      submit.disabled = false;
+      submit.textContent = originalLabel;
+    }
+  });
 }
 
 if (document.readyState === 'loading') {
