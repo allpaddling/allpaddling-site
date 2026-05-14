@@ -119,7 +119,7 @@
     overflow-x: auto;            /* let the table scroll sideways if it overflows */
     overflow-y: hidden;
   }
-  .ot-table { width: 100%; border-collapse: collapse; min-width: 980px; }
+  .ot-table { width: 100%; border-collapse: collapse; min-width: 880px; table-layout: auto; }
   .ot-table thead { background: var(--surface-2); }
   .ot-table th {
     text-align: left; padding: 0.7rem 0.95rem;
@@ -144,9 +144,16 @@
   .col-check { width: 36px; padding-right: 0 !important; }
   .col-check input { width: 16px; height: 16px; cursor: pointer; }
 
-  .customer-cell { display: flex; flex-direction: column; gap: 0.15rem; min-width: 180px; }
+  .customer-cell { display: flex; flex-direction: column; gap: 0.15rem; min-width: 180px; max-width: 240px; }
   .customer-cell .name  { font-weight: 600; color: var(--text); }
-  .customer-cell .email { color: var(--text-3); font-size: 0.82rem; }
+  .customer-cell .email {
+    color: var(--text-3); font-size: 0.82rem;
+    /* Long emails were pushing the table past the viewport edge — truncate so
+       every column fits without horizontal scrolling. Full email still visible
+       on hover via the title attribute. */
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    max-width: 220px;
+  }
 
   .num-cell  { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
   .date-cell { color: var(--text-2); font-size: 0.86rem; white-space: nowrap; }

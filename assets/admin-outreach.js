@@ -331,7 +331,7 @@
         <td>
           <div class="customer-cell">
             <div class="name">${escHtml(name)}</div>
-            <div class="email">${escHtml(c.email)}</div>
+            <div class="email" title="${escHtml(c.email)}">${escHtml(c.email)}</div>
           </div>
         </td>
         <td class="num-cell">${spend}<br/><span class="ago" style="font-weight:400">${orders}</span></td>
