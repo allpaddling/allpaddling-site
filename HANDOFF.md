@@ -4,7 +4,33 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-01 (Fri afternoon) — final polish
+## ⭐⭐⭐ LATEST — 2026-05-14 (Thu) — outreach roster shipped (needs prod apply)
+
+Migration is essentially done — replaced the "Migration" sidebar entry with "Outreach", a new coach-only page for re-engaging past Shopify customers. Commit [`5337cf82`](https://github.com/allpaddling/allpaddling-site/commit/5337cf82c6d87cdaf0a74db083f2e2e208699711) pushed code + schema + seed in one shot (20 files, dual-tree mirrored).
+
+### What's in the commit
+- **Schema** (`supabase/migrations/20260514_016_shopify_outreach.sql`): `public.shopify_customers` (73 customers, coach RLS) + `public.outreach_sends` (per-customer email log, free-text `campaign_name` for grouping). Both with `is_coach()` policies, indexes, and `updated_at` trigger.
+- **Seed** (`supabase/scripts/seed-shopify-customers.sql`): one-shot INSERTs for all 73 rows from the 2026-05-14 Shopify customers + orders exports. Idempotent via `ON CONFLICT (email) DO NOTHING`. Source data in `data/outreach/shopify_outreach_pool.csv`.
+- **Page** (`rebuild/app/admin-outreach.html` + `rebuild/assets/admin-outreach.js`): tabbed UI. Tab 1 "Outreach" = filterable + multi-select table; Compose modal fans out to `send-email` (raw mode, coach JWT) and logs each send to `outreach_sends`. Tab 2 "Migration archive" = read-only render of `migration_customers`. Cross-references `progressive_members` + `custom_members` at render time so "already signed up" is always fresh.
+- **Consent UX** per Jake's call (2026-05-14): Shopify-opt-out customers stay visible with a red "Opt-out" chip, excluded from select-all, and Compose requires a confirm checkbox before sending to any of them. Our own `unsubscribed_at` is separate from the Shopify flag.
+- **Sidebar swap**: "Migration" → "Outreach" in all 7 admin pages. `admin-migrate.html` URL still works (no redirect), linked from the Archive tab for the full migration workflow.
+
+### To go live — Jake's todo (a few minutes)
+1. **Apply the migration** — Studio SQL editor (project `crlukzkgmydyqpwndjvc`), paste `supabase/migrations/20260514_016_shopify_outreach.sql`, Run. Or `supabase db push` locally if you have it pointed at prod.
+2. **Run the seed** — paste `supabase/scripts/seed-shopify-customers.sql` into Studio and Run. The `select count(*)` at the end should return 73.
+3. **Smoke test** — open `/app/admin-outreach.html`, verify the table loads with 73 rows, 23 marked "On AllPaddling" (badged green, checkboxes locked). Send a test campaign to yourself via a `+test@gmail.com` alias and confirm a row lands in `outreach_sends`.
+
+### Known limitations / follow-ups
+- **No public unsubscribe endpoint yet.** Every campaign email has a footer asking the recipient to reply or email `hello@allpaddling.online` with subject "unsubscribe"; coach can then click "Mark unsubscribed" in the row drawer. A real `/unsubscribe?token=...` edge function would be a 30-min follow-up if/when volume warrants it.
+- **No re-export refresh.** Seed is point-in-time. If Mick wants the table updated after running a campaign (e.g. to mark someone "now on AllPaddling"), that's automatic via the live cross-reference. But the underlying Shopify totals/last-order-date are frozen until we re-import.
+- **No campaign-level analytics page.** `outreach_sends` is grouped by `campaign_name` and that's enough for ad-hoc SQL — a proper "campaign dashboard" page can come later if Mick wants it.
+
+### Surprise worth flagging in the data
+`joyb35@aol.com` (Joy Brahmst) — 17 orders, $2,366 lifetime, last order **30 Mar 2026** (6 weeks ago), consent: yes. *Not* on AllPaddling. Either a recent churn or an oversight in migration. Visible in the Outreach table when you load it.
+
+---
+
+## ⭐⭐⭐ EARLIER — 2026-05-01 (Fri afternoon) — final polish
 
 After +pausetest2 testing on a fresh Custom signup, three small issues fixed in commit [`d5e609ec`](https://github.com/allpaddling/allpaddling-site/commit/d5e609ec):
 
