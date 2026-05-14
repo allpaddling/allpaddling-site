@@ -88,6 +88,17 @@
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[c]);
 
+  // ---------- Date formatting ----------
+  // Accepts ISO date ("2025-07-20") or ISO timestamp ("2025-07-20T10:30:00Z").
+  // Returns DD-MM-YYYY (Mick's Australian convention). null/empty → '—'.
+  function fmtDate (s) {
+    if (!s) return '—';
+    const ymd = String(s).slice(0, 10);  // "YYYY-MM-DD"
+    const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return ymd;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+
   // ============================================================
   // Init
   // ============================================================
@@ -294,7 +305,7 @@
       : '—';
     const orders = c.orders_count != null ? `${c.orders_count}o` : '';
     const lastOrder = c.last_order_date
-      ? `${c.last_order_date} <span class="ago">(${formatAgo(c._days_since_last)})</span>`
+      ? `${fmtDate(c.last_order_date)} <span class="ago">(${formatAgo(c._days_since_last)})</span>`
       : '<span class="ago">no orders</span>';
 
     const segLabel = SEGMENT_LABELS[c._segment] || c._segment;
@@ -311,7 +322,7 @@
       : '';
 
     const lastContactCell = c._last_contact
-      ? `<span class="date-cell">${c._last_contact.slice(0,10)} <span class="ago">(${c._send_count})</span></span>`
+      ? `<span class="date-cell">${fmtDate(c._last_contact)} <span class="ago">(${c._send_count})</span></span>`
       : '<span class="ago">never</span>';
 
     let html = `
@@ -347,7 +358,7 @@
     } else {
       body = sends.map(s => `
         <div class="history-entry">
-          <span class="when">${s.sent_at.slice(0,10)}</span>
+          <span class="when">${fmtDate(s.sent_at)}</span>
           <span class="camp">${escHtml(s.campaign_name)}</span>
           <span class="sub">${escHtml(s.subject)}</span>
         </div>
@@ -639,8 +650,8 @@
         </td>
         <td>${escHtml(r.plan_type)}${r.plan_key ? ' / ' + escHtml(r.plan_key) : ''}</td>
         <td><span class="pill seg-${r.migration_status}">${escHtml(r.migration_status)}</span></td>
-        <td class="date-cell">${r.next_renewal ? r.next_renewal.slice(0,10) : '—'}</td>
-        <td class="date-cell">${r.status_updated_at ? r.status_updated_at.slice(0,10) : '—'}</td>
+        <td class="date-cell">${fmtDate(r.next_renewal)}</td>
+        <td class="date-cell">${fmtDate(r.status_updated_at)}</td>
       </tr>
     `).join('');
   }

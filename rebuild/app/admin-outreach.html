@@ -115,9 +115,11 @@
   /* ---------- Table ---------- */
   .ot-table-wrap {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); overflow: hidden;
+    border-radius: var(--radius);
+    overflow-x: auto;            /* let the table scroll sideways if it overflows */
+    overflow-y: hidden;
   }
-  .ot-table { width: 100%; border-collapse: collapse; }
+  .ot-table { width: 100%; border-collapse: collapse; min-width: 980px; }
   .ot-table thead { background: var(--surface-2); }
   .ot-table th {
     text-align: left; padding: 0.7rem 0.95rem;
