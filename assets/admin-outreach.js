@@ -52,7 +52,8 @@
     custom_cold_lapsed:        'Custom — cold',
     progressive_lapsed:        'Progressive — recent',
     progressive_cold_lapsed:   'Progressive — cold',
-    newsletter_no_purchase:    'Newsletter only',
+    newsletter_no_purchase:    'Newsletter only',     // legacy Shopify newsletter tag, never bought
+    newsletter_signup:         'Newsletter signup',   // explicit opt-in via the public footer form
     no_purchase_other:         'No purchase',
     other:                     'Other',
     unknown_recency:           'Unknown',
@@ -115,12 +116,14 @@
   async function loadAll () {
     const [
       customersRes,
+      newsletterRes,
       progressiveRes,
       customRes,
       migrationRes,
       sendsRes,
     ] = await Promise.all([
       sb.from('shopify_customers').select('*').order('email'),
+      sb.from('newsletter_subscribers').select('*').order('subscribed_at', { ascending: false }),
       sb.from('progressive_members').select('email'),
       sb.from('custom_members').select('email'),
       sb.from('migration_customers').select('email, migration_status'),
@@ -145,46 +148,106 @@
     (migrationRes.data || []).forEach(r => {
       if (!r.email) return;
       if (!IN_FLIGHT_MIGRATION_STATUSES.has(r.migration_status)) return;
-      // If a customer has multiple migration rows (e.g. Custom + Progressive),
-      // keep the most "active" one. The migrated/signed_up statuses already
-      // count as on AllPaddling via the members tables, so we only land here
-      // for genuinely-pending statuses.
       const existing = inFlight.get(r.email.toLowerCase());
       if (!existing) inFlight.set(r.email.toLowerCase(), r.migration_status);
     });
     state.inFlightEmails = inFlight;
 
-    // Per-customer sends history.
-    const byCust = new Map();
+    // Per-customer sends history. outreach_sends rows reference EITHER
+    // shopify_customer_id OR newsletter_subscriber_id (XOR — see migration
+    // 018). Bucket them by whichever FK is set so the history drawer can
+    // look up sends with a single Map lookup keyed on the row's own id.
+    const byRecipient = new Map();
     (sendsRes.data || []).forEach(s => {
-      const arr = byCust.get(s.shopify_customer_id) || [];
+      const key = s.shopify_customer_id || s.newsletter_subscriber_id;
+      if (!key) return;
+      const arr = byRecipient.get(key) || [];
       arr.push(s);
-      byCust.set(s.shopify_customer_id, arr);
+      byRecipient.set(key, arr);
     });
-    state.sendsByCustomerId = byCust;
+    state.sendsByCustomerId = byRecipient;
 
-    // Enrich customer rows with computed fields.
+    // Newsletter subscribers indexed by email so we can mark dual-source
+    // (Shopify customer who ALSO opted in via the newsletter form). For
+    // those, we keep the Shopify row (richer data) and set _also_newsletter.
+    const newsletterByEmail = new Map();
+    (newsletterRes.data || []).forEach(n => {
+      if (n.email) newsletterByEmail.set(n.email.toLowerCase(), n);
+    });
+
+    // Enrich Shopify customer rows.
     const today = new Date();
-    state.customers = (customersRes.data || []).map(c => {
+    const usedNewsletterIds = new Set();
+    const enrichedShopify = (customersRes.data || []).map(c => {
       const email = (c.email || '').toLowerCase();
       const onAP = allpaddling.has(email);
       const inF  = inFlight.get(email) || null;
       const daysSince = c.last_order_date
         ? Math.floor((today - new Date(c.last_order_date)) / 86400000)
         : null;
-      const sends = byCust.get(c.id) || [];
-      const lastContact = sends.length > 0 ? sends[0].sent_at : null;
+      const sends = byRecipient.get(c.id) || [];
+      const ns = newsletterByEmail.get(email);
+      if (ns) usedNewsletterIds.add(ns.id);
       return {
         ...c,
+        _source_table:     'shopify_customers',
         _email_lc:         email,
         _on_allpaddling:   onAP,
         _in_flight_status: inF,
         _days_since_last:  daysSince,
         _segment:          computeSegment(c, daysSince),
-        _last_contact:     lastContact,
+        _last_contact:     sends.length > 0 ? sends[0].sent_at : null,
         _send_count:       sends.length,
+        _also_newsletter:  !!ns,
+        _newsletter_id:    ns ? ns.id : null,
       };
     });
+
+    // Newsletter-only rows (those without a Shopify match).
+    const enrichedNewsletter = (newsletterRes.data || [])
+      .filter(n => !usedNewsletterIds.has(n.id))
+      .map(n => {
+        const email = (n.email || '').toLowerCase();
+        const onAP = allpaddling.has(email);
+        const inF  = inFlight.get(email) || null;
+        const sends = byRecipient.get(n.id) || [];
+        return {
+          // shopify_customers-shaped fields (most empty for newsletter-only):
+          id:                       n.id,
+          email:                    n.email,
+          first_name:               null,
+          last_name:                null,
+          country_code:             null,
+          shopify_marketing_consent: null,
+          shopify_total_spent:      null,
+          shopify_total_orders:     null,
+          shopify_tags:             null,
+          first_order_date:         null,
+          last_order_date:          null,
+          orders_count:             0,
+          orders_total_paid:        0,
+          products:                 null,
+          notes:                    null,
+          unsubscribed_at:          n.unsubscribed_at,
+          unsubscribe_reason:       n.unsubscribe_reason,
+          // computed:
+          _source_table:     'newsletter_subscribers',
+          _email_lc:         email,
+          _on_allpaddling:   onAP,
+          _in_flight_status: inF,
+          _days_since_last:  null,
+          _segment:          'newsletter_signup',
+          _last_contact:     sends.length > 0 ? sends[0].sent_at : null,
+          _send_count:       sends.length,
+          _also_newsletter:  true,    // they ARE the newsletter signup
+          _newsletter_id:    n.id,
+          _signup_source:    n.source,
+          _subscribed_at:    n.subscribed_at,
+        };
+      });
+
+    state.customers = enrichedShopify.concat(enrichedNewsletter)
+      .sort((a, b) => (a.email || '').localeCompare(b.email || ''));
   }
 
   function computeSegment (c, daysSince) {
@@ -254,6 +317,7 @@
       progressive_lapsed: sendable.filter(c => c._segment === 'progressive_lapsed').length,
       progressive_cold_lapsed: sendable.filter(c => c._segment === 'progressive_cold_lapsed').length,
       newsletter_no_purchase: sendable.filter(c => c._segment === 'newsletter_no_purchase').length,
+      newsletter_signup:      sendable.filter(c => c._segment === 'newsletter_signup').length,
     };
     document.querySelectorAll('#filterTabs .filter-tab').forEach(btn => {
       const seg = btn.dataset.seg;
@@ -309,9 +373,16 @@
       : '<span class="ago">no orders</span>';
 
     const segLabel = SEGMENT_LABELS[c._segment] || c._segment;
-    const consentChip = (c.shopify_marketing_consent === false)
-      ? '<span class="pill consent-no" title="Shopify: Accepts Email Marketing = no">Opt-out</span>'
-      : '';
+    // Consent chip logic:
+    //  - newsletter signups are explicit opt-ins → green "opted in" badge
+    //  - shopify_marketing_consent === false (and NOT also a newsletter signup) → red "opt-out"
+    //  - everything else: no chip
+    let consentChip = '';
+    if (c._also_newsletter) {
+      consentChip = '<span class="pill consent-yes" title="Subscribed via the public-site footer form">Opted in</span>';
+    } else if (c.shopify_marketing_consent === false) {
+      consentChip = '<span class="pill consent-no" title="Shopify: Accepts Email Marketing = no">Opt-out</span>';
+    }
     const apChip = c._on_allpaddling
       ? '<span class="pill ap-on">On AllPaddling</span>'
       : (c._in_flight_status
@@ -390,7 +461,10 @@
   function renderSelection () {
     const ids = Array.from(state.selection);
     const recipients = state.customers.filter(c => ids.includes(c.id));
-    const optOuts = recipients.filter(c => c.shopify_marketing_consent === false);
+    // Opt-out only applies to Shopify customers who explicitly said no.
+    // Newsletter signups (or dual-source rows) are explicit opt-ins, even
+    // if their Shopify row also has consent=false.
+    const optOuts = recipients.filter(c => c.shopify_marketing_consent === false && !c._also_newsletter);
 
     if (recipients.length === 0) {
       $('selectionBar').hidden = true;
@@ -419,7 +493,10 @@
     const recipients = state.customers.filter(c => ids.includes(c.id));
     if (recipients.length === 0) return;
 
-    const optOuts = recipients.filter(c => c.shopify_marketing_consent === false);
+    // Opt-out only applies to Shopify customers who explicitly said no.
+    // Newsletter signups (or dual-source rows) are explicit opt-ins, even
+    // if their Shopify row also has consent=false.
+    const optOuts = recipients.filter(c => c.shopify_marketing_consent === false && !c._also_newsletter);
     const alerts = $('composeAlerts');
     alerts.innerHTML = '';
     if (optOuts.length > 0) {
@@ -436,9 +513,9 @@
 
     $('recipientCount').textContent = recipients.length;
     $('recipientList').innerHTML = recipients.map(c => `
-      <div class="recipient-row ${c.shopify_marketing_consent === false ? 'warn' : ''}">
+      <div class="recipient-row ${(c.shopify_marketing_consent === false && !c._also_newsletter) ? 'warn' : ''}">
         <span>${escHtml(c.first_name || '')} ${escHtml(c.last_name || '')} &lt;${escHtml(c.email)}&gt;</span>
-        ${c.shopify_marketing_consent === false ? '<span>opt-out</span>' : ''}
+        ${(c.shopify_marketing_consent === false && !c._also_newsletter) ? '<span>opt-out</span>' : ''}
       </div>
     `).join('');
 
@@ -464,7 +541,10 @@
 
     const ids = Array.from(state.selection);
     const recipients = state.customers.filter(c => ids.includes(c.id));
-    const optOuts = recipients.filter(c => c.shopify_marketing_consent === false);
+    // Opt-out only applies to Shopify customers who explicitly said no.
+    // Newsletter signups (or dual-source rows) are explicit opt-ins, even
+    // if their Shopify row also has consent=false.
+    const optOuts = recipients.filter(c => c.shopify_marketing_consent === false && !c._also_newsletter);
     if (optOuts.length > 0) {
       const cb = $('confirmOptOut');
       if (!cb || !cb.checked) {
@@ -561,17 +641,22 @@
   }
 
   async function logSend (customer, campaignName, subject, bodyText, bodyHtml, status, resendId, error) {
+    // Pick the right FK based on which table this row originated from.
+    // outreach_sends has a CHECK constraint requiring exactly one set
+    // (migration 018), so we never populate both even for dual-source rows.
+    const isNewsletter = customer._source_table === 'newsletter_subscribers';
     const row = {
-      shopify_customer_id: customer.id,
-      recipient_email:     customer.email,
-      campaign_name:       campaignName,
+      shopify_customer_id:      isNewsletter ? null : customer.id,
+      newsletter_subscriber_id: isNewsletter ? customer.id : null,
+      recipient_email:          customer.email,
+      campaign_name:            campaignName,
       subject,
-      body_text:           bodyText,
-      body_html:           bodyHtml,
+      body_text:                bodyText,
+      body_html:                bodyHtml,
       status,
-      resend_id:           resendId,
+      resend_id:                resendId,
       error,
-      sent_by:             state.adminEmail,
+      sent_by:                  state.adminEmail,
     };
     const { error: insErr } = await sb.from('outreach_sends').insert(row);
     if (insErr) console.error('Failed to log outreach_send', insErr);
@@ -580,15 +665,17 @@
   async function refreshSends () {
     const { data, error } = await sb.from('outreach_sends').select('*').order('sent_at', { ascending: false });
     if (error) { console.error(error); return; }
-    const byCust = new Map();
+    const byRecipient = new Map();
     (data || []).forEach(s => {
-      const arr = byCust.get(s.shopify_customer_id) || [];
+      const key = s.shopify_customer_id || s.newsletter_subscriber_id;
+      if (!key) return;
+      const arr = byRecipient.get(key) || [];
       arr.push(s);
-      byCust.set(s.shopify_customer_id, arr);
+      byRecipient.set(key, arr);
     });
-    state.sendsByCustomerId = byCust;
+    state.sendsByCustomerId = byRecipient;
     state.customers.forEach(c => {
-      const sends = byCust.get(c.id) || [];
+      const sends = byRecipient.get(c.id) || [];
       c._last_contact = sends.length > 0 ? sends[0].sent_at : null;
       c._send_count = sends.length;
     });
@@ -598,19 +685,22 @@
   // Unsubscribe toggle (from history drawer)
   // ============================================================
   async function setUnsubscribed (customerId, unsubscribed) {
+    const c = state.customers.find(x => x.id === customerId);
+    if (!c) return;
     const update = unsubscribed
       ? { unsubscribed_at: new Date().toISOString(), unsubscribe_reason: 'manual (coach)' }
       : { unsubscribed_at: null, unsubscribe_reason: null };
-    const { error } = await sb.from('shopify_customers').update(update).eq('id', customerId);
+    // Write to whichever table this row originated from.
+    const table = c._source_table === 'newsletter_subscribers'
+      ? 'newsletter_subscribers'
+      : 'shopify_customers';
+    const { error } = await sb.from(table).update(update).eq('id', customerId);
     if (error) {
       alert('Failed: ' + error.message);
       return;
     }
-    const c = state.customers.find(x => x.id === customerId);
-    if (c) {
-      c.unsubscribed_at = update.unsubscribed_at;
-      c.unsubscribe_reason = update.unsubscribe_reason;
-    }
+    c.unsubscribed_at = update.unsubscribed_at;
+    c.unsubscribe_reason = update.unsubscribe_reason;
     render();
   }
 
