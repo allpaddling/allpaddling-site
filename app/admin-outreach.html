@@ -104,6 +104,10 @@
     display: flex; gap: 0.8rem; align-items: center; justify-content: space-between;
     flex-wrap: wrap;
   }
+  /* Without this, the explicit display:flex above overrides the browser's
+     default `[hidden] { display: none }`, so toggling el.hidden = true does
+     nothing — the bar stays visible with its stale "X selected" count. */
+  .selection-bar[hidden] { display: none !important; }
   .selection-bar .summary {
     color: var(--brand-700); font-weight: 600; font-size: 0.9rem;
   }

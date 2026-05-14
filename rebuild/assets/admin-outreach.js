@@ -706,6 +706,8 @@
     // Selection bar
     $('clearSelBtn').addEventListener('click', () => {
       state.selection.clear();
+      const sa = $('selectAll');
+      if (sa) sa.checked = false;  // header checkbox doesn't auto-track state
       renderTable();
       renderSelection();
     });
