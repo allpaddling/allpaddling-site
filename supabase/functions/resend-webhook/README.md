@@ -27,21 +27,23 @@ Already set from other functions: `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_SE
 
 ## Backfill past sends
 
-After deploy, run once to populate `last_event` for rows that already have a `resend_id`:
+The project's stored `RESEND_API_KEY` is a send-only restricted key — it can't call `GET /emails/{id}`. For backfill, pass a temporary FULL-ACCESS key in the request body, and revoke it in Resend's dashboard the moment backfill returns.
 
 ```bash
-curl -X POST \
+SRK='<service-role JWT>'
+RKEY='<temporary full-access Resend API key, re_…>'
+
+curl -sS -X POST \
   "https://crlukzkgmydyqpwndjvc.supabase.co/functions/v1/resend-webhook" \
-  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SRK" \
   -H "Content-Type: application/json" \
-  -d '{"action":"backfill"}'
+  -d "{\"action\":\"backfill\",\"campaign_name\":\"Newsletter launch — May 2026\",\"resend_api_key\":\"$RKEY\"}"
 ```
 
-Optionally scope to one campaign:
-
-```bash
-… -d '{"action":"backfill","campaign_name":"Newsletter launch — May 2026"}'
-```
+Body parameters:
+- `action`: `"backfill"` (required)
+- `resend_api_key`: optional override; falls back to the `RESEND_API_KEY` env var. Required in this project because the stored env var key is send-only.
+- `campaign_name`: optional scope filter. Without it, every row that has a `resend_id` and no `last_event` gets backfilled.
 
 The backfill calls Resend's `GET /emails/{id}` per row, which returns only `last_event` (no per-event timestamps), so the `*_at` columns get stamped with the time of the backfill call. The webhook handles real timestamps going forward.
 

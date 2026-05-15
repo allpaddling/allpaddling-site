@@ -263,8 +263,16 @@ async function handleBackfill (req: Request, body: Record<string, unknown>): Pro
   if (!isServiceRoleAuth(req)) {
     return json(401, { error: 'service-role authorization required for backfill' });
   }
-  if (!RESEND_API_KEY) {
-    return json(500, { error: 'RESEND_API_KEY not set' });
+
+  // Resend API key: prefer the body override (lets the caller pass a
+  // short-lived FULL-ACCESS key without persisting it as a Supabase
+  // secret). Fall back to the env var, which in this project is a
+  // send-only key — it cannot read /emails/{id} and will 401.
+  const apiKey = typeof body.resend_api_key === 'string' && body.resend_api_key
+    ? body.resend_api_key
+    : RESEND_API_KEY;
+  if (!apiKey) {
+    return json(500, { error: 'no Resend API key available (provide body.resend_api_key or set RESEND_API_KEY)' });
   }
 
   // Pick the rows we'll backfill.
@@ -294,7 +302,7 @@ async function handleBackfill (req: Request, body: Record<string, unknown>): Pro
   for (const row of rows as Array<{ id: string; resend_id: string; recipient_email: string }>) {
     try {
       const res = await fetch(`https://api.resend.com/emails/${encodeURIComponent(row.resend_id)}`, {
-        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}` },
+        headers: { 'Authorization': `Bearer ${apiKey}` },
       });
       if (!res.ok) {
         errors.push(`${row.recipient_email}: HTTP ${res.status} ${await res.text().catch(() => '')}`);
