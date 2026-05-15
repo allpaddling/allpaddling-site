@@ -151,7 +151,7 @@
   /* ---------- Per-row quick-send (template picker + button) ---------- */
   /* Mirrors the migration page pattern: pick a pre-built campaign from
      the dropdown, hit Send, and the email fires through send-email with
-     no modal. The bigger "Compose →" flow above stays for ad-hoc sends. */
+     no modal. Bulk send for multiple recipients lives in the selection bar. */
   .col-send { white-space: nowrap; min-width: 240px; }
   .send-row { display: flex; gap: 0.35rem; align-items: center; flex-wrap: nowrap; }
   .email-kind-select {
@@ -224,72 +224,14 @@
     font-size: 0.92rem;
   }
 
-  /* ---------- Compose modal ---------- */
-  .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 1000; padding: 2rem;
+  /* ---------- Bulk-send progress text in the selection bar ---------- */
+  .bulk-progress {
+    font-size: 0.82rem; color: var(--text-2);
+    margin-right: 0.4rem;
+    min-width: 0;
   }
-  .modal-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius);
-    width: 100%; max-width: 720px; max-height: 90vh;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-  .modal-header {
-    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .modal-header h2 {
-    margin: 0; font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.05rem; font-weight: 700;
-  }
-  .modal-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
-  .modal-footer {
-    padding: 0.9rem 1.25rem; border-top: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
-    background: var(--surface-2);
-  }
-  .modal-footer .progress { font-size: 0.85rem; color: var(--text-2); }
-
-  .form-group { margin-bottom: 1rem; }
-  .form-group label {
-    display: block; font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
-    text-transform: uppercase; color: var(--text-3); margin-bottom: 0.35rem;
-  }
-  .form-group input,
-  .form-group textarea {
-    width: 100%; box-sizing: border-box;
-    padding: 0.6rem 0.8rem; border: 1px solid var(--border);
-    border-radius: 6px; background: var(--surface);
-    font-family: inherit; font-size: 0.95rem; color: var(--text);
-  }
-  .form-group textarea {
-    font-family: ui-monospace, monospace; font-size: 0.88rem;
-    line-height: 1.5; resize: vertical; min-height: 220px;
-  }
-  .form-group .hint { font-size: 0.78rem; color: var(--text-3); margin-top: 0.3rem; }
-
-  .alert {
-    padding: 0.7rem 0.9rem; border-radius: 6px; margin-bottom: 1rem;
-    font-size: 0.88rem;
-  }
-  .alert.alert-warn   { background: #fbeaea; color: #b0382f; border: 1px solid #f3c7c2; }
-  .alert.alert-info   { background: #e0eef9; color: #224a72; border: 1px solid #c2dbf3; }
-  .alert.alert-ok     { background: #d6efdc; color: #236138; border: 1px solid #b5dfc2; }
-  .alert input[type="checkbox"] { margin-right: 0.4rem; }
-
-  .recipient-list {
-    background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem;
-    max-height: 140px; overflow-y: auto;
-    font-family: ui-monospace, monospace; font-size: 0.82rem;
-    color: var(--text-2);
-  }
-  .recipient-list .recipient-row { display: flex; justify-content: space-between; padding: 0.1rem 0; }
-  .recipient-list .recipient-row.warn { color: #b0382f; }
+  .bulk-progress.error { color: #b0382f; font-weight: 600; }
+  .bulk-progress.ok    { color: #236138; font-weight: 600; }
 
   /* ---------- Per-row history drawer ---------- */
   .history-drawer {
@@ -415,15 +357,17 @@
         </div>
       </div>
 
-      <!-- Selection summary (only visible when ≥1 row selected) -->
+      <!-- Selection summary + bulk send (only visible when ≥1 row selected) -->
       <div class="selection-bar" id="selectionBar" hidden>
         <div>
           <span class="summary"><span id="selCount">0</span> selected</span>
           <span id="selWarn" class="warn"></span>
         </div>
         <div class="actions">
+          <span class="bulk-progress" id="bulkProgress"></span>
+          <select class="email-kind-select" id="bulkTemplateSelect" aria-label="Campaign template"></select>
           <button class="btn btn-text" id="clearSelBtn">Clear</button>
-          <button class="btn btn-primary" id="composeBtn">Compose →</button>
+          <button class="btn btn-primary" id="bulkSendBtn">Send to selected →</button>
         </div>
       </div>
 
@@ -481,59 +425,6 @@
     </section>
 
   </main>
-</div>
-
-<!-- Compose modal (hidden by default) -->
-<div id="composeModal" class="modal-backdrop" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h2>Compose campaign</h2>
-      <button class="btn btn-text" id="composeCloseBtn" aria-label="Close">✕</button>
-    </div>
-    <div class="modal-body" id="composeBody">
-      <div id="composeAlerts"></div>
-
-      <div class="form-group">
-        <label for="campaignName">Campaign name</label>
-        <input type="text" id="campaignName" placeholder="e.g. May 2026 — Custom winback" autocomplete="off" />
-        <div class="hint">Used to group sends in the history log. Type the same name to add more recipients to an existing campaign.</div>
-      </div>
-
-      <div class="form-group">
-        <label for="emailSubject">Subject</label>
-        <input type="text" id="emailSubject" placeholder="Subject line" autocomplete="off" />
-      </div>
-
-      <div class="form-group">
-        <label for="emailBody">Body (plain text)</label>
-        <textarea id="emailBody" placeholder="Hi {{first_name}},&#10;&#10;…"></textarea>
-        <div class="hint">
-          Plain text. Use <code>{{first_name}}</code> to personalize.
-          An unsubscribe footer is appended automatically. Always required — used as the fallback for clients that don't render HTML.
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="emailBodyHtml">Body (HTML) — optional</label>
-        <textarea id="emailBodyHtml" placeholder="<!-- Paste a full HTML email here for styled announcements. Leave blank for plain-text sends. -->" style="min-height: 200px;"></textarea>
-        <div class="hint">
-          Optional. When filled, this HTML is sent instead of the auto-converted plain-text version. <code>{{first_name}}</code> works here too. An unsubscribe link is appended automatically.
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Recipients (<span id="recipientCount">0</span>)</label>
-        <div class="recipient-list" id="recipientList"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <div class="progress" id="sendProgress"></div>
-      <div style="display:flex; gap:0.5rem;">
-        <button class="btn btn-text" id="composeCancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="composeSendBtn">Send →</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
