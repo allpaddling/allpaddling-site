@@ -299,7 +299,16 @@ async function handleBackfill (req: Request, body: Record<string, unknown>): Pro
   let updated = 0;
   const errors: string[] = [];
 
-  for (const row of rows as Array<{ id: string; resend_id: string; recipient_email: string }>) {
+  // Resend's GET /emails/{id} is rate-limited to 2 req/sec. We sleep
+  // 600ms between requests so a backfill of 60 rows takes ~36s and
+  // stays safely under the cap. Configurable via body.delay_ms.
+  const delayMs = typeof body.delay_ms === 'number' && body.delay_ms > 0
+    ? body.delay_ms
+    : 600;
+
+  for (let i = 0; i < rows.length; i++) {
+    if (i > 0) await new Promise(r => setTimeout(r, delayMs));
+    const row = rows[i] as { id: string; resend_id: string; recipient_email: string };
     try {
       const res = await fetch(`https://api.resend.com/emails/${encodeURIComponent(row.resend_id)}`, {
         headers: { 'Authorization': `Bearer ${apiKey}` },
