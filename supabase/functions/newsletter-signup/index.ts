@@ -24,9 +24,11 @@
 //
 // Request body (JSON, from site.js):
 //   {
-//     "email":  "sarah@x.com",  // required, lowercased before insert
-//     "source": "public_footer", // optional, defaults server-side
-//     "_hp":    ""               // honeypot — bots fill this
+//     "email":      "sarah@x.com",   // required, lowercased before insert
+//     "first_name": "Sarah",         // optional, used for personalisation
+//     "last_name":  "Smith",         // optional
+//     "source":     "public_footer", // optional, defaults server-side
+//     "_hp":        ""               // honeypot — bots fill this
 //   }
 //
 // Response:
@@ -75,9 +77,18 @@ function isValidEmail (s: unknown): s is string {
 }
 
 interface Body {
-  email?:  unknown;
-  source?: unknown;
-  _hp?:    unknown;
+  email?:      unknown;
+  first_name?: unknown;
+  last_name?:  unknown;
+  source?:     unknown;
+  _hp?:        unknown;
+}
+
+// Trim, cap to a reasonable length, return null if empty.
+function cleanName (s: unknown): string | null {
+  if (typeof s !== 'string') return null;
+  const t = s.trim().slice(0, 80);
+  return t.length > 0 ? t : null;
 }
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -113,6 +124,9 @@ Deno.serve(async (req) => {
   }
   const email = emailRaw.toLowerCase();
 
+  const firstName = cleanName(body.first_name);
+  const lastName  = cleanName(body.last_name);
+
   const source = (typeof body.source === 'string' && body.source.trim())
     ? body.source.trim().slice(0, 50)
     : 'public_footer';
@@ -131,6 +145,8 @@ Deno.serve(async (req) => {
     .from('newsletter_subscribers')
     .insert({
       email,
+      first_name:        firstName,
+      last_name:         lastName,
       source,
       signup_user_agent: ua || null,
       signup_ip:         ip || null,
@@ -143,8 +159,27 @@ Deno.serve(async (req) => {
   }
 
   if (insertErr && insertErr.code === '23505') {
-    // Duplicate — re-subscribe path. If this email was previously
-    // unsubscribed, clear it. Otherwise, no-op.
+    // Duplicate — re-subscribe path. Two things to do:
+    //  (1) if the row was unsubscribed, clear that
+    //  (2) backfill names if the existing row has nulls and this submit
+    //      provided them. Don't overwrite existing names — the original
+    //      name is more trustworthy than a re-submission.
+    const update: Record<string, unknown> = { unsubscribed_at: null, unsubscribe_reason: null };
+    if (firstName) update.first_name = firstName;
+    if (lastName)  update.last_name  = lastName;
+
+    // Apply name backfill ONLY where the column is currently null —
+    // run a separate update so we don't trample non-null existing names.
+    if (firstName) {
+      await sb.from('newsletter_subscribers').update({ first_name: firstName })
+        .eq('email', email).is('first_name', null);
+    }
+    if (lastName) {
+      await sb.from('newsletter_subscribers').update({ last_name: lastName })
+        .eq('email', email).is('last_name', null);
+    }
+
+    // Resubscribe — only touch rows that are actually unsubscribed.
     const { error: updateErr } = await sb
       .from('newsletter_subscribers')
       .update({ unsubscribed_at: null, unsubscribe_reason: null })

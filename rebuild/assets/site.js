@@ -105,7 +105,9 @@ function renderFooter() {
             <h4>Get training tips</h4>
             <p style="color:#94a3b8;font-size:0.88rem;">Occasional updates on pacing, programming and race prep. No spam.</p>
             <form id="newsletter-signup-form" novalidate>
-              <input type="email" id="newsletter-signup-email" placeholder="your@email.com" autocomplete="email" required />
+              <input type="text"  id="newsletter-signup-firstname" placeholder="First name" autocomplete="given-name" />
+              <input type="text"  id="newsletter-signup-lastname"  placeholder="Last name (optional)" autocomplete="family-name" />
+              <input type="email" id="newsletter-signup-email"     placeholder="your@email.com" autocomplete="email" required />
               <!-- Honeypot: hidden from humans, bots fill it. Server returns 200 silently if filled. -->
               <input type="text" id="newsletter-signup-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
               <button type="submit" id="newsletter-signup-submit">Subscribe</button>
@@ -143,6 +145,8 @@ function mountSiteChrome() {
 function wireNewsletterSignup () {
   const form    = document.getElementById('newsletter-signup-form');
   const input   = document.getElementById('newsletter-signup-email');
+  const fname   = document.getElementById('newsletter-signup-firstname');
+  const lname   = document.getElementById('newsletter-signup-lastname');
   const hp      = document.getElementById('newsletter-signup-hp');
   const submit  = document.getElementById('newsletter-signup-submit');
   const msg     = document.getElementById('newsletter-signup-msg');
@@ -181,8 +185,10 @@ function wireNewsletterSignup () {
         },
         body: JSON.stringify({
           email,
-          source: 'public_footer',
-          _hp:    (hp && hp.value) || '',
+          first_name: (fname && fname.value || '').trim() || null,
+          last_name:  (lname && lname.value || '').trim() || null,
+          source:     'public_footer',
+          _hp:        (hp && hp.value) || '',
         }),
       });
       const data = await res.json().catch(() => ({}));

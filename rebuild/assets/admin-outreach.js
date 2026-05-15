@@ -190,6 +190,11 @@
       if (ns) usedNewsletterIds.add(ns.id);
       return {
         ...c,
+        // Backfill name from the newsletter signup if Shopify didn't have it
+        // (e.g. customer who never gave a name to Shopify but typed it on
+        // the newsletter form).
+        first_name:        c.first_name || (ns && ns.first_name) || null,
+        last_name:         c.last_name  || (ns && ns.last_name)  || null,
         _source_table:     'shopify_customers',
         _email_lc:         email,
         _on_allpaddling:   onAP,
@@ -215,8 +220,8 @@
           // shopify_customers-shaped fields (most empty for newsletter-only):
           id:                       n.id,
           email:                    n.email,
-          first_name:               null,
-          last_name:                null,
+          first_name:               n.first_name || null,
+          last_name:                n.last_name  || null,
           country_code:             null,
           shopify_marketing_consent: null,
           shopify_total_spent:      null,
