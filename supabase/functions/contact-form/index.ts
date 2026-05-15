@@ -12,7 +12,7 @@
 // Env (set with `supabase secrets set`):
 //   RESEND_API_KEY               re_…  (already set; shared with send-email)
 //   CONTACT_TO_EMAIL             default: dibetta1@gmail.com
-//                                set to hello@allpaddling.online once
+//                                set to mick@allpaddling.online once
 //                                Cloudflare Email Routing is verified.
 //   CONTACT_FROM_EMAIL           default: 'All Paddling <forms@send.allpaddling.online>'
 //

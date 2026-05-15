@@ -47,7 +47,7 @@ Common placeholders used across templates:
 {{settings_url}}           https://allpaddling.online/app/settings.html (billing/cancel)
 {{login_url}}              https://allpaddling.online/login.html
 {{coach_name}}             "Mick"
-{{support_email}}          "hello@allpaddling.online" (Cloudflare-routed → dibetta1@gmail.com)
+{{support_email}}          "mick@allpaddling.online" (Cloudflare-routed → dibetta1@gmail.com + jakedibetta@gmail.com)
 ```
 
 Template-specific placeholders are listed at the top of each `html.html` as an HTML comment.

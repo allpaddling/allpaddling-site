@@ -13,7 +13,7 @@
 - **Stripe live mode:** products + prices, webhook destination, all secrets. One real A$1 test signup completed end-to-end.
 - **Migration data:** 20 active customers loaded with reset pricing (A$140 Custom / A$80 Progressive AUD per Mick's Decision B). 1 customer (James Case) on_hold for the first wave.
 - **Mick's 8 decisions captured** in `migration/Mick_decision_briefing.md` (top of doc).
-- **Public site cleanup:** phone + personal Gmail removed, replaced with `hello@allpaddling.online` (Cloudflare Email Routing live).
+- **Public site cleanup:** phone + personal Gmail removed, replaced with `mick@allpaddling.online` (Cloudflare Email Routing live). [Consolidated from `hello@` on 2026-05-15.]
 - **Welcome flow** branched by plan_type: Progressive members get instant-access copy, Custom members keep wait language.
 
 ### Migration runner is one command away

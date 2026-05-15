@@ -96,7 +96,7 @@ function renderFooter() {
           <div class="footer-col">
             <h4>Contact</h4>
             <ul>
-              <li><a href="mailto:hello@allpaddling.online">hello@allpaddling.online</a></li>
+              <li><a href="mailto:mick@allpaddling.online">mick@allpaddling.online</a></li>
               <li><a href="contact.html">Contact form</a></li>
               <li><a href="login.html">Member sign-in</a></li>
             </ul>
@@ -195,7 +195,7 @@ function wireNewsletterSignup () {
 
       if (!res.ok) {
         const err = (data && data.error) || `HTTP ${res.status}`;
-        showMsg('Sorry — ' + err + '. Try again, or email hello@allpaddling.online.', false);
+        showMsg('Sorry — ' + err + '. Try again, or email mick@allpaddling.online.', false);
         submit.disabled = false;
         submit.textContent = originalLabel;
         return;
@@ -206,7 +206,7 @@ function wireNewsletterSignup () {
       form.innerHTML = '<p style="color:#86efac;font-size:0.9rem;line-height:1.5;margin:0;">Thanks — you\'re on the list. Look out for the next update.</p>';
     } catch (err) {
       console.error('newsletter-signup fetch failed:', err);
-      showMsg('Network error. Try again, or email hello@allpaddling.online.', false);
+      showMsg('Network error. Try again, or email mick@allpaddling.online.', false);
       submit.disabled = false;
       submit.textContent = originalLabel;
     }

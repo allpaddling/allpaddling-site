@@ -14,7 +14,7 @@ HTTP wrapper that loads one of the templates in `_shared/email-templates/`, rend
 ```
 RESEND_API_KEY              re_…                         (Resend API key)
 EMAIL_FROM                  "Mick at All Paddling <mick@allpaddling.online>"
-EMAIL_REPLY_TO              "hello@allpaddling.online"   (Cloudflare-routed → dibetta1@gmail.com)
+EMAIL_REPLY_TO              "mick@allpaddling.online"    (Cloudflare-routed → dibetta1@gmail.com + jakedibetta@gmail.com)
 SUPABASE_SERVICE_ROLE_KEY   auto-injected, used to authenticate callers
 ```
 
@@ -22,7 +22,7 @@ Set with:
 ```bash
 supabase secrets set RESEND_API_KEY=re_...
 supabase secrets set EMAIL_FROM='Mick at All Paddling <mick@allpaddling.online>'
-supabase secrets set EMAIL_REPLY_TO=hello@allpaddling.online
+supabase secrets set EMAIL_REPLY_TO=mick@allpaddling.online
 ```
 
 Note: the Resend verified domain is the apex `allpaddling.online`, not `.com`. Sending from `team@allpaddling.com` will return 403 Forbidden.

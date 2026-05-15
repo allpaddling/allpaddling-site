@@ -36,7 +36,7 @@
 //   RESEND_API_KEY              Resend API key (re_…)
 //   SUPABASE_SERVICE_ROLE_KEY   Auto-injected by Supabase
 //   EMAIL_FROM                  e.g. "Mick at All Paddling <mick@allpaddling.online>"
-//   EMAIL_REPLY_TO              e.g. "hello@allpaddling.online"
+//   EMAIL_REPLY_TO              e.g. "mick@allpaddling.online"
 //   EMAIL_BCC                   comma-separated, e.g. "jakedibetta@gmail.com,dibetta1@gmail.com"
 //
 // Response:

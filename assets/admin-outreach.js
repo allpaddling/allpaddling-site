@@ -37,15 +37,15 @@
     '\n\n—\n' +
     'You\'re receiving this because you were a customer of All Paddling. ' +
     'To stop receiving these emails, reply with "unsubscribe" or email ' +
-    'hello@allpaddling.online with the subject "unsubscribe".'
+    'mick@allpaddling.online with the subject "unsubscribe".'
   );
   const UNSUB_FOOTER_HTML = (
     '<hr style="margin-top:24px;border:0;border-top:1px solid #ddd"/>' +
     '<p style="font-size:12px;color:#888;margin-top:12px;line-height:1.5">' +
     'You\'re receiving this because you were a customer of All Paddling. ' +
     'To stop receiving these emails, reply with "unsubscribe" or email ' +
-    '<a href="mailto:hello@allpaddling.online?subject=unsubscribe" style="color:#888">' +
-    'hello@allpaddling.online</a> with the subject "unsubscribe".' +
+    '<a href="mailto:mick@allpaddling.online?subject=unsubscribe" style="color:#888">' +
+    'mick@allpaddling.online</a> with the subject "unsubscribe".' +
     '</p>'
   );
 

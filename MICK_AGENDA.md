@@ -23,7 +23,7 @@ Add to "Up next" any time something comes up between meetings. After the meeting
    - *Members can self-graduate from the Primer block.* The settling-in banner on the dashboard now has a "Move to cohort training →" button that flips `progressive_members.primer_completed=true` for that member. **One-way for the member**: if they regret it, Mick can flip them back from `admin-progressive.html` (coach UPDATE policy still grants this). Confirm dialog warns them. No effect on Custom members.
    - Behind the scenes: new RPC `graduate_from_primer()` + migrations 013/014.
 
-- [ ] **Inbound email fan-out from Mick to Jake.** Walk Mick through setting up a Gmail filter on `dibetta1@gmail.com` so customer replies to `hello@allpaddling.online` (which currently route only to him) auto-forward to `jakedibetta@gmail.com`. Steps for Mick:
+- [ ] **Inbound email fan-out from Mick to Jake.** Walk Mick through setting up a Gmail filter on `dibetta1@gmail.com` so customer replies to `mick@allpaddling.online` (which currently route only to him) auto-forward to `jakedibetta@gmail.com`. Steps for Mick:
    1. Gmail → ⚙ Settings → "See all settings" → "Forwarding and POP/IMAP" tab → "Add a forwarding address" → enter `jakedibetta@gmail.com` → confirm code (Jake will get an email to confirm).
    2. Then Settings → "Filters and Blocked Addresses" → "Create a new filter" → From: `*@allpaddling.online` → "Forward it to: jakedibetta@gmail.com" → Create.
    3. Result: anything inbound to Mick from the AllPaddling domain auto-fans-out to Jake.

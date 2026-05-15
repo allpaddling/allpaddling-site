@@ -4,7 +4,34 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-14 (Thu) — outreach roster shipped (needs prod apply)
+## ⭐⭐⭐ LATEST — 2026-05-15 (Fri) — email consolidation: hello@ → mick@
+
+Per Jake's call: too many addresses in circulation was confusing customers. Scrubbed every public reference to `hello@allpaddling.online` and standardised on `mick@allpaddling.online` across the site, transactional emails, outreach footers, and operational docs.
+
+### What changed
+- **Public site copy:** `contact.html`, `privacy.html`, `terms.html`, `ergos.html` mailto links updated to `mick@allpaddling.online`.
+- **Footer + contact form errors** (`rebuild/assets/site.js`): footer email row and the two contact-form network-error fallback messages all now point to `mick@`.
+- **Outreach unsubscribe footer** (`rebuild/assets/admin-outreach.js`): both `UNSUB_FOOTER_TEXT` and `UNSUB_FOOTER_HTML` updated so every future campaign email tells recipients to email `mick@allpaddling.online` to unsubscribe.
+- **Edge Functions:** comment + README references in `send-email/`, `contact-form/`, `_shared/email-templates/README.md`, plus `supabase/scripts/send-test-migration-email.sh` (`reply_to` field).
+- **Supabase secret:** `EMAIL_REPLY_TO` updated to `mick@allpaddling.online` (was `hello@allpaddling.online`). Affects every transactional email's Reply-To header.
+
+### What didn't change
+- **Cloudflare Email Routing rule for `hello@allpaddling.online` left active.** Stripe receipts, Shopify-era replies, and any in-flight customer emails still land correctly. We just stop *advertising* the address.
+- **Resend MAIL FROM subdomain** (`send.allpaddling.online`) untouched — that's an envelope-level domain, never customer-visible.
+- **`migration/Mick_decision_briefing.md`** untouched — it contains `hello@send.allpaddling.online` (different string, a from-address option discussed historically), not the apex `hello@`.
+
+### Verification
+- `grep -r 'hello@allpaddling' .` on the local tree returns zero matches after the edits.
+- After the GitHub push, re-fetched key files from `api.github.com/repos/allpaddling/allpaddling-site/contents/...` to confirm the live tree is clean too.
+- Supabase Studio → Functions → Secrets shows `EMAIL_REPLY_TO=mick@allpaddling.online`.
+
+### Follow-up worth considering (not done today)
+- The Cloudflare Email Routing rule for `hello@` could eventually be retired once the Shopify-era reply tail dies out. No rush.
+- The Gmail filter walkthrough for Mick in `MICK_AGENDA.md` ("inbound email fan-out") was originally written assuming `hello@` — updated to reference `mick@`, which is what Mick's customers will see now.
+
+---
+
+## ⭐⭐⭐ EARLIER — 2026-05-14 (Thu) — outreach roster shipped (needs prod apply)
 
 Migration is essentially done — replaced the "Migration" sidebar entry with "Outreach", a new coach-only page for re-engaging past Shopify customers. Commit [`5337cf82`](https://github.com/allpaddling/allpaddling-site/commit/5337cf82c6d87cdaf0a74db083f2e2e208699711) pushed code + schema + seed in one shot (20 files, dual-tree mirrored).
 
@@ -21,7 +48,7 @@ Migration is essentially done — replaced the "Migration" sidebar entry with "O
 3. **Smoke test** — open `/app/admin-outreach.html`, verify the table loads with 73 rows, 23 marked "On AllPaddling" (badged green, checkboxes locked). Send a test campaign to yourself via a `+test@gmail.com` alias and confirm a row lands in `outreach_sends`.
 
 ### Known limitations / follow-ups
-- **No public unsubscribe endpoint yet.** Every campaign email has a footer asking the recipient to reply or email `hello@allpaddling.online` with subject "unsubscribe"; coach can then click "Mark unsubscribed" in the row drawer. A real `/unsubscribe?token=...` edge function would be a 30-min follow-up if/when volume warrants it.
+- **No public unsubscribe endpoint yet.** Every campaign email has a footer asking the recipient to reply or email `mick@allpaddling.online` with subject "unsubscribe"; coach can then click "Mark unsubscribed" in the row drawer. A real `/unsubscribe?token=...` edge function would be a 30-min follow-up if/when volume warrants it.
 - **No re-export refresh.** Seed is point-in-time. If Mick wants the table updated after running a campaign (e.g. to mark someone "now on AllPaddling"), that's automatic via the live cross-reference. But the underlying Shopify totals/last-order-date are frozen until we re-import.
 - **No campaign-level analytics page.** `outreach_sends` is grouped by `campaign_name` and that's enough for ad-hoc SQL — a proper "campaign dashboard" page can come later if Mick wants it.
 
@@ -383,7 +410,7 @@ Member login.html and coach gate (admin.html) both have a "Continue with Google"
 ### Public site cleanup
 
 - Mick's personal phone (`0404 556 880`) and Gmail (`dibetta1@gmail.com`) removed from contact.html AND footer (rendered by `assets/site.js`).
-- Replaced with `hello@allpaddling.online` — Cloudflare Email Routing live and verified, routes to Mick's Gmail.
+- Replaced with `mick@allpaddling.online` — Cloudflare Email Routing live and verified, routes to Mick's Gmail. (Originally `hello@allpaddling.online`; consolidated to `mick@` on 2026-05-15.)
 - Contact form wired up properly: new Edge Function `supabase/functions/contact-form/index.ts` (deployed, `--no-verify-jwt`). Uses honeypot + fail-soft error banner pointing at the email if the function 5xx's.
 - Logo heartbeat polyline was invisible (white-on-white-heart bug) — repainted in `--brand-700` teal at stroke-width 2.4.
 - Footer brand mark + 8 admin pages updated for the same fix.

@@ -1,21 +1,24 @@
 /* ============================================================
-   admin-outreach.js — Customer outreach roster + manual campaign
-   composer. Used by admin-outreach.html.
+   admin-outreach.js — Customer outreach roster + template-driven
+   campaign send. Used by admin-outreach.html.
 
-   Reads from `public.shopify_customers` (RLS: coach-only). For
-   each customer, computes a segment client-side (based on
-   recency + product mix), cross-references against
-   `progressive_members` + `custom_members` to mark "already on
-   AllPaddling" rows, and renders a filterable table.
+   Reads from `public.shopify_customers` and `newsletter_subscribers`
+   (RLS: coach-only). For each customer, computes a segment
+   client-side (based on recency + product mix), cross-references
+   against `progressive_members` + `custom_members` to mark
+   "already on AllPaddling" rows, and renders a filterable table.
 
-   The coach multi-selects rows, types a campaign name + subject
-   + body, and the page fans out one HTTP call to the send-email
-   Edge Function per recipient (raw mode, coach JWT). Each
-   successful send writes a row to `outreach_sends` for the
-   per-customer history log.
+   Sending uses pre-built templates from outreach-templates.js
+   (`OUTREACH_TEMPLATES`). Two paths:
+     - per-row Quick send: click Send next to one customer
+     - bulk Send to selected: tick multiple rows, pick a template
+       from the selection bar, hit Send → fires sequentially
+   Both paths call the send-email Edge Function (raw mode, coach
+   JWT) once per recipient and log each to `outreach_sends`.
 
-   Loads AFTER admin.js — relies on `sb`, `getCurrentSession`,
-   `isCurrentUserCoach`, etc.
+   Loads AFTER admin.js + outreach-templates.js — relies on `sb`,
+   `getCurrentSession`, `isCurrentUserCoach`, and the global
+   `OUTREACH_TEMPLATES`.
    ============================================================ */
 
 (function () {
@@ -34,15 +37,15 @@
     '\n\n—\n' +
     'You\'re receiving this because you were a customer of All Paddling. ' +
     'To stop receiving these emails, reply with "unsubscribe" or email ' +
-    'hello@allpaddling.online with the subject "unsubscribe".'
+    'mick@allpaddling.online with the subject "unsubscribe".'
   );
   const UNSUB_FOOTER_HTML = (
     '<hr style="margin-top:24px;border:0;border-top:1px solid #ddd"/>' +
     '<p style="font-size:12px;color:#888;margin-top:12px;line-height:1.5">' +
     'You\'re receiving this because you were a customer of All Paddling. ' +
     'To stop receiving these emails, reply with "unsubscribe" or email ' +
-    '<a href="mailto:hello@allpaddling.online?subject=unsubscribe" style="color:#888">' +
-    'hello@allpaddling.online</a> with the subject "unsubscribe".' +
+    '<a href="mailto:mick@allpaddling.online?subject=unsubscribe" style="color:#888">' +
+    'mick@allpaddling.online</a> with the subject "unsubscribe".' +
     '</p>'
   );
 
@@ -132,7 +135,7 @@
 
     if (customersRes.error) {
       console.error('Failed to load shopify_customers', customersRes.error);
-      $('customersBody').innerHTML = `<tr><td colspan="7" class="empty-state">
+      $('customersBody').innerHTML = `<tr><td colspan="8" class="empty-state">
         Couldn't load customers — ${escHtml(customersRes.error.message)}
       </td></tr>`;
       return;
@@ -335,7 +338,7 @@
     const tbody = $('customersBody');
     const rows = visibleCustomers();
     if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No customers match the current filters.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No customers match the current filters.</td></tr>`;
       return;
     }
     const html = rows.map(c => renderRow(c)).join('');
@@ -353,12 +356,106 @@
     // Wire row clicks (open history drawer) — but ignore clicks on the checkbox
     tbody.querySelectorAll('tr.row').forEach(tr => {
       tr.addEventListener('click', (e) => {
-        if (e.target.closest('input,button,a')) return;
+        if (e.target.closest('input,button,a,select')) return;
         const cid = tr.dataset.id;
         state.expandedCustomerId = (state.expandedCustomerId === cid) ? null : cid;
         renderTable();
       });
     });
+
+    // Wire per-row quick-send Send buttons. Stop propagation so the row-click
+    // history-drawer toggle above doesn't also fire.
+    tbody.querySelectorAll('button[data-action="ot-quicksend"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onQuickSendClick(btn);
+      });
+    });
+  }
+
+  // ============================================================
+  // Per-row quick-send (template-driven, one customer at a time)
+  // ============================================================
+  async function onQuickSendClick (btn) {
+    const customerId = btn.dataset.id;
+    const customer = state.customers.find(c => c.id === customerId);
+    if (!customer) { alert('Internal error: customer not found.'); return; }
+
+    // Read selected template from the row's <select>.
+    const row = btn.closest('tr');
+    const selectEl = row?.querySelector('select[data-action="ot-template-select"]');
+    const templateId = selectEl?.value;
+    if (typeof OUTREACH_TEMPLATES === 'undefined' || !Array.isArray(OUTREACH_TEMPLATES)) {
+      alert('No outreach templates loaded — outreach-templates.js may have failed to load.');
+      return;
+    }
+    const template = OUTREACH_TEMPLATES.find(t => t.id === templateId);
+    if (!template) { alert('Pick a template first.'); return; }
+
+    const recipientName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.email;
+    if (!confirm(
+      `Send "${template.label}" to ${recipientName} (${customer.email}) right now?\n\n` +
+      `Subject: ${template.subject}\n\n` +
+      `This sends one email immediately and logs it under the campaign "${template.campaign_name}".`
+    )) return;
+
+    // Capture original look so we can restore on failure.
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.textContent = 'Sending…';
+
+    const { data: { session } } = await sb.auth.getSession();
+    const jwt = session?.access_token;
+    if (!jwt) { alert('Not signed in — refresh and try again.'); btn.disabled = false; btn.textContent = originalText; return; }
+
+    try {
+      const personalText = personalize(template.text, customer) + UNSUB_FOOTER_TEXT;
+      const personalHtml = personalize(template.html, customer, /*escapeForHtml*/ true) + UNSUB_FOOTER_HTML;
+
+      const res = await fetch(SEND_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          mode: 'raw',
+          to: customer.email,
+          subject: template.subject,
+          text: personalText,
+          html: personalHtml,
+          tags: [
+            { name: 'campaign', value: template.campaign_name.slice(0, 60).replace(/[^A-Za-z0-9_-]/g, '_') },
+            { name: 'kind',     value: 'outreach' },
+            { name: 'template', value: template.id },
+          ],
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        await logSend(customer, template.campaign_name, template.subject, personalText, personalHtml, 'failed', null, payload.error || `HTTP ${res.status}`);
+        throw new Error(payload.error || `HTTP ${res.status}`);
+      }
+      await logSend(customer, template.campaign_name, template.subject, personalText, personalHtml, 'sent', payload.id, null);
+
+      // Flash green + reload sends history so the "Last contact" column updates.
+      btn.classList.remove('is-loading');
+      btn.classList.add('flash-success');
+      btn.textContent = 'Sent ✓';
+      await refreshSends();
+      setTimeout(() => {
+        btn.classList.remove('flash-success');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }, 2200);
+    } catch (err) {
+      console.error('quick-send failed', err);
+      alert(`Send failed: ${err.message}`);
+      btn.classList.remove('is-loading');
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
   }
 
   function renderRow (c) {
@@ -401,6 +498,31 @@
       ? `<span class="date-cell">${fmtDate(c._last_contact)} <span class="ago">(${c._send_count})</span></span>`
       : '<span class="ago">never</span>';
 
+    // Per-row quick-send: dropdown of pre-built templates + Send button.
+    // Locked rows (already on AllPaddling / mid-migration / unsubscribed)
+    // get disabled controls — bulk-send also skips unsubscribed rows, so
+    // these recipients are unreachable through the UI (intentionally).
+    const sendDisabled = isLocked || !!c.unsubscribed_at;
+    const sendDisabledAttr = sendDisabled ? 'disabled' : '';
+    const sendTitle = sendDisabled
+      ? (c.unsubscribed_at ? 'Recipient unsubscribed — sending is blocked.' : 'Already on AllPaddling / in migration — outreach blocked.')
+      : 'Send the selected template to this recipient.';
+    const templates = (typeof OUTREACH_TEMPLATES !== 'undefined' && Array.isArray(OUTREACH_TEMPLATES))
+      ? OUTREACH_TEMPLATES
+      : [];
+    const templateOpts = templates.length === 0
+      ? '<option value="">(no templates loaded)</option>'
+      : templates.map(t => `<option value="${escHtml(t.id)}">${escHtml(t.label)}</option>`).join('');
+    const sendCell = `
+      <td class="col-send">
+        <div class="send-row">
+          <select class="email-kind-select" data-action="ot-template-select" ${sendDisabledAttr}>
+            ${templateOpts}
+          </select>
+          <button class="btn-mini btn-mini-primary" data-action="ot-quicksend" data-id="${c.id}" ${sendDisabledAttr} title="${escHtml(sendTitle)}">Send</button>
+        </div>
+      </td>`;
+
     let html = `
       <tr class="row ${isLocked ? 'is-locked' : ''}" data-id="${c.id}">
         <td class="col-check"><input type="checkbox" class="row-check" data-id="${c.id}" ${checkboxAttrs}/></td>
@@ -415,6 +537,7 @@
         <td><span class="pill seg-${c._segment}">${escHtml(segLabel)}</span></td>
         <td>${apChip} ${consentChip} ${unsubChip}</td>
         <td>${lastContactCell}</td>
+        ${sendCell}
       </tr>
     `;
 
@@ -454,7 +577,7 @@
       : `<button class="btn btn-text" data-act="unsub-set" data-id="${c.id}">Mark unsubscribed</button>`;
     return `
       <tr class="history-drawer">
-        <td colspan="7">
+        <td colspan="8">
           ${productLine}${tagLine}${noteLine}
           <div style="margin:0.5rem 0;">${body}</div>
           <div style="text-align:right;">${unsubBtn}</div>
@@ -491,106 +614,108 @@
   }
 
   // ============================================================
-  // Compose modal
+  // Bulk send (selection bar)
+  // ------------------------------------------------------------
+  // Coach checks rows, picks a template from the selection-bar dropdown,
+  // and clicks "Send to selected →". We loop the selected recipients,
+  // fire send-email once per recipient (Resend doesn't take a recipient
+  // list for personalised content), and log each row to outreach_sends.
+  // The bulk-progress text inline-shows "Sending 3 of 12…" while it runs.
   // ============================================================
-  function openCompose () {
+  function populateBulkTemplates () {
+    const sel = $('bulkTemplateSelect');
+    if (!sel) return;
+    const templates = (typeof OUTREACH_TEMPLATES !== 'undefined' && Array.isArray(OUTREACH_TEMPLATES))
+      ? OUTREACH_TEMPLATES
+      : [];
+    sel.innerHTML = templates.length === 0
+      ? '<option value="">(no templates loaded)</option>'
+      : templates.map(t => `<option value="${escHtml(t.id)}">${escHtml(t.label)}</option>`).join('');
+    sel.disabled = templates.length === 0;
+  }
+
+  async function onBulkSendClick () {
     const ids = Array.from(state.selection);
-    const recipients = state.customers.filter(c => ids.includes(c.id));
-    if (recipients.length === 0) return;
+    const recipients = state.customers
+      .filter(c => ids.includes(c.id))
+      // Exclude unsubscribed recipients — they shouldn't be sendable at all.
+      // (The per-row Send button also blocks these; this is a defence-in-depth.)
+      .filter(c => !c.unsubscribed_at);
+    if (recipients.length === 0) {
+      alert('No sendable recipients selected.');
+      return;
+    }
+
+    if (typeof OUTREACH_TEMPLATES === 'undefined' || !Array.isArray(OUTREACH_TEMPLATES)) {
+      alert('No outreach templates loaded — outreach-templates.js may have failed to load.');
+      return;
+    }
+    const templateId = $('bulkTemplateSelect')?.value;
+    const template = OUTREACH_TEMPLATES.find(t => t.id === templateId);
+    if (!template) { alert('Pick a template first.'); return; }
 
     // Opt-out only applies to Shopify customers who explicitly said no.
     // Newsletter signups (or dual-source rows) are explicit opt-ins, even
     // if their Shopify row also has consent=false.
     const optOuts = recipients.filter(c => c.shopify_marketing_consent === false && !c._also_newsletter);
-    const alerts = $('composeAlerts');
-    alerts.innerHTML = '';
+    let optOutNote = '';
     if (optOuts.length > 0) {
-      alerts.innerHTML = `
-        <div class="alert alert-warn">
-          <strong>${optOuts.length} recipient${optOuts.length === 1 ? '' : 's'} declined email marketing in Shopify.</strong>
-          You can still send, but check the box below to confirm.
-          <div style="margin-top:0.5rem;">
-            <label><input type="checkbox" id="confirmOptOut"/> I've confirmed I want to email these recipients anyway.</label>
-          </div>
-        </div>
-      `;
+      optOutNote = `\n\n⚠  ${optOuts.length} of these declined email marketing in Shopify. They'll still be sent unless you cancel.`;
     }
 
-    $('recipientCount').textContent = recipients.length;
-    $('recipientList').innerHTML = recipients.map(c => `
-      <div class="recipient-row ${(c.shopify_marketing_consent === false && !c._also_newsletter) ? 'warn' : ''}">
-        <span>${escHtml(c.first_name || '')} ${escHtml(c.last_name || '')} &lt;${escHtml(c.email)}&gt;</span>
-        ${(c.shopify_marketing_consent === false && !c._also_newsletter) ? '<span>opt-out</span>' : ''}
-      </div>
-    `).join('');
+    if (!confirm(
+      `Send "${template.label}" to ${recipients.length} selected recipient${recipients.length === 1 ? '' : 's'} right now?\n\n` +
+      `Subject: ${template.subject}\n\n` +
+      `Logged under campaign "${template.campaign_name}".` +
+      optOutNote
+    )) return;
 
-    $('sendProgress').textContent = '';
-    $('composeSendBtn').disabled = false;
-    $('composeSendBtn').textContent = 'Send →';
-    $('composeModal').style.display = 'flex';
-    $('campaignName').focus();
-  }
-
-  function closeCompose () {
-    $('composeModal').style.display = 'none';
-  }
-
-  async function onSend () {
-    const campaignName = $('campaignName').value.trim();
-    const subject      = $('emailSubject').value.trim();
-    const body         = $('emailBody').value;
-
-    if (!campaignName) { alert('Campaign name is required.'); $('campaignName').focus(); return; }
-    if (!subject)      { alert('Subject is required.');      $('emailSubject').focus(); return; }
-    if (!body.trim())  { alert('Body is required.');         $('emailBody').focus();    return; }
-
-    const ids = Array.from(state.selection);
-    const recipients = state.customers.filter(c => ids.includes(c.id));
-    // Opt-out only applies to Shopify customers who explicitly said no.
-    // Newsletter signups (or dual-source rows) are explicit opt-ins, even
-    // if their Shopify row also has consent=false.
-    const optOuts = recipients.filter(c => c.shopify_marketing_consent === false && !c._also_newsletter);
-    if (optOuts.length > 0) {
-      const cb = $('confirmOptOut');
-      if (!cb || !cb.checked) {
-        alert('Confirm the opt-out checkbox before sending.');
-        return;
-      }
-    }
-
-    const sendBtn = $('composeSendBtn');
+    const sendBtn = $('bulkSendBtn');
+    const progressEl = $('bulkProgress');
+    const templateSel = $('bulkTemplateSelect');
+    const clearBtn = $('clearSelBtn');
     sendBtn.disabled = true;
+    templateSel.disabled = true;
+    clearBtn.disabled = true;
+    progressEl.className = 'bulk-progress';
     sendBtn.textContent = 'Sending…';
 
-    // Get coach JWT for the send-email call.
     const { data: { session } } = await sb.auth.getSession();
     const jwt = session?.access_token;
-    if (!jwt) { alert('Not signed in — refresh and try again.'); return; }
+    if (!jwt) {
+      alert('Not signed in — refresh and try again.');
+      sendBtn.disabled = false;
+      templateSel.disabled = false;
+      clearBtn.disabled = false;
+      sendBtn.textContent = 'Send to selected →';
+      return;
+    }
 
     let okCount = 0, failCount = 0;
     const failures = [];
 
     for (let i = 0; i < recipients.length; i++) {
       const c = recipients[i];
-      $('sendProgress').textContent = `Sending ${i + 1} of ${recipients.length}…`;
+      progressEl.textContent = `Sending ${i + 1} of ${recipients.length}…`;
       try {
-        const personalText = personalize(body, c) + UNSUB_FOOTER_TEXT;
-        const personalHtml = textToHtml(personalize(body, c)) + UNSUB_FOOTER_HTML;
+        const personalText = personalize(template.text, c) + UNSUB_FOOTER_TEXT;
+        const personalHtml = personalize(template.html, c, /*escapeForHtml*/ true) + UNSUB_FOOTER_HTML;
         const res = await fetch(SEND_EMAIL_URL, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type':  'application/json',
             'Authorization': `Bearer ${jwt}`,
           },
           body: JSON.stringify({
             mode: 'raw',
             to: c.email,
-            subject,
+            subject: template.subject,
             text: personalText,
             html: personalHtml,
             tags: [
-              { name: 'campaign',    value: campaignName.slice(0, 60).replace(/[^A-Za-z0-9_-]/g, '_') },
-              { name: 'kind',        value: 'outreach' },
+              { name: 'campaign', value: template.campaign_name.slice(0, 60).replace(/[^A-Za-z0-9_-]/g, '_') },
+              { name: 'kind',     value: 'outreach' },
+              { name: 'template', value: template.id },
             ],
           }),
         });
@@ -598,51 +723,59 @@
         if (!res.ok) {
           failCount++;
           failures.push(`${c.email}: ${payload.error || res.status}`);
-          await logSend(c, campaignName, subject, personalText, personalHtml, 'failed', null, payload.error || `HTTP ${res.status}`);
+          await logSend(c, template.campaign_name, template.subject, personalText, personalHtml, 'failed', null, payload.error || `HTTP ${res.status}`);
         } else {
           okCount++;
-          await logSend(c, campaignName, subject, personalText, personalHtml, 'sent', payload.id, null);
+          await logSend(c, template.campaign_name, template.subject, personalText, personalHtml, 'sent', payload.id, null);
         }
       } catch (err) {
         failCount++;
         failures.push(`${c.email}: ${err.message}`);
         try {
-          await logSend(c, campaignName, subject, body, body, 'failed', null, err.message);
+          await logSend(c, template.campaign_name, template.subject, template.text, template.html, 'failed', null, err.message);
         } catch (_) { /* ignore */ }
       }
     }
 
-    $('sendProgress').textContent = `Done — ${okCount} sent, ${failCount} failed.`;
-    sendBtn.textContent = (failCount === 0) ? 'Sent ✓' : 'Done (with errors)';
-
-    if (failures.length > 0) {
-      const al = document.createElement('div');
-      al.className = 'alert alert-warn';
-      al.innerHTML = `<strong>Failures:</strong><br/>${failures.map(escHtml).join('<br/>')}`;
-      $('composeAlerts').appendChild(al);
+    // Final progress message; class drives the colour.
+    if (failCount === 0) {
+      progressEl.className = 'bulk-progress ok';
+      progressEl.textContent = `Sent ${okCount} of ${recipients.length} ✓`;
+      sendBtn.textContent = 'Sent ✓';
     } else {
-      const al = document.createElement('div');
-      al.className = 'alert alert-ok';
-      al.textContent = `All ${okCount} emails accepted by Resend.`;
-      $('composeAlerts').appendChild(al);
+      progressEl.className = 'bulk-progress error';
+      progressEl.textContent = `${okCount} sent, ${failCount} failed`;
+      sendBtn.textContent = 'Done (with errors)';
+      console.error('Bulk send failures:', failures);
+      alert(`${failCount} send${failCount === 1 ? '' : 's'} failed — see console for details.\n\n${failures.slice(0, 5).join('\n')}${failures.length > 5 ? '\n…' : ''}`);
     }
 
-    // Refresh sends so the per-customer history + last-contact column update.
+    // Refresh sends so the per-customer history + last-contact column update,
+    // then clear selection and re-render so the row's "last contact" updates.
     await refreshSends();
     state.selection.clear();
     render();
+
+    // Restore the bar after a moment so the next batch can be sent.
+    setTimeout(() => {
+      progressEl.className = 'bulk-progress';
+      progressEl.textContent = '';
+      sendBtn.textContent = 'Send to selected →';
+      sendBtn.disabled = false;
+      templateSel.disabled = false;
+      clearBtn.disabled = false;
+    }, 3000);
   }
 
-  function personalize (body, c) {
+  // When substituting into an HTML body, callers pass escapeForHtml=true so a
+  // first_name containing `<` or `&` can't break the document or inject markup.
+  // Plain-text bodies pass false (the default) — they're never wrapped in HTML.
+  function personalize (body, c, escapeForHtml = false) {
+    const v = s => (escapeForHtml ? escHtml(s) : s);
     return body
-      .replace(/\{\{first_name\}\}/g, c.first_name || 'there')
-      .replace(/\{\{last_name\}\}/g,  c.last_name  || '')
-      .replace(/\{\{email\}\}/g,      c.email      || '');
-  }
-
-  function textToHtml (text) {
-    // Minimal: escape HTML, convert newlines to <br/>.
-    return escHtml(text).replace(/\n/g, '<br/>');
+      .replace(/\{\{first_name\}\}/g, v(c.first_name || 'there'))
+      .replace(/\{\{last_name\}\}/g,  v(c.last_name  || ''))
+      .replace(/\{\{email\}\}/g,      v(c.email      || ''));
   }
 
   async function logSend (customer, campaignName, subject, bodyText, bodyHtml, status, resendId, error) {
@@ -806,12 +939,11 @@
       renderTable();
       renderSelection();
     });
-    $('composeBtn').addEventListener('click', openCompose);
 
-    // Compose modal
-    $('composeCloseBtn').addEventListener('click', closeCompose);
-    $('composeCancelBtn').addEventListener('click', closeCompose);
-    $('composeSendBtn').addEventListener('click', onSend);
+    // Bulk-send template picker lives in the selection bar; populate the
+    // <select> once at init and wire the Send-to-selected button.
+    populateBulkTemplates();
+    $('bulkSendBtn').addEventListener('click', onBulkSendClick);
 
     // Drawer actions (event-delegation on tbody for unsubscribe buttons)
     document.addEventListener('click', (e) => {
