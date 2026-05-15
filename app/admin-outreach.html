@@ -148,6 +148,40 @@
   .col-check { width: 36px; padding-right: 0 !important; }
   .col-check input { width: 16px; height: 16px; cursor: pointer; }
 
+  /* ---------- Per-row quick-send (template picker + button) ---------- */
+  /* Mirrors the migration page pattern: pick a pre-built campaign from
+     the dropdown, hit Send, and the email fires through send-email with
+     no modal. The bigger "Compose →" flow above stays for ad-hoc sends. */
+  .col-send { white-space: nowrap; min-width: 240px; }
+  .send-row { display: flex; gap: 0.35rem; align-items: center; flex-wrap: nowrap; }
+  .email-kind-select {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.32rem 0.5rem;
+    font-size: 0.78rem;
+    font-family: inherit;
+    max-width: 170px;
+  }
+  .email-kind-select:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-mini {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-700); color: white;
+    border: 0; padding: 0.4rem 0.75rem; border-radius: 6px;
+    font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    transition: background .12s, opacity .12s;
+  }
+  .btn-mini:hover  { background: var(--brand-800); }
+  .btn-mini:disabled, .btn-mini.is-loading {
+    opacity: 0.6; cursor: progress; pointer-events: none;
+  }
+  .btn-mini.btn-mini-primary { background: #15803d; }
+  .btn-mini.btn-mini-primary:hover { background: #166534; }
+  .btn-mini.flash-success {
+    background: #15803d !important;
+  }
+
   .customer-cell { display: flex; flex-direction: column; gap: 0.15rem; min-width: 180px; max-width: 240px; }
   .customer-cell .name  { font-weight: 600; color: var(--text); }
   .customer-cell .email {
@@ -405,10 +439,11 @@
               <th>Segment</th>
               <th>Status</th>
               <th>Last contact</th>
+              <th class="col-send">Quick send</th>
             </tr>
           </thead>
           <tbody id="customersBody">
-            <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+            <tr><td colspan="8" class="empty-state">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -504,6 +539,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js"></script>
+<script src="../assets/outreach-templates.js"></script>
 <script src="../assets/admin-outreach.js"></script>
 <script>
 (async () => {

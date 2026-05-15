@@ -132,7 +132,7 @@
 
     if (customersRes.error) {
       console.error('Failed to load shopify_customers', customersRes.error);
-      $('customersBody').innerHTML = `<tr><td colspan="7" class="empty-state">
+      $('customersBody').innerHTML = `<tr><td colspan="8" class="empty-state">
         Couldn't load customers — ${escHtml(customersRes.error.message)}
       </td></tr>`;
       return;
@@ -335,7 +335,7 @@
     const tbody = $('customersBody');
     const rows = visibleCustomers();
     if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No customers match the current filters.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No customers match the current filters.</td></tr>`;
       return;
     }
     const html = rows.map(c => renderRow(c)).join('');
@@ -353,12 +353,106 @@
     // Wire row clicks (open history drawer) — but ignore clicks on the checkbox
     tbody.querySelectorAll('tr.row').forEach(tr => {
       tr.addEventListener('click', (e) => {
-        if (e.target.closest('input,button,a')) return;
+        if (e.target.closest('input,button,a,select')) return;
         const cid = tr.dataset.id;
         state.expandedCustomerId = (state.expandedCustomerId === cid) ? null : cid;
         renderTable();
       });
     });
+
+    // Wire per-row quick-send Send buttons. Stop propagation so the row-click
+    // history-drawer toggle above doesn't also fire.
+    tbody.querySelectorAll('button[data-action="ot-quicksend"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onQuickSendClick(btn);
+      });
+    });
+  }
+
+  // ============================================================
+  // Per-row quick-send (template-driven, one customer at a time)
+  // ============================================================
+  async function onQuickSendClick (btn) {
+    const customerId = btn.dataset.id;
+    const customer = state.customers.find(c => c.id === customerId);
+    if (!customer) { alert('Internal error: customer not found.'); return; }
+
+    // Read selected template from the row's <select>.
+    const row = btn.closest('tr');
+    const selectEl = row?.querySelector('select[data-action="ot-template-select"]');
+    const templateId = selectEl?.value;
+    if (typeof OUTREACH_TEMPLATES === 'undefined' || !Array.isArray(OUTREACH_TEMPLATES)) {
+      alert('No outreach templates loaded — outreach-templates.js may have failed to load.');
+      return;
+    }
+    const template = OUTREACH_TEMPLATES.find(t => t.id === templateId);
+    if (!template) { alert('Pick a template first.'); return; }
+
+    const recipientName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.email;
+    if (!confirm(
+      `Send "${template.label}" to ${recipientName} (${customer.email}) right now?\n\n` +
+      `Subject: ${template.subject}\n\n` +
+      `This sends one email immediately and logs it under the campaign "${template.campaign_name}".`
+    )) return;
+
+    // Capture original look so we can restore on failure.
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.textContent = 'Sending…';
+
+    const { data: { session } } = await sb.auth.getSession();
+    const jwt = session?.access_token;
+    if (!jwt) { alert('Not signed in — refresh and try again.'); btn.disabled = false; btn.textContent = originalText; return; }
+
+    try {
+      const personalText = personalize(template.text, customer) + UNSUB_FOOTER_TEXT;
+      const personalHtml = personalize(template.html, customer, /*escapeForHtml*/ true) + UNSUB_FOOTER_HTML;
+
+      const res = await fetch(SEND_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          mode: 'raw',
+          to: customer.email,
+          subject: template.subject,
+          text: personalText,
+          html: personalHtml,
+          tags: [
+            { name: 'campaign', value: template.campaign_name.slice(0, 60).replace(/[^A-Za-z0-9_-]/g, '_') },
+            { name: 'kind',     value: 'outreach' },
+            { name: 'template', value: template.id },
+          ],
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        await logSend(customer, template.campaign_name, template.subject, personalText, personalHtml, 'failed', null, payload.error || `HTTP ${res.status}`);
+        throw new Error(payload.error || `HTTP ${res.status}`);
+      }
+      await logSend(customer, template.campaign_name, template.subject, personalText, personalHtml, 'sent', payload.id, null);
+
+      // Flash green + reload sends history so the "Last contact" column updates.
+      btn.classList.remove('is-loading');
+      btn.classList.add('flash-success');
+      btn.textContent = 'Sent ✓';
+      await refreshSends();
+      setTimeout(() => {
+        btn.classList.remove('flash-success');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }, 2200);
+    } catch (err) {
+      console.error('quick-send failed', err);
+      alert(`Send failed: ${err.message}`);
+      btn.classList.remove('is-loading');
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
   }
 
   function renderRow (c) {
@@ -401,6 +495,31 @@
       ? `<span class="date-cell">${fmtDate(c._last_contact)} <span class="ago">(${c._send_count})</span></span>`
       : '<span class="ago">never</span>';
 
+    // Per-row quick-send: dropdown of pre-built templates + Send button.
+    // Locked rows (already on AllPaddling / mid-migration / unsubscribed)
+    // get disabled controls — Compose flow above still works for ad-hoc
+    // overrides if needed, but the one-click path won't fire to them.
+    const sendDisabled = isLocked || !!c.unsubscribed_at;
+    const sendDisabledAttr = sendDisabled ? 'disabled' : '';
+    const sendTitle = sendDisabled
+      ? (c.unsubscribed_at ? 'Recipient unsubscribed — sending is blocked.' : 'Already on AllPaddling / in migration — outreach blocked.')
+      : 'Send the selected template to this recipient.';
+    const templates = (typeof OUTREACH_TEMPLATES !== 'undefined' && Array.isArray(OUTREACH_TEMPLATES))
+      ? OUTREACH_TEMPLATES
+      : [];
+    const templateOpts = templates.length === 0
+      ? '<option value="">(no templates loaded)</option>'
+      : templates.map(t => `<option value="${escHtml(t.id)}">${escHtml(t.label)}</option>`).join('');
+    const sendCell = `
+      <td class="col-send">
+        <div class="send-row">
+          <select class="email-kind-select" data-action="ot-template-select" ${sendDisabledAttr}>
+            ${templateOpts}
+          </select>
+          <button class="btn-mini btn-mini-primary" data-action="ot-quicksend" data-id="${c.id}" ${sendDisabledAttr} title="${escHtml(sendTitle)}">Send</button>
+        </div>
+      </td>`;
+
     let html = `
       <tr class="row ${isLocked ? 'is-locked' : ''}" data-id="${c.id}">
         <td class="col-check"><input type="checkbox" class="row-check" data-id="${c.id}" ${checkboxAttrs}/></td>
@@ -415,6 +534,7 @@
         <td><span class="pill seg-${c._segment}">${escHtml(segLabel)}</span></td>
         <td>${apChip} ${consentChip} ${unsubChip}</td>
         <td>${lastContactCell}</td>
+        ${sendCell}
       </tr>
     `;
 
@@ -454,7 +574,7 @@
       : `<button class="btn btn-text" data-act="unsub-set" data-id="${c.id}">Mark unsubscribed</button>`;
     return `
       <tr class="history-drawer">
-        <td colspan="7">
+        <td colspan="8">
           ${productLine}${tagLine}${noteLine}
           <div style="margin:0.5rem 0;">${body}</div>
           <div style="text-align:right;">${unsubBtn}</div>
