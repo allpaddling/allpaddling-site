@@ -19,7 +19,7 @@
 const DISCIPLINE_COPY = {
   prone: {
     title:           'Prone Paddle Board Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for prone paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for prone paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD/month.',
     h1:              'Prone Paddle Board Plan',
     lead:            'A self-guided 4-week training block built for the prone stroke. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. No race required.',
     subscribeHeading: 'Start your Prone block',
@@ -33,7 +33,7 @@ const DISCIPLINE_COPY = {
   },
   sup: {
     title:           'Stand Up Paddle Board Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for stand up paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for stand up paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD/month.',
     h1:              'Stand Up Paddle Board Plan',
     lead:            'A self-guided 4-week training block built for SUP. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. Balance, stroke efficiency, and aerobic engine — all sharpened.',
     subscribeHeading: 'Start your SUP block',
@@ -47,7 +47,7 @@ const DISCIPLINE_COPY = {
   },
   oc: {
     title:           'Outrigger Canoe Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for outrigger canoe paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for outrigger canoe paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD/month.',
     h1:              'Outrigger Canoe Plan',
     lead:            'A self-guided 4-week training block built for the outrigger canoe stroke. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. Rhythm, change sides, power through the catch.',
     subscribeHeading: 'Start your OC block',
@@ -61,7 +61,7 @@ const DISCIPLINE_COPY = {
   },
   ski: {
     title:           'Surf Ski Plan — All Paddling',
-    metaDescription: 'Progressive 4-week training plan for surf ski paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD / 4 weeks.',
+    metaDescription: 'Progressive 4-week training plan for surf ski paddlers. Up to 4 paddle-specific sessions a week, 5-zone pace targets, cancel anytime — $80 AUD/month.',
     h1:              'Surf Ski Plan',
     lead:            'A self-guided 4-week training block built for surf ski. Up to 4 paddle-specific sessions a week — 3 intervals plus 1 longer steady — with 5-zone pace targets and week-over-week progression. Rotation, catch power, and the aerobic engine that lets you chase runners.',
     subscribeHeading: 'Start your Surf Ski block',
@@ -119,15 +119,15 @@ function progressivePlanPageHTML (copy, key) {
       <aside class="subscribe-card">
         <div class="price-row">
           <span class="amount">$80</span>
-          <span class="period">AUD / 4 weeks</span>
+          <span class="period">AUD / month</span>
         </div>
         <span class="cancel-tag">Cancel anytime — no lock-in</span>
         <h3>${e(copy.subscribeHeading)}</h3>
-        <p style="font-size: 0.88rem; color: var(--text-2); margin-bottom: 1rem;">Billed every 4 weeks at $80 AUD. Pause, skip, or cancel at the end of any cycle.</p>
+        <p style="font-size: 0.88rem; color: var(--text-2); margin-bottom: 1rem;">Billed monthly at $80 AUD. Pause, skip, or cancel any time.</p>
         <button class="btn btn-primary btn-full" onclick="startCheckout('progressive', '${e(key)}', this);">
           Subscribe &amp; Start
         </button>
-        <p class="sub-note">By subscribing, you authorise recurring 4-weekly charges until cancelled.</p>
+        <p class="sub-note">By subscribing, you authorise recurring monthly charges until cancelled.</p>
       </aside>
     </div>
   </div>
@@ -248,12 +248,12 @@ function progressivePlanPageHTML (copy, key) {
       <p>Up to 4 structured sessions a week — typically 3 interval sessions targeting different energy systems plus 1 longer steady-distance paddle. You can paddle as few or as many of them as your schedule allows, and add your own easy paddling around the prescribed work.</p>
     </details>
     <details class="faq-item">
-      <summary>What happens after the 4 weeks?</summary>
-      <p>Your subscription renews for another 4-week block at the next progression level. You retest your threshold, your zones update, and the sessions adjust accordingly. Or cancel — no questions asked.</p>
+      <summary>What happens after the first 4-week block?</summary>
+      <p>Your training rolls forward into the next 4-week block at the next progression level — you retest your threshold, your zones update, and the sessions adjust accordingly. Billing is monthly and continues until you cancel — no questions asked.</p>
     </details>
     <details class="faq-item">
       <summary>Can I switch disciplines later?</summary>
-      <p>Yes. You can switch between Prone, SUP, Outrigger Canoe, and Surf Ski from your member settings. The 4-week cycle stays the same.</p>
+      <p>Yes. You can switch between Prone, SUP, Outrigger Canoe, and Surf Ski from your member settings. The 4-week training block stays the same.</p>
     </details>
     <details class="faq-item">
       <summary>Why pick Progressive over Custom?</summary>
