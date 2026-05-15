@@ -539,6 +539,12 @@
     const campaignName = $('campaignName').value.trim();
     const subject      = $('emailSubject').value.trim();
     const body         = $('emailBody').value;
+    // Optional styled-HTML override. When the coach pastes a full HTML email
+    // here we send it verbatim (after {{first_name}} substitution + footer)
+    // instead of the auto-converted version from `body`. Plain-text body is
+    // still required and used as the text/* fallback for non-HTML clients.
+    const bodyHtmlEl   = $('emailBodyHtml');
+    const htmlOverride = bodyHtmlEl ? bodyHtmlEl.value.trim() : '';
 
     if (!campaignName) { alert('Campaign name is required.'); $('campaignName').focus(); return; }
     if (!subject)      { alert('Subject is required.');      $('emailSubject').focus(); return; }
@@ -575,7 +581,12 @@
       $('sendProgress').textContent = `Sending ${i + 1} of ${recipients.length}…`;
       try {
         const personalText = personalize(body, c) + UNSUB_FOOTER_TEXT;
-        const personalHtml = textToHtml(personalize(body, c)) + UNSUB_FOOTER_HTML;
+        // If the coach supplied a full HTML body, use it verbatim (just run
+        // {{first_name}} substitution and append the unsub footer). Otherwise
+        // fall back to the auto-converted plain-text → HTML rendering.
+        const personalHtml = htmlOverride
+          ? (personalize(htmlOverride, c, /*escapeForHtml*/ true) + UNSUB_FOOTER_HTML)
+          : (textToHtml(personalize(body, c)) + UNSUB_FOOTER_HTML);
         const res = await fetch(SEND_EMAIL_URL, {
           method: 'POST',
           headers: {
@@ -633,11 +644,16 @@
     render();
   }
 
-  function personalize (body, c) {
+  // When substituting into an HTML body, callers pass escapeForHtml=true so a
+  // first_name containing `<` or `&` can't break the document or inject markup.
+  // Plain-text bodies are routed through textToHtml() afterwards, which escapes
+  // the whole string, so they pass false (default).
+  function personalize (body, c, escapeForHtml = false) {
+    const v = s => (escapeForHtml ? escHtml(s) : s);
     return body
-      .replace(/\{\{first_name\}\}/g, c.first_name || 'there')
-      .replace(/\{\{last_name\}\}/g,  c.last_name  || '')
-      .replace(/\{\{email\}\}/g,      c.email      || '');
+      .replace(/\{\{first_name\}\}/g, v(c.first_name || 'there'))
+      .replace(/\{\{last_name\}\}/g,  v(c.last_name  || ''))
+      .replace(/\{\{email\}\}/g,      v(c.email      || ''));
   }
 
   function textToHtml (text) {

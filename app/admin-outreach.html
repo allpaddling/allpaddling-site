@@ -474,7 +474,15 @@
         <textarea id="emailBody" placeholder="Hi {{first_name}},&#10;&#10;…"></textarea>
         <div class="hint">
           Plain text. Use <code>{{first_name}}</code> to personalize.
-          An unsubscribe footer is appended automatically.
+          An unsubscribe footer is appended automatically. Always required — used as the fallback for clients that don't render HTML.
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="emailBodyHtml">Body (HTML) — optional</label>
+        <textarea id="emailBodyHtml" placeholder="<!-- Paste a full HTML email here for styled announcements. Leave blank for plain-text sends. -->" style="min-height: 200px;"></textarea>
+        <div class="hint">
+          Optional. When filled, this HTML is sent instead of the auto-converted plain-text version. <code>{{first_name}}</code> works here too. An unsubscribe link is appended automatically.
         </div>
       </div>
 
