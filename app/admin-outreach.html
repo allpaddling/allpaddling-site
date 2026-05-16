@@ -233,6 +233,108 @@
   .bulk-progress.error { color: #b0382f; font-weight: 600; }
   .bulk-progress.ok    { color: #236138; font-weight: 600; }
 
+  /* ---------- Engagement pane ----------
+     Per-campaign engagement summary, populated from outreach_sends.
+     Each campaign card shows delivered / opened / clicked bars plus
+     bounce + complaint counts. The pre-tracking-cutoff caveat banner
+     surfaces at the top so Mick doesn't read 0% open rates as failure
+     when the truth is "no webhook was wired up at send time".
+     Gmail/Apple image-proxy caveat is also called out — opens are
+     systemically inflated; clicks are the trustworthy signal. */
+  .eng-callout {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #7c2d12;
+    border-radius: var(--radius);
+    padding: 0.95rem 1.15rem;
+    margin-bottom: 1.25rem;
+    display: flex; gap: 0.75rem; align-items: flex-start;
+    font-size: 0.9rem; line-height: 1.5;
+  }
+  .eng-callout svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; }
+  .eng-callout strong { font-weight: 700; }
+
+  .eng-empty {
+    text-align: center; padding: 3rem 1rem; color: var(--text-3);
+    font-size: 0.92rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .eng-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.1rem 1.25rem;
+    margin-bottom: 0.85rem;
+  }
+  .eng-card-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem;
+  }
+  .eng-card-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem; font-weight: 700; color: var(--text);
+    margin: 0 0 0.25rem;
+  }
+  .eng-card-meta {
+    color: var(--text-3); font-size: 0.82rem;
+  }
+  .eng-card-meta .dot { margin: 0 0.4rem; opacity: 0.6; }
+
+  .eng-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .eng-pill {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.6rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .eng-pill.warn   { background: #fff2cc; color: #8c6d10; border-color: #fbe5a3; }
+  .eng-pill.danger { background: #fbeaea; color: #b0382f; border-color: #f3c7c2; }
+  .eng-pill.muted  { background: #ededed; color: #555;    border-color: #d5d5d5; }
+  .eng-pill.info   { background: #e0eef9; color: #224a72; border-color: #c2dbf3; }
+
+  /* The two bars (Opened, Clicked) per campaign. Percentage is
+     relative to delivered count, which is the only meaningful
+     denominator (a bounce was never deliverable). */
+  .eng-bars { display: flex; flex-direction: column; gap: 0.65rem; }
+  .eng-bar-row { display: grid; grid-template-columns: 90px 1fr 130px; gap: 0.75rem; align-items: center; }
+  @media (max-width: 560px) {
+    .eng-bar-row { grid-template-columns: 80px 1fr; }
+    .eng-bar-row .eng-bar-val { grid-column: 1 / -1; text-align: left; }
+  }
+  .eng-bar-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--text-2);
+  }
+  .eng-bar {
+    height: 10px; background: var(--surface-2);
+    border-radius: 999px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .eng-bar-fill {
+    height: 100%; border-radius: 999px;
+    transition: width .25s ease;
+  }
+  .eng-bar-fill.opened  { background: linear-gradient(90deg, #93c5fd, #3b82f6); }
+  .eng-bar-fill.clicked { background: linear-gradient(90deg, #6ee7b7, #16a34a); }
+  .eng-bar-fill.none    { background: repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 6px, #f3f4f6 6px, #f3f4f6 12px); width: 100% !important; }
+  .eng-bar-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; font-weight: 600; color: var(--text-2);
+    font-variant-numeric: tabular-nums; text-align: right;
+    white-space: nowrap;
+  }
+  .eng-bar-val .pct { color: var(--text); font-weight: 700; }
+  .eng-bar-val .raw { color: var(--text-3); margin-left: 0.3rem; font-weight: 500; }
+  .eng-bar-val .nodata { color: var(--text-3); font-style: italic; font-weight: 500; }
+
+  .eng-caveat {
+    margin-top: 0.85rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed var(--border);
+    font-size: 0.78rem; color: var(--text-3); line-height: 1.5;
+  }
+
   /* ---------- Per-row history drawer ---------- */
   .history-drawer {
     background: var(--surface-2);
@@ -320,9 +422,10 @@
       </div>
     </header>
 
-    <!-- Tabs: Outreach / Migration archive -->
+    <!-- Tabs: Outreach / Engagement / Migration archive -->
     <div class="surface-tabs">
       <button class="surface-tab active" data-pane="outreach">Outreach</button>
+      <button class="surface-tab" data-pane="engagement">Engagement</button>
       <button class="surface-tab" data-pane="archive">Migration archive</button>
     </div>
 
@@ -390,6 +493,37 @@
             <tr><td colspan="8" class="empty-state">Loading…</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- Engagement pane -->
+    <section id="pane-engagement" hidden>
+      <!-- Headline stats: campaign-level aggregates across every send in outreach_sends -->
+      <div class="stat-row">
+        <div class="stat-tile"><div class="label">Campaigns</div><div class="value" id="engCampaigns">—</div></div>
+        <div class="stat-tile"><div class="label">Recipients reached</div><div class="value" id="engDelivered">—</div></div>
+        <div class="stat-tile"><div class="label">Avg click rate</div><div class="value" id="engClickRate">—</div></div>
+        <div class="stat-tile"><div class="label">Bounces · complaints</div><div class="value" id="engBounces">—</div></div>
+      </div>
+
+      <!-- Persistent caveat about open-tracking artifacts. This is the
+           single most important thing for Mick to internalise before he
+           reads engagement numbers: opens are noisy, clicks are real. -->
+      <div class="eng-callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <strong>How to read this.</strong>
+          Open rates are inflated — Gmail's image proxy and Apple Mail Privacy Protection
+          pre-fetch the tracking pixel within seconds of delivery, whether the recipient
+          looked or not. Since every send BCCs two Gmail addresses, expect opens to fire
+          on essentially every campaign. <strong>Treat clicks as the reliable engagement signal</strong>
+          — Google's proxy won't click a wrapped link. Use click-throughs to compare
+          campaign performance and pick segments worth re-mailing.
+        </div>
+      </div>
+
+      <div id="engCards">
+        <div class="eng-empty">Loading engagement…</div>
       </div>
     </section>
 

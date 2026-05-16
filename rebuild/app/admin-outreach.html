@@ -148,6 +148,40 @@
   .col-check { width: 36px; padding-right: 0 !important; }
   .col-check input { width: 16px; height: 16px; cursor: pointer; }
 
+  /* ---------- Per-row quick-send (template picker + button) ---------- */
+  /* Mirrors the migration page pattern: pick a pre-built campaign from
+     the dropdown, hit Send, and the email fires through send-email with
+     no modal. Bulk send for multiple recipients lives in the selection bar. */
+  .col-send { white-space: nowrap; min-width: 240px; }
+  .send-row { display: flex; gap: 0.35rem; align-items: center; flex-wrap: nowrap; }
+  .email-kind-select {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.32rem 0.5rem;
+    font-size: 0.78rem;
+    font-family: inherit;
+    max-width: 170px;
+  }
+  .email-kind-select:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-mini {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-700); color: white;
+    border: 0; padding: 0.4rem 0.75rem; border-radius: 6px;
+    font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    transition: background .12s, opacity .12s;
+  }
+  .btn-mini:hover  { background: var(--brand-800); }
+  .btn-mini:disabled, .btn-mini.is-loading {
+    opacity: 0.6; cursor: progress; pointer-events: none;
+  }
+  .btn-mini.btn-mini-primary { background: #15803d; }
+  .btn-mini.btn-mini-primary:hover { background: #166534; }
+  .btn-mini.flash-success {
+    background: #15803d !important;
+  }
+
   .customer-cell { display: flex; flex-direction: column; gap: 0.15rem; min-width: 180px; max-width: 240px; }
   .customer-cell .name  { font-weight: 600; color: var(--text); }
   .customer-cell .email {
@@ -190,72 +224,116 @@
     font-size: 0.92rem;
   }
 
-  /* ---------- Compose modal ---------- */
-  .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 1000; padding: 2rem;
+  /* ---------- Bulk-send progress text in the selection bar ---------- */
+  .bulk-progress {
+    font-size: 0.82rem; color: var(--text-2);
+    margin-right: 0.4rem;
+    min-width: 0;
   }
-  .modal-card {
+  .bulk-progress.error { color: #b0382f; font-weight: 600; }
+  .bulk-progress.ok    { color: #236138; font-weight: 600; }
+
+  /* ---------- Engagement pane ----------
+     Per-campaign engagement summary, populated from outreach_sends.
+     Each campaign card shows delivered / opened / clicked bars plus
+     bounce + complaint counts. The pre-tracking-cutoff caveat banner
+     surfaces at the top so Mick doesn't read 0% open rates as failure
+     when the truth is "no webhook was wired up at send time".
+     Gmail/Apple image-proxy caveat is also called out — opens are
+     systemically inflated; clicks are the trustworthy signal. */
+  .eng-callout {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #7c2d12;
+    border-radius: var(--radius);
+    padding: 0.95rem 1.15rem;
+    margin-bottom: 1.25rem;
+    display: flex; gap: 0.75rem; align-items: flex-start;
+    font-size: 0.9rem; line-height: 1.5;
+  }
+  .eng-callout svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; }
+  .eng-callout strong { font-weight: 700; }
+
+  .eng-empty {
+    text-align: center; padding: 3rem 1rem; color: var(--text-3);
+    font-size: 0.92rem;
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius);
-    width: 100%; max-width: 720px; max-height: 90vh;
-    display: flex; flex-direction: column;
-    overflow: hidden;
   }
-  .modal-header {
-    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .modal-header h2 {
-    margin: 0; font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.05rem; font-weight: 700;
-  }
-  .modal-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
-  .modal-footer {
-    padding: 0.9rem 1.25rem; border-top: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
-    background: var(--surface-2);
-  }
-  .modal-footer .progress { font-size: 0.85rem; color: var(--text-2); }
 
-  .form-group { margin-bottom: 1rem; }
-  .form-group label {
-    display: block; font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
-    text-transform: uppercase; color: var(--text-3); margin-bottom: 0.35rem;
+  .eng-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.1rem 1.25rem;
+    margin-bottom: 0.85rem;
   }
-  .form-group input,
-  .form-group textarea {
-    width: 100%; box-sizing: border-box;
-    padding: 0.6rem 0.8rem; border: 1px solid var(--border);
-    border-radius: 6px; background: var(--surface);
-    font-family: inherit; font-size: 0.95rem; color: var(--text);
+  .eng-card-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem;
   }
-  .form-group textarea {
-    font-family: ui-monospace, monospace; font-size: 0.88rem;
-    line-height: 1.5; resize: vertical; min-height: 220px;
+  .eng-card-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem; font-weight: 700; color: var(--text);
+    margin: 0 0 0.25rem;
   }
-  .form-group .hint { font-size: 0.78rem; color: var(--text-3); margin-top: 0.3rem; }
+  .eng-card-meta {
+    color: var(--text-3); font-size: 0.82rem;
+  }
+  .eng-card-meta .dot { margin: 0 0.4rem; opacity: 0.6; }
 
-  .alert {
-    padding: 0.7rem 0.9rem; border-radius: 6px; margin-bottom: 1rem;
-    font-size: 0.88rem;
+  .eng-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .eng-pill {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.6rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+    border: 1px solid transparent; white-space: nowrap;
   }
-  .alert.alert-warn   { background: #fbeaea; color: #b0382f; border: 1px solid #f3c7c2; }
-  .alert.alert-info   { background: #e0eef9; color: #224a72; border: 1px solid #c2dbf3; }
-  .alert.alert-ok     { background: #d6efdc; color: #236138; border: 1px solid #b5dfc2; }
-  .alert input[type="checkbox"] { margin-right: 0.4rem; }
+  .eng-pill.warn   { background: #fff2cc; color: #8c6d10; border-color: #fbe5a3; }
+  .eng-pill.danger { background: #fbeaea; color: #b0382f; border-color: #f3c7c2; }
+  .eng-pill.muted  { background: #ededed; color: #555;    border-color: #d5d5d5; }
+  .eng-pill.info   { background: #e0eef9; color: #224a72; border-color: #c2dbf3; }
 
-  .recipient-list {
-    background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem;
-    max-height: 140px; overflow-y: auto;
-    font-family: ui-monospace, monospace; font-size: 0.82rem;
-    color: var(--text-2);
+  /* The two bars (Opened, Clicked) per campaign. Percentage is
+     relative to delivered count, which is the only meaningful
+     denominator (a bounce was never deliverable). */
+  .eng-bars { display: flex; flex-direction: column; gap: 0.65rem; }
+  .eng-bar-row { display: grid; grid-template-columns: 90px 1fr 130px; gap: 0.75rem; align-items: center; }
+  @media (max-width: 560px) {
+    .eng-bar-row { grid-template-columns: 80px 1fr; }
+    .eng-bar-row .eng-bar-val { grid-column: 1 / -1; text-align: left; }
   }
-  .recipient-list .recipient-row { display: flex; justify-content: space-between; padding: 0.1rem 0; }
-  .recipient-list .recipient-row.warn { color: #b0382f; }
+  .eng-bar-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--text-2);
+  }
+  .eng-bar {
+    height: 10px; background: var(--surface-2);
+    border-radius: 999px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .eng-bar-fill {
+    height: 100%; border-radius: 999px;
+    transition: width .25s ease;
+  }
+  .eng-bar-fill.opened  { background: linear-gradient(90deg, #93c5fd, #3b82f6); }
+  .eng-bar-fill.clicked { background: linear-gradient(90deg, #6ee7b7, #16a34a); }
+  .eng-bar-fill.none    { background: repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 6px, #f3f4f6 6px, #f3f4f6 12px); width: 100% !important; }
+  .eng-bar-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; font-weight: 600; color: var(--text-2);
+    font-variant-numeric: tabular-nums; text-align: right;
+    white-space: nowrap;
+  }
+  .eng-bar-val .pct { color: var(--text); font-weight: 700; }
+  .eng-bar-val .raw { color: var(--text-3); margin-left: 0.3rem; font-weight: 500; }
+  .eng-bar-val .nodata { color: var(--text-3); font-style: italic; font-weight: 500; }
+
+  .eng-caveat {
+    margin-top: 0.85rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed var(--border);
+    font-size: 0.78rem; color: var(--text-3); line-height: 1.5;
+  }
 
   /* ---------- Per-row history drawer ---------- */
   .history-drawer {
@@ -344,9 +422,10 @@
       </div>
     </header>
 
-    <!-- Tabs: Outreach / Migration archive -->
+    <!-- Tabs: Outreach / Engagement / Migration archive -->
     <div class="surface-tabs">
       <button class="surface-tab active" data-pane="outreach">Outreach</button>
+      <button class="surface-tab" data-pane="engagement">Engagement</button>
       <button class="surface-tab" data-pane="archive">Migration archive</button>
     </div>
 
@@ -381,15 +460,17 @@
         </div>
       </div>
 
-      <!-- Selection summary (only visible when ≥1 row selected) -->
+      <!-- Selection summary + bulk send (only visible when ≥1 row selected) -->
       <div class="selection-bar" id="selectionBar" hidden>
         <div>
           <span class="summary"><span id="selCount">0</span> selected</span>
           <span id="selWarn" class="warn"></span>
         </div>
         <div class="actions">
+          <span class="bulk-progress" id="bulkProgress"></span>
+          <select class="email-kind-select" id="bulkTemplateSelect" aria-label="Campaign template"></select>
           <button class="btn btn-text" id="clearSelBtn">Clear</button>
-          <button class="btn btn-primary" id="composeBtn">Compose →</button>
+          <button class="btn btn-primary" id="bulkSendBtn">Send to selected →</button>
         </div>
       </div>
 
@@ -405,12 +486,44 @@
               <th>Segment</th>
               <th>Status</th>
               <th>Last contact</th>
+              <th class="col-send">Quick send</th>
             </tr>
           </thead>
           <tbody id="customersBody">
-            <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+            <tr><td colspan="8" class="empty-state">Loading…</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- Engagement pane -->
+    <section id="pane-engagement" hidden>
+      <!-- Headline stats: campaign-level aggregates across every send in outreach_sends -->
+      <div class="stat-row">
+        <div class="stat-tile"><div class="label">Campaigns</div><div class="value" id="engCampaigns">—</div></div>
+        <div class="stat-tile"><div class="label">Recipients reached</div><div class="value" id="engDelivered">—</div></div>
+        <div class="stat-tile"><div class="label">Avg click rate</div><div class="value" id="engClickRate">—</div></div>
+        <div class="stat-tile"><div class="label">Bounces · complaints</div><div class="value" id="engBounces">—</div></div>
+      </div>
+
+      <!-- Persistent caveat about open-tracking artifacts. This is the
+           single most important thing for Mick to internalise before he
+           reads engagement numbers: opens are noisy, clicks are real. -->
+      <div class="eng-callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <strong>How to read this.</strong>
+          Open rates are inflated — Gmail's image proxy and Apple Mail Privacy Protection
+          pre-fetch the tracking pixel within seconds of delivery, whether the recipient
+          looked or not. Since every send BCCs two Gmail addresses, expect opens to fire
+          on essentially every campaign. <strong>Treat clicks as the reliable engagement signal</strong>
+          — Google's proxy won't click a wrapped link. Use click-throughs to compare
+          campaign performance and pick segments worth re-mailing.
+        </div>
+      </div>
+
+      <div id="engCards">
+        <div class="eng-empty">Loading engagement…</div>
       </div>
     </section>
 
@@ -448,54 +561,10 @@
   </main>
 </div>
 
-<!-- Compose modal (hidden by default) -->
-<div id="composeModal" class="modal-backdrop" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h2>Compose campaign</h2>
-      <button class="btn btn-text" id="composeCloseBtn" aria-label="Close">✕</button>
-    </div>
-    <div class="modal-body" id="composeBody">
-      <div id="composeAlerts"></div>
-
-      <div class="form-group">
-        <label for="campaignName">Campaign name</label>
-        <input type="text" id="campaignName" placeholder="e.g. May 2026 — Custom winback" autocomplete="off" />
-        <div class="hint">Used to group sends in the history log. Type the same name to add more recipients to an existing campaign.</div>
-      </div>
-
-      <div class="form-group">
-        <label for="emailSubject">Subject</label>
-        <input type="text" id="emailSubject" placeholder="Subject line" autocomplete="off" />
-      </div>
-
-      <div class="form-group">
-        <label for="emailBody">Body (plain text)</label>
-        <textarea id="emailBody" placeholder="Hi {{first_name}},&#10;&#10;…"></textarea>
-        <div class="hint">
-          Plain text. Use <code>{{first_name}}</code> to personalize.
-          An unsubscribe footer is appended automatically.
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Recipients (<span id="recipientCount">0</span>)</label>
-        <div class="recipient-list" id="recipientList"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <div class="progress" id="sendProgress"></div>
-      <div style="display:flex; gap:0.5rem;">
-        <button class="btn btn-text" id="composeCancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="composeSendBtn">Send →</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js"></script>
+<script src="../assets/outreach-templates.js"></script>
 <script src="../assets/admin-outreach.js"></script>
 <script>
 (async () => {
@@ -531,5 +600,6 @@
   await window.OutreachPage.init(adminEmail);
 })();
 </script>
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "bf3dd55206394d3dbc26eca3949ef5cc"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>

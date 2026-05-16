@@ -84,6 +84,7 @@
     expandedCustomerId:   null,
     adminEmail:           '',
     archiveLoaded:        false,
+    engagementLoaded:     false,
   };
 
   // ---------- DOM helpers ----------
@@ -843,6 +844,158 @@
   }
 
   // ============================================================
+  // Engagement tab
+  //
+  // Reads every row in outreach_sends, groups by campaign_name, and
+  // renders per-campaign engagement summary cards. Engagement columns
+  // (delivered_at / opened_at / clicked_at / bounced_at / complained_at,
+  // plus open_count / click_count and the raw events jsonb) are
+  // populated by the resend-webhook Edge Function. Campaigns sent
+  // BEFORE webhook tracking was wired up (15 May 2026) will show no
+  // engagement events at all — we surface that as a "no tracking
+  // available" badge rather than misleading 0% open/click rates.
+  // ============================================================
+  const ENGAGEMENT_TRACKING_LIVE = new Date('2026-05-16T00:00:00Z');
+
+  async function loadEngagement () {
+    if (state.engagementLoaded) return;
+    const container = $('engCards');
+    const { data, error } = await sb
+      .from('outreach_sends')
+      .select('id, campaign_name, template_kind, sent_at, status, delivered_at, opened_at, clicked_at, bounced_at, complained_at, open_count, click_count, events')
+      .order('sent_at', { ascending: false });
+    if (error) {
+      container.innerHTML = `<div class="eng-empty">Couldn't load engagement — ${escHtml(error.message)}</div>`;
+      return;
+    }
+    state.engagementLoaded = true;
+    const rows = data || [];
+
+    // Group by campaign_name. Within each group, derive engagement
+    // counts. A campaign is "tracked" if at least one of its sends has
+    // events (non-empty events jsonb) — that tells us the webhook was
+    // active at send time.
+    const groups = new Map();
+    for (const r of rows) {
+      const key = r.campaign_name || '(unnamed)';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    }
+
+    // Cross-campaign headline stats
+    let totalDelivered = 0, totalClicked = 0, totalBounced = 0, totalComplained = 0;
+    for (const r of rows) {
+      const wasDelivered = !!r.delivered_at || (r.status !== 'failed' && !r.bounced_at);
+      if (wasDelivered) totalDelivered++;
+      if (r.clicked_at)   totalClicked++;
+      if (r.bounced_at)   totalBounced++;
+      if (r.complained_at) totalComplained++;
+    }
+    $('engCampaigns').textContent = groups.size || '0';
+    $('engDelivered').textContent = totalDelivered.toString();
+    // Click rate computed only over tracked sends (where the webhook
+    // could record a click in the first place). Untracked sends bias
+    // the denominator downward, so we exclude them.
+    const trackedSends = rows.filter(r => Array.isArray(r.events) && r.events.length > 0).length;
+    if (trackedSends > 0) {
+      const pct = Math.round((totalClicked / trackedSends) * 1000) / 10;
+      $('engClickRate').textContent = pct + '%';
+    } else {
+      $('engClickRate').textContent = '—';
+    }
+    $('engBounces').textContent = totalBounced + ' · ' + totalComplained;
+
+    if (groups.size === 0) {
+      container.innerHTML = `<div class="eng-empty">No campaigns sent yet. Engagement will populate once you send your first campaign from the Outreach tab.</div>`;
+      return;
+    }
+
+    // Render one card per campaign, newest first (groups iterate in
+    // insertion order, which is sent_at desc from the SQL above).
+    const cardsHtml = Array.from(groups.entries()).map(([campaignName, sends]) => {
+      const delivered = sends.filter(r => !!r.delivered_at || (r.status !== 'failed' && !r.bounced_at)).length;
+      const opened    = sends.filter(r => !!r.opened_at).length;
+      const clicked   = sends.filter(r => !!r.clicked_at).length;
+      const bounced   = sends.filter(r => !!r.bounced_at).length;
+      const complained = sends.filter(r => !!r.complained_at).length;
+      const tracked   = sends.some(r => Array.isArray(r.events) && r.events.length > 0);
+      const lastSentAt = sends.reduce((max, r) => {
+        if (!r.sent_at) return max;
+        return (!max || r.sent_at > max) ? r.sent_at : max;
+      }, null);
+      const firstSentAt = sends.reduce((min, r) => {
+        if (!r.sent_at) return min;
+        return (!min || r.sent_at < min) ? r.sent_at : min;
+      }, null);
+
+      const sentBefore = lastSentAt && new Date(lastSentAt) < ENGAGEMENT_TRACKING_LIVE && !tracked;
+      const openPct  = delivered > 0 ? Math.round((opened  / delivered) * 1000) / 10 : 0;
+      const clickPct = delivered > 0 ? Math.round((clicked / delivered) * 1000) / 10 : 0;
+
+      // Pills for this campaign
+      const pills = [];
+      pills.push(`<span class="eng-pill info">${escHtml(String(sends.length))} sent</span>`);
+      if (delivered !== sends.length) pills.push(`<span class="eng-pill muted">${escHtml(String(delivered))} delivered</span>`);
+      if (bounced > 0)    pills.push(`<span class="eng-pill warn">${escHtml(String(bounced))} bounced</span>`);
+      if (complained > 0) pills.push(`<span class="eng-pill danger">${escHtml(String(complained))} complained</span>`);
+      if (sentBefore)     pills.push(`<span class="eng-pill muted">No engagement tracking</span>`);
+
+      // Bars — if no tracking was active at send time, render hatched
+      // "no data" bars and a different caveat. If tracking IS active
+      // but we have zero opens/clicks (genuine), render zero-width bars.
+      const noTracking = sentBefore;
+      const openBar  = noTracking
+        ? `<div class="eng-bar"><div class="eng-bar-fill none"></div></div>`
+        : `<div class="eng-bar"><div class="eng-bar-fill opened" style="width:${Math.min(100, openPct)}%;"></div></div>`;
+      const clickBar = noTracking
+        ? `<div class="eng-bar"><div class="eng-bar-fill none"></div></div>`
+        : `<div class="eng-bar"><div class="eng-bar-fill clicked" style="width:${Math.min(100, clickPct)}%;"></div></div>`;
+      const openVal  = noTracking
+        ? `<span class="nodata">no data</span>`
+        : `<span class="pct">${openPct}%</span><span class="raw">${opened}/${delivered}</span>`;
+      const clickVal = noTracking
+        ? `<span class="nodata">no data</span>`
+        : `<span class="pct">${clickPct}%</span><span class="raw">${clicked}/${delivered}</span>`;
+
+      // Date meta line
+      const dateMeta = firstSentAt === lastSentAt || !firstSentAt
+        ? fmtDate(lastSentAt)
+        : `${fmtDate(firstSentAt)} → ${fmtDate(lastSentAt)}`;
+
+      const caveatHtml = noTracking
+        ? `<div class="eng-caveat">This campaign was sent before the Resend webhook was wired up, so per-recipient open and click events were not captured. Future campaigns will populate fully.</div>`
+        : '';
+
+      return `
+        <div class="eng-card">
+          <div class="eng-card-head">
+            <div>
+              <h3 class="eng-card-title">${escHtml(campaignName)}</h3>
+              <div class="eng-card-meta">${escHtml(dateMeta)}${sends[0].template_kind ? `<span class="dot">·</span>${escHtml(sends[0].template_kind)}` : ''}</div>
+            </div>
+            <div class="eng-pills">${pills.join('')}</div>
+          </div>
+          <div class="eng-bars">
+            <div class="eng-bar-row">
+              <span class="eng-bar-label">Opened</span>
+              ${openBar}
+              <span class="eng-bar-val">${openVal}</span>
+            </div>
+            <div class="eng-bar-row">
+              <span class="eng-bar-label">Clicked</span>
+              ${clickBar}
+              <span class="eng-bar-val">${clickVal}</span>
+            </div>
+          </div>
+          ${caveatHtml}
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = cardsHtml;
+  }
+
+  // ============================================================
   // Migration archive tab
   // ============================================================
   async function loadArchive () {
@@ -893,9 +1046,11 @@
       btn.addEventListener('click', () => {
         const pane = btn.dataset.pane;
         document.querySelectorAll('.surface-tab').forEach(b => b.classList.toggle('active', b === btn));
-        $('pane-outreach').hidden = (pane !== 'outreach');
-        $('pane-archive').hidden  = (pane !== 'archive');
-        if (pane === 'archive') loadArchive();
+        $('pane-outreach').hidden   = (pane !== 'outreach');
+        $('pane-engagement').hidden = (pane !== 'engagement');
+        $('pane-archive').hidden    = (pane !== 'archive');
+        if (pane === 'archive')    loadArchive();
+        if (pane === 'engagement') loadEngagement();
       });
     });
 
