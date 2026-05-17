@@ -101,6 +101,18 @@
     border-top: 1px solid var(--border);
   }
 
+  /* Subscription status pills */
+  .sub-pill {
+    display: inline-flex; align-items: center;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.2rem 0.6rem; border-radius: 5px;
+    text-transform: uppercase;
+  }
+  .sub-pill.active  { background: #dcfce7; color: #166534; }
+  .sub-pill.paused  { background: #fef9c3; color: #854d0e; }
+  .sub-pill.cancel  { background: #fee2e2; color: #991b1b; }
+  .sub-pill.unknown { background: var(--surface-2); color: var(--text-3); }
+
   /* Gate styles reused */
   .gate-wrap {
     min-height: 100vh;
@@ -236,6 +248,30 @@
       </form>
     </div>
 
+    <!-- Subscription management panel — shown only when editing a member with a Stripe subscription -->
+    <div class="member-form-card" id="sub-panel" style="display:none;">
+      <div class="member-form-head">
+        <h2>Subscription</h2>
+        <span class="mode-tag" style="background:var(--surface-2);color:var(--text-3);">STRIPE</span>
+      </div>
+      <div id="sub-loading" style="color:var(--text-3); font-size:0.9rem; padding:0.15rem 0;">Checking Stripe…</div>
+      <div id="sub-body" style="display:none;">
+        <div id="sub-info" style="margin-bottom:0.9rem;"></div>
+        <div class="form-actions" id="sub-actions" style="margin-top:0; padding-top:0; border-top:none;"></div>
+        <div id="pause-opts" style="display:none; margin-top:0.85rem; padding-top:0.85rem; border-top:1px solid var(--border);">
+          <label style="font-size:0.8rem; font-weight:600; color:var(--text-2); display:block; margin-bottom:0.4rem;">
+            Auto-resume date <span style="font-weight:400; color:var(--text-3);">(optional — leave blank to resume manually)</span>
+          </label>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <input type="date" id="pause-resume-date" class="mf-input" style="max-width:200px;" />
+            <button class="btn btn-primary" id="pause-confirm-btn" type="button">Pause now</button>
+            <button class="btn btn-ghost" id="pause-cancel-btn" type="button">Back</button>
+          </div>
+        </div>
+      </div>
+      <div id="sub-error" style="display:none; color:#b91c1c; font-size:0.9rem;"></div>
+    </div>
+
   </main>
 </div>
 
@@ -273,6 +309,132 @@
     location.href = 'admin.html';
   });
 
+  /* ---- Subscription management panel ---- */
+
+  async function loadSubPanel(authUserId) {
+    const panel   = document.getElementById('sub-panel');
+    const loading = document.getElementById('sub-loading');
+    const body    = document.getElementById('sub-body');
+    const errEl   = document.getElementById('sub-error');
+    panel.style.display = '';
+    loading.textContent = 'Checking Stripe…';
+    loading.style.display = '';
+    body.style.display = 'none';
+    errEl.style.display = 'none';
+    try {
+      const { data, error } = await sb.functions.invoke('coach-manage-subscription', {
+        body: { action: 'status', target_user_id: authUserId },
+      });
+      loading.style.display = 'none';
+      if (error) throw new Error(error.message || 'Function error');
+      if (!data?.ok) {
+        if (data?.error === 'no_subscription') { panel.style.display = 'none'; return; }
+        throw new Error(data?.detail || data?.error || 'Unknown error');
+      }
+      renderSubState(authUserId, data);
+    } catch (err) {
+      loading.style.display = 'none';
+      errEl.textContent = 'Could not load subscription: ' + err.message;
+      errEl.style.display = '';
+    }
+  }
+
+  function renderSubState(authUserId, d) {
+    const body      = document.getElementById('sub-body');
+    const infoEl    = document.getElementById('sub-info');
+    const actEl     = document.getElementById('sub-actions');
+    const pauseOpts = document.getElementById('pause-opts');
+
+    body.style.display = '';
+    pauseOpts.style.display = 'none';
+    actEl.innerHTML = '';
+
+    // Status pill
+    let pillClass = 'unknown', pillLabel = d.status || '—';
+    if (d.is_paused)               { pillClass = 'paused'; pillLabel = 'Paused'; }
+    else if (d.cancel_at_period_end) { pillClass = 'cancel'; pillLabel = 'Cancelling'; }
+    else if (d.status === 'active')  { pillClass = 'active'; pillLabel = 'Active'; }
+
+    // Period end label
+    let periodLine = '';
+    if (d.current_period_end) {
+      const fmt = (iso) => new Date(iso).toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+      if (d.cancel_at_period_end)         periodLine = `Access ends: <strong>${fmt(d.current_period_end)}</strong>`;
+      else if (d.is_paused && d.pause_resumes_at) periodLine = `Auto-resumes: <strong>${fmt(d.pause_resumes_at)}</strong>`;
+      else if (d.is_paused)               periodLine = 'Paused — will resume when you click Resume below.';
+      else                                periodLine = `Next billing date: <strong>${fmt(d.current_period_end)}</strong>`;
+    }
+
+    infoEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:${periodLine?'0.45rem':'0'};">
+        <span class="sub-pill ${pillClass}">${pillLabel}</span>
+      </div>
+      ${periodLine ? `<div style="font-size:0.9rem;color:var(--text-2);">${periodLine}</div>` : ''}
+    `;
+
+    // Action buttons
+    if (d.is_paused) {
+      actEl.appendChild(makeSubBtn('Resume subscription', 'btn-primary', async () => {
+        await doSubAction(authUserId, 'resume');
+      }));
+      actEl.appendChild(makeSubBtn('Cancel subscription', 'btn-ghost', async () => {
+        if (!confirm(`Cancel ${d.member_name || 'this member'}'s subscription? They'll keep access until the end of the current period.`)) return;
+        await doSubAction(authUserId, 'cancel');
+      }));
+    } else if (d.cancel_at_period_end) {
+      actEl.appendChild(makeSubBtn('Undo cancellation', 'btn-primary', async () => {
+        await doSubAction(authUserId, 'undo_cancel');
+      }));
+    } else if (d.status === 'active') {
+      actEl.appendChild(makeSubBtn('Pause subscription…', 'btn-ghost', () => {
+        pauseOpts.style.display = pauseOpts.style.display === 'none' ? '' : 'none';
+      }));
+      actEl.appendChild(makeSubBtn('Cancel subscription', 'btn-ghost', async () => {
+        if (!confirm(`Cancel ${d.member_name || 'this member'}'s subscription? They'll keep access until the end of the current period.`)) return;
+        await doSubAction(authUserId, 'cancel');
+      }));
+    }
+
+    document.getElementById('pause-confirm-btn').onclick = async () => {
+      const resumeDate = document.getElementById('pause-resume-date').value;
+      await doSubAction(authUserId, 'pause', resumeDate ? { resumes_at: resumeDate } : {});
+    };
+    document.getElementById('pause-cancel-btn').onclick = () => {
+      pauseOpts.style.display = 'none';
+    };
+  }
+
+  function makeSubBtn(label, cls, handler) {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = `btn ${cls}`; btn.textContent = label;
+    btn.addEventListener('click', handler);
+    return btn;
+  }
+
+  async function doSubAction(authUserId, action, extra = {}) {
+    const loading = document.getElementById('sub-loading');
+    const body    = document.getElementById('sub-body');
+    const errEl   = document.getElementById('sub-error');
+    body.style.display = 'none';
+    errEl.style.display = 'none';
+    loading.textContent = { resume:'Resuming…', pause:'Pausing…', cancel:'Scheduling cancel…', undo_cancel:'Undoing cancel…' }[action] || 'Working…';
+    loading.style.display = '';
+    try {
+      const { data, error } = await sb.functions.invoke('coach-manage-subscription', {
+        body: { action, target_user_id: authUserId, ...extra },
+      });
+      if (error) throw new Error(error.message || 'Function error');
+      if (!data?.ok) throw new Error(data?.detail || data?.error || 'Action failed');
+      loading.textContent = 'Refreshing…';
+      await loadSubPanel(authUserId);
+    } catch (err) {
+      loading.style.display = 'none';
+      body.style.display = '';
+      errEl.textContent = 'Action failed: ' + err.message;
+      errEl.style.display = '';
+    }
+  }
+
   /* ---- Form state ---- */
   let editingId = null;
 
@@ -305,6 +467,8 @@
     dateEl.value  = member.raceDate || '';
     notesEl.value = member.notes || '';
     nameEl.focus();
+    // Load subscription panel if this member has a Supabase auth account
+    if (member.authUserId) loadSubPanel(member.authUserId);
   }
 
   cancelBtn.addEventListener('click', () => {
