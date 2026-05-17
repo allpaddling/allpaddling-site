@@ -324,6 +324,8 @@
     uiState = 'active';                              // legacy member, no Stripe row
   } else if (subRow.status === 'canceled' || subRow.status === 'incomplete_expired') {
     uiState = 'canceled';
+  } else if (subRow.status === 'past_due' || subRow.status === 'unpaid') {
+    uiState = 'past_due';
   } else if (subRow.status === 'paused') {
     uiState = 'paused';
   } else if (subRow.cancel_at_period_end) {
@@ -448,6 +450,19 @@
       });
       document.getElementById('undo-cancel-btn').addEventListener('click', () => callManageSub('undo_cancel', null, 'Cancellation reversed — you\'re still subscribed.'));
 
+    } else if (st === 'past_due') {
+      badge.className = 'sub-badge danger';
+      badgeText.textContent = 'Payment failed';
+      sub.textContent = 'Your last payment didn\'t go through. Update your card to keep access.';
+      banner.className = 'sub-banner warn';
+      banner.style.display = 'block';
+      banner.innerHTML = `We couldn't charge your card. Your program access is still active while we retry — but if payment doesn't come through soon, your membership will be suspended. <strong>Update your card to keep things running.</strong>`;
+      actions.innerHTML = `
+        <button class="btn-resume" id="update-card-btn" type="button">Update payment method →</button>
+      `;
+      mini.textContent = 'Clicking above opens Stripe\'s secure billing portal. You\'ll be returned here once you\'re done.';
+      document.getElementById('update-card-btn').addEventListener('click', openPortal);
+
     } else if (st === 'canceled') {
       badge.className = 'sub-badge muted';
       badgeText.textContent = 'Canceled';
@@ -529,6 +544,26 @@
     document.getElementById('cancel-confirm-btn').disabled = false;
     if (ok) cancelModal.classList.remove('open');
   });
+
+  // ---- Stripe Billing Portal ----
+  // Opens the Stripe Customer Portal so the member can update their
+  // payment method, download invoices, or manage billing details.
+  async function openPortal () {
+    const btn = document.getElementById('update-card-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+    try {
+      const { data, error } = await sb.functions.invoke('create-portal-session', { body: {} });
+      if (error || !data?.url) {
+        showToast('Could not open billing portal — please try again.', /*err*/true);
+        if (btn) { btn.disabled = false; btn.textContent = 'Update payment method →'; }
+        return;
+      }
+      window.location.href = data.url;
+    } catch (e) {
+      showToast('Network error — please try again.', /*err*/true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Update payment method →'; }
+    }
+  }
 
   // ---- Manage-subscription Edge Function caller ----
   async function callManageSub (action, payload, successMsg, silent = false) {

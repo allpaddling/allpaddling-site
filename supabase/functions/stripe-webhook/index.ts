@@ -592,7 +592,7 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
   // incomplete/incomplete_expired during a replay.
   const { data: existing, error: lookupErr } = await sb
     .from('subscriptions')
-    .select('status')
+    .select('status, pause_resumes_at')
     .eq('stripe_subscription_id', sub.id)
     .maybeSingle();
   if (lookupErr) throw new Error(`customer.subscription.updated lookup: ${lookupErr.message}`);
@@ -644,6 +644,38 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
     (sub.cancel_at_period_end ? ' [cancel_at_period_end=true]' : '') +
     (sub.pause_collection?.resumes_at ? ` [pause_resumes_at=${new Date(sub.pause_collection.resumes_at * 1000).toISOString()}]` : '')
   );
+
+  // Auto-resume detection: fire subscription-resumed email when Stripe
+  // auto-resumes a subscription at its scheduled pause_resumes_at date.
+  //
+  // Conditions to distinguish auto-resume (email needed here) from manual
+  // early-resume (email already sent by manage-subscription / coach function):
+  //  1. The sub previously had a scheduled resume date (existing.pause_resumes_at set).
+  //  2. The pause_collection is now gone (sub is no longer paused).
+  //  3. The scheduled date is in the past (≤ now + 12h buffer to handle Stripe
+  //     firing the event slightly before the exact timestamp).
+  //
+  // Manual early-resume: pause_resumes_at is still in the future when the coach
+  // or member resumes — fails condition 3, skipped correctly.
+  const prevPauseAt  = existing.pause_resumes_at ? Date.parse(existing.pause_resumes_at) : 0;
+  const isAutoResume = prevPauseAt > 0
+    && !sub.pause_collection
+    && prevPauseAt <= Date.now() + 12 * 3600 * 1000;
+
+  if (isAutoResume) {
+    console.log(`customer.subscription.updated: auto-resume detected for ${sub.id}, sending subscription-resumed email`);
+    try {
+      const ctx = await resolveSubscription(sub.id);
+      await sendTransactional('subscription-resumed', ctx.email, {
+        member_name: ctx.preferred_name,
+        plan_name:   ctx.member.planLabel,
+        plan_url:    PLAN_URL,
+        coach_name:  COACH_NAME,
+      });
+    } catch (emailErr) {
+      console.warn(`auto-resume email failed for ${sub.id}:`, emailErr);
+    }
+  }
 }
 
 async function handleSubscriptionDeleted (sub: Stripe.Subscription): Promise<void> {
