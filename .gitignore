@@ -1,0 +1,11 @@
+# Local MCP config — contains API keys and PATs, never commit
+.mcp.json
+
+# Local secrets directory
+.claude/secrets/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
