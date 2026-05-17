@@ -4,7 +4,72 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-15 (Fri) — email consolidation: hello@ → mick@
+## ⭐⭐⭐ LATEST — 2026-05-17 (Sun) — subscription edge cases + coach admin controls
+
+All four items parked from the 2026-05-01 session are now shipped and live.
+
+### What shipped this session
+
+**1. Coach-side subscription management (`coach-manage-subscription` Edge Function)**
+- New self-contained Edge Function (`verify_jwt: true`). Actions: `status`, `pause`, `resume`, `cancel`, `undo_cancel`.
+- Coach JWT validated + `coaches` table check (only coaches can call it).
+- Emails routed via HTTP to `send-email` with SERVICE_ROLE_KEY (no `_shared/` import — MCP-deployable).
+- Deployed ACTIVE via Supabase MCP.
+
+**2. Subscription panel on `admin-custom.html` + `admin-progressive.html`**
+- New `#sub-panel` card appears below the member form when editing any member who has an `auth_user_id`.
+- Calls `coach-manage-subscription` status action on load; silently hides panel if `no_subscription`.
+- Status badges: Active (green) / Paused (amber) / Cancelling (red). Action buttons contextual to status.
+- Pause reveals a date picker for optional auto-resume date. All actions confirm then update state.
+
+**3. Auto-resume email in `stripe-webhook`**
+- `handleSubscriptionUpdated` now reads `pause_resumes_at` from the existing DB row before updating.
+- Detects auto-resume: `pause_resumes_at` was set in DB, Stripe is now clearing `pause_collection`, and the date is in the past (±12h buffer for timing variance).
+- On auto-resume: looks up member, sends `subscription-resumed` email.
+- Manual early-resume (date still in future) is excluded — that email is already sent by `manage-subscription` / `coach-manage-subscription`.
+- Deployed locally by Jake (uses `_shared/email.ts`, can't go via MCP): `supabase functions deploy stripe-webhook --no-verify-jwt --project-ref crlukzkgmydyqpwndjvc` ✓
+
+**4. 3-day reminder before auto-resume (`check-pause-reminders` Edge Function + migration 017)**
+- New self-contained Edge Function (`verify_jwt: false`). Queries subscriptions resuming in 2–4 days with `pause_resume_reminder_sent_at IS NULL`. Sends `subscription-resuming-soon` email (card_last4 fetched from Stripe), marks idempotency column.
+- Migration `20260517_017_pause_resume_reminder.sql` applied ✓:
+  - Added `pause_resume_reminder_sent_at timestamptz` to `subscriptions`
+  - Created partial index `subscriptions_pause_reminder_idx`
+  - Enabled `pg_net` + `pg_cron` extensions
+  - Scheduled daily cron at 8am UTC: `check-pause-reminders`
+- Deployed ACTIVE via Supabase MCP.
+
+**5. Stripe Billing Portal for `past_due` / `unpaid` members (`create-portal-session` + `settings.html`)**
+- New self-contained Edge Function (`verify_jwt: true`). Looks up `stripe_customer_id` from `subscriptions`, creates a Stripe Billing Portal session, returns `{ ok: true, url }`.
+- `settings.html` now detects `past_due` / `unpaid` status and renders a "Payment failed" banner with an "Update payment method →" button that calls `openPortal()` → redirects to Stripe portal.
+- Deployed ACTIVE via Supabase MCP.
+
+### Commit
+All 5 files pushed in commit [`39241dea`](https://github.com/allpaddling/allpaddling-site/commit/39241dea7933c42bc834d5e1a272bebc5ce7ff92):
+- `supabase/functions/stripe-webhook/index.ts`
+- `app/settings.html`
+- `supabase/functions/check-pause-reminders/index.ts`
+- `supabase/functions/create-portal-session/index.ts`
+- `supabase/migrations/20260517_017_pause_resume_reminder.sql`
+
+### Function inventory (all healthy as of this session)
+
+| Function | verify_jwt | Notes |
+|---|---|---|
+| stripe-webhook | false ✓ | Auto-resume email added; latest deploy this session |
+| manage-subscription | true ✓ | Member self-service; unchanged |
+| coach-manage-subscription | true ✓ | Coach admin controls; new this session |
+| check-pause-reminders | false ✓ | Background batch; new this session |
+| create-portal-session | true ✓ | Stripe portal redirect; new this session |
+| send-email | true ✓ | Unchanged |
+| create-checkout-session | false ✓ | Unchanged |
+| contact-form | false ✓ | Unchanged |
+
+### Nothing left parked from the subscription feature set
+All four items from the 2026-05-01 deferred list are now closed. No known open subscription-related tasks.
+
+---
+
+## ⭐⭐ EARLIER — 2026-05-15 (Fri) — email consolidation: hello@ → mick@
 
 Per Jake's call: too many addresses in circulation was confusing customers. Scrubbed every public reference to `hello@allpaddling.online` and standardised on `mick@allpaddling.online` across the site, transactional emails, outreach footers, and operational docs.
 
