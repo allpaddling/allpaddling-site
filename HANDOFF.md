@@ -4,7 +4,13 @@ Continuing AllPaddling project. The canonical plan is `ROADMAP.md` in this same 
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-17 (Sun) — subscription edge cases + coach admin controls
+## ⭐⭐⭐ LATEST — 2026-05-17 (Sun) — project complete: full day summary
+
+Everything previously parked or deferred is now done. No known open tasks.
+
+---
+
+### A. Subscription edge cases — all closed
 
 All four items parked from the 2026-05-01 session are now shipped and live.
 
@@ -66,6 +72,74 @@ All 5 files pushed in commit [`39241dea`](https://github.com/allpaddling/allpadd
 
 ### Nothing left parked from the subscription feature set
 All four items from the 2026-05-01 deferred list are now closed. No known open subscription-related tasks.
+
+---
+
+### B. rebuild/ dual-tree eliminated
+
+All 35 `rebuild/` files deleted from the GitHub repo in a single atomic commit. Frontend files now live at root only — `app/dashboard.html` is `app/dashboard.html`, no prefix. SHA comparisons confirmed zero content change; only the duplicate directory was removed. CLAUDE.md and memory updated to reflect the new convention.
+
+---
+
+### C. Shopify fully shut down
+
+- `allpaddling.com` now 301-redirects to `allpaddling.online` via Cloudflare (path + query preserved)
+- Appstle Subscription app uninstalled — saves US$10/mo
+- Tevello Courses & Communities app uninstalled — saves US$19.99/mo
+- Shopify Basic plan cancelled — store deactivates **9 June 2026** — saves US$39/mo
+- **Total monthly bleed stopped: ~US$69/mo (~A$106/mo)**
+- Shopify data (Customers, Orders, Products CSVs) exported to Jake's email before shutdown
+- The 18 paused Shopify contracts will go inert with the store. No active billing relationships remained at time of cancellation.
+
+---
+
+### D. Domain transfers initiated (allpaddling.com + allpaddling.online → Cloudflare)
+
+Both domains initiated transfer from Crazy Domains to Cloudflare Registrar today. Transfer cost: US$10.46 (.online) + US$27.70 (.com).
+
+**Pending:** Mick needs to click the "Approve transfer" link in 2 emails from Crazy Domains that will arrive at `dibetta1@gmail.com`. Each email = one click. Without approval, auto-completes after ~5 days anyway.
+
+**After transfers complete:** re-enable WHOIS privacy on `.online` in Cloudflare (it disables on transfer in). A scheduled task checks daily at 9am Sydney and will remind Jake the moment both transfers show as active.
+
+**Crazy Domains auto-renew:** was OFF (`.online` expiry 08 Sep 2026, `.com` expiry 22 Dec 2026). Once transferred, Cloudflare handles renewal.
+
+---
+
+### E. Cloudflare Email Routing fixed
+
+Previously `mick@allpaddling.online` was being silently dropped (only `hello@` had an explicit rule). Fixed:
+- **Catch-all:** active → `jakedibetta@gmail.com` (covers `mick@` and everything else)
+- **`hello@allpaddling.online`:** active → `jakedibetta@gmail.com` (legacy rule preserved)
+- Single destination per rule — confirmed working via live test
+
+`dibetta1@gmail.com` is still a verified Cloudflare destination but is no longer the active recipient for any rule. Jake forwards to Mick manually where appropriate.
+
+---
+
+### F. Outreach system improvements
+
+- **Bulk send UI overhauled:** Compose modal removed. Replaced with a selection bar (shows count + template dropdown) at the top of the table. Select rows → choose template → Send to selected → confirm → inline progress. Simpler, one source of truth for what gets sent. Net: −200 lines.
+- **Engagement tab:** new tab on `admin-outreach.html` reads `outreach_sends`, groups by `campaign_name`, shows delivered/opened/clicked/bounced per campaign. Includes a permanent callout explaining Gmail/Apple proxy open inflation and why click-throughs are the reliable signal.
+- **Open/click tracking insight:** Gmail image proxy pre-fetches tracking pixels within ~10s of delivery (shows as "opened" before anyone looks). Real human clicks are distinguishable by residential IPv4 + real UA + timing delay. Click tracking is trustworthy; open tracking is noise.
+- **One bounce removed:** `123hannahounengbmmqbeemjoh.dpn@inscrlab.com` deleted from `shopify_customers` (+ cascading `outreach_sends` row). 71 rows remain.
+
+---
+
+### G. Newsletter signup — name fields added
+
+First name + last name (optional) fields added to the newsletter signup form. Migration 019 applied (`newsletter_subscribers.first_name`, `newsletter_subscribers.last_name` columns). `newsletter-signup` Edge Function redeployed as v2. Re-submissions backfill names only where existing row has nulls. 2 subscribers in DB (1 with name).
+
+---
+
+### H. Cloudflare Web Analytics deployed site-wide
+
+Analytics beacon added to all 60 HTML files (public pages + app pages + articles). Token `bf3dd55206394d3dbc26eca3949ef5cc`. Traffic data will appear in Cloudflare dashboard within hours of the first real visitors. No cookies, no banner required. DNS is grey-cloud (GitHub Pages handles serving), so the beacon script is the only analytics surface — Cloudflare's auto-inject couldn't work without orange-cloud proxying.
+
+---
+
+### Nothing left parked
+
+The project is feature-complete. No known open tasks, bugs, or deferred items as of end of day 2026-05-17.
 
 ---
 
