@@ -510,25 +510,34 @@ async function handleInvoicePaid (invoice: Stripe.Invoice): Promise<void> {
 
   console.log(`invoice.paid: ${subscriptionId} → active, period ${updates.current_period_start} → ${updates.current_period_end}`);
 
-  // Fire the payment-receipt email.
-  try {
-    const ctx = await resolveSubscription(subscriptionId);
-    const amount   = formatAmount(invoice.amount_paid, invoice.currency);
-    const currency = invoice.currency.toUpperCase();
-    await sendTransactional('payment-receipt', ctx.email, {
-      member_name:       ctx.preferred_name,
-      plan_name:         ctx.member.planLabel,
-      amount,
-      currency,
-      period_start:      formatDate(periodStart),
-      period_end:        formatDate(periodEnd),
-      next_billing_date: formatDate(periodEnd),
-      invoice_pdf_url:   invoice.hosted_invoice_url ?? invoice.invoice_pdf ?? `${APP_BASE_URL}/app/settings.html`,
-      settings_url:      SETTINGS_URL,
-      coach_name:        COACH_NAME,
-    });
-  } catch (emailErr) {
-    console.warn(`payment-receipt email send failed for invoice ${invoice.id}:`, emailErr);
+  // Skip the receipt for $0 bookkeeping invoices (trial starts, full credits,
+  // 100% coupons, etc.) — no money moved, so a "Payment received" email would
+  // be confusing for the customer. First observed during the June-1 billing-
+  // alignment batch on 2026-05-22: setting trial_end on an active sub causes
+  // Stripe to issue an A$0 invoice and fire invoice.paid, which previously
+  // fired a real receipt email for $0.00.
+  if (invoice.amount_paid > 0) {
+    try {
+      const ctx = await resolveSubscription(subscriptionId);
+      const amount   = formatAmount(invoice.amount_paid, invoice.currency);
+      const currency = invoice.currency.toUpperCase();
+      await sendTransactional('payment-receipt', ctx.email, {
+        member_name:       ctx.preferred_name,
+        plan_name:         ctx.member.planLabel,
+        amount,
+        currency,
+        period_start:      formatDate(periodStart),
+        period_end:        formatDate(periodEnd),
+        next_billing_date: formatDate(periodEnd),
+        invoice_pdf_url:   invoice.hosted_invoice_url ?? invoice.invoice_pdf ?? `${APP_BASE_URL}/app/settings.html`,
+        settings_url:      SETTINGS_URL,
+        coach_name:        COACH_NAME,
+      });
+    } catch (emailErr) {
+      console.warn(`payment-receipt email send failed for invoice ${invoice.id}:`, emailErr);
+    }
+  } else {
+    console.log(`invoice.paid: ${subscriptionId} amount_paid=0, skipping receipt email`);
   }
 }
 
