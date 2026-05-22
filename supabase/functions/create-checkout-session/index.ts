@@ -449,8 +449,16 @@ Deno.serve(async (req) => {
     // anniversary billing). Migration is historical and the per-customer
     // audit trail is simpler unchanged.
     if (!isMigration && priceForAlignment) {
-      const sydneyDay = sydneyDayOfMonth();
-      const nextFirst = nextFirstOfMonthUtcUnix();
+      // _test_day in the body forces a specific day-of-month for testing
+      // (so the PAY-NOW branch can be exercised today even when Sydney
+      // is on day 21+). Real signups never send this field. Safe to keep
+      // as a debug hook.
+      // deno-lint-ignore no-explicit-any
+      const forcedDay  = (body as any)._test_day as number | undefined;
+      const sydneyDay  = (typeof forcedDay === 'number' && forcedDay >= 1 && forcedDay <= 31)
+                           ? forcedDay
+                           : sydneyDayOfMonth();
+      const nextFirst  = nextFirstOfMonthUtcUnix();
       if (sydneyDay >= 21) {
         // Trial-end-only: no proration_behavior. Stripe rejects
         // proration_behavior on subscription_data unless billing_cycle_anchor
