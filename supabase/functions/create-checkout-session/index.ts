@@ -225,6 +225,10 @@ Deno.serve(async (req) => {
     let line:   Stripe.Checkout.SessionCreateParams.LineItem;
     let isMigration = false;
     let isAnon      = false;
+    // For calendar-1st alignment (SELF/ANON only): we need the canonical
+    // Stripe Price object (currency, product, unit_amount) so we can build
+    // a matching one-time `add_invoice_items` charge for the upfront fee.
+    let priceForAlignment: Stripe.Price | null = null;
 
     if (wantsMigrate && isServiceRole) {
       // ----- MIGRATE mode (3): server-side script with service-role key -----
@@ -312,6 +316,7 @@ Deno.serve(async (req) => {
         );
       }
       line = { price: price.id, quantity: 1 };
+      priceForAlignment = price;
     } else {
       // ----- SELF MODE -----
       if (!userJwt) {
@@ -342,6 +347,7 @@ Deno.serve(async (req) => {
         );
       }
       line = { price: price.id, quantity: 1 };
+      priceForAlignment = price;
     }
 
     // Build success / cancel URLs. Default success goes to a
@@ -420,6 +426,48 @@ Deno.serve(async (req) => {
       metadata: { plan_type: planType, plan_key: planKey ?? '' },
     };
 
+    // === Calendar-1st billing alignment (2026-05-22, Jake) ===
+    //
+    // Mick's content blocks drop on the 1st of every month and every
+    // paying customer should renew on the 1st. The signup day-of-month
+    // (in Sydney time, since Mick is Aussie-based) determines branching:
+    //
+    //   Day 1–20  → "Pay-Now": charge A$140 at checkout via
+    //               add_invoice_items, anchor recurring to next 1st,
+    //               proration_behavior='none' so the partial first cycle
+    //               doesn't generate its own invoice. Net: customer pays
+    //               A$140 once at checkout for the rest of this month +
+    //               next month's bill on the 1st.
+    //
+    //   Day 21+   → "Free-until-1st": $0 at checkout via trial_end on the
+    //               next 1st. The signup is essentially a free trial for
+    //               the remainder of the month; first paid invoice fires
+    //               on the 1st. Avoids the "I paid full price for 3 days
+    //               of access" perception for late-month signups.
+    //
+    // MIGRATE mode keeps its existing behaviour (immediate charge,
+    // anniversary billing). Migration is historical and the per-customer
+    // audit trail is simpler unchanged.
+    if (!isMigration && priceForAlignment) {
+      const sydneyDay = sydneyDayOfMonth();
+      const nextFirst = nextFirstOfMonthUtcUnix();
+      if (sydneyDay >= 21) {
+        subscriptionData.trial_end          = nextFirst;
+        subscriptionData.proration_behavior = 'none';
+      } else {
+        subscriptionData.billing_cycle_anchor = nextFirst;
+        subscriptionData.proration_behavior   = 'none';
+        subscriptionData.add_invoice_items    = [{
+          price_data: {
+            currency:    priceForAlignment.currency,
+            product:     priceForAlignment.product as string,
+            unit_amount: priceForAlignment.unit_amount ?? 14000,
+          },
+          quantity: 1,
+        }];
+      }
+    }
+
     // Create the Checkout Session.
     const session = await stripe.checkout.sessions.create({
       mode:                 'subscription',
@@ -491,6 +539,47 @@ async function getOrCreateAuthUser (email: string): Promise<string> {
   if (createErr) throw new Error(`createUser(${email}): ${createErr.message}`);
   if (!created?.user?.id) throw new Error(`createUser(${email}): no user id returned`);
   return created.user.id;
+}
+
+/**
+ * Day-of-month (1-31) in Sydney timezone. Used to branch new signups
+ * between Pay-Now (day 1-20) and Free-until-1st (day 21+).
+ *
+ * Sydney rather than UTC so an Aussie customer signing up at, say,
+ * 9 a.m. local time on the 21st gets the free-trial path even though
+ * UTC still reads the 20th. (Mick is Sydney-based; the AEDT/AEST swap
+ * is handled automatically by the Intl API.)
+ */
+function sydneyDayOfMonth (): number {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Sydney',
+    day:      'numeric',
+  });
+  return parseInt(fmt.format(new Date()), 10);
+}
+
+/**
+ * Unix timestamp for "1st of next month, 00:00 UTC". This is the anchor
+ * target for every aligned subscription. Chosen to match the existing
+ * 15 customers aligned on 2026-05-22 (anchor = 2026-06-01 00:00 UTC =
+ * 10:00 AEST on the 1st — clearly "the 1st" in both UTC and Sydney).
+ */
+function nextFirstOfMonthUtcUnix (): number {
+  // Compute "current month" in Sydney so day-21 cutoff doesn't fire
+  // a month early for Aussie customers in the few-hours window where
+  // UTC and Sydney disagree on the month.
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Sydney',
+    year:     'numeric',
+    month:    '2-digit',
+  });
+  const parts = fmt.formatToParts(new Date());
+  const year  = parseInt(parts.find(p => p.type === 'year' )!.value, 10);
+  const month = parseInt(parts.find(p => p.type === 'month')!.value, 10);
+  let nextYear  = year;
+  let nextMonth = month + 1;
+  if (nextMonth > 12) { nextMonth = 1; nextYear++; }
+  return Math.floor(Date.UTC(nextYear, nextMonth - 1, 1, 0, 0, 0) / 1000);
 }
 
 function corsHeaders (): HeadersInit {
