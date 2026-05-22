@@ -425,6 +425,7 @@ Deno.serve(async (req) => {
     const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData = {
       metadata: { plan_type: planType, plan_key: planKey ?? '' },
     };
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [line];
 
     // === Calendar-1st billing alignment (2026-05-22, Jake) ===
     //
@@ -432,12 +433,18 @@ Deno.serve(async (req) => {
     // paying customer should renew on the 1st. The signup day-of-month
     // (in Sydney time, since Mick is Aussie-based) determines branching:
     //
-    //   Day 1–20  → "Pay-Now": charge A$140 at checkout via
-    //               add_invoice_items, anchor recurring to next 1st,
+    //   Day 1–20  → "Pay-Now": charge A$140 at checkout via a one-time
+    //               line item, anchor recurring sub to next 1st,
     //               proration_behavior='none' so the partial first cycle
     //               doesn't generate its own invoice. Net: customer pays
     //               A$140 once at checkout for the rest of this month +
     //               next month's bill on the 1st.
+    //
+    //               (We tried subscription_data.add_invoice_items but
+    //                Stripe Checkout rejects it — that field only exists
+    //                on direct sub creates, not Checkout-managed ones.
+    //                Mixing recurring + one-time line_items in mode
+    //                'subscription' is the supported pattern.)
     //
     //   Day 21+   → "Free-until-1st": $0 at checkout via trial_end on the
     //               next 1st. The signup is essentially a free trial for
@@ -468,14 +475,20 @@ Deno.serve(async (req) => {
       } else {
         subscriptionData.billing_cycle_anchor = nextFirst;
         subscriptionData.proration_behavior   = 'none';
-        subscriptionData.add_invoice_items    = [{
+        // Add a one-time line item for the upfront A$140 charge.
+        // The recurring subscription's first invoice is $0 (partial
+        // period suppressed by proration_behavior='none'); the one-time
+        // charge gets added to that invoice so the customer pays a
+        // single A$140 at checkout. Subsequent invoices on the 1st are
+        // just the recurring price.
+        lineItems.push({
           price_data: {
-            currency:    priceForAlignment.currency,
-            product:     priceForAlignment.product as string,
+            currency: priceForAlignment.currency,
+            product:  priceForAlignment.product as string,
             unit_amount: priceForAlignment.unit_amount ?? 14000,
           },
           quantity: 1,
-        }];
+        });
       }
     }
 
@@ -483,7 +496,7 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       mode:                 'subscription',
       customer_email:       email,
-      line_items:           [line],
+      line_items:           lineItems,
       success_url:          successUrl,
       cancel_url:           cancelUrl,
       client_reference_id:  userId,
