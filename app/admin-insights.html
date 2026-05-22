@@ -285,7 +285,7 @@
   <main class="app-main">
     <div class="app-page-header">
       <h1 style="margin-bottom:0.15rem;">Insights</h1>
-      <p class="lead" style="margin:0;">Who's logging in, who's drifted. Activity counts cover the last 30 days (Supabase prunes older session records).</p>
+      <p class="lead" style="margin:0;">Who's visiting the site and who's drifting. "Last active" reflects the last time a member actually had the site open — not just their last sign-in.</p>
     </div>
 
     <!-- Summary tiles -->
@@ -333,9 +333,9 @@
           <tr>
             <th class="sortable" data-sort="name">Member <span class="sort-ind">↕</span></th>
             <th class="sortable" data-sort="plan">Plan <span class="sort-ind">↕</span></th>
-            <th class="sortable sort-active" data-sort="last_sign_in_at" data-default-dir="desc">Last login <span class="sort-ind">↓</span></th>
-            <th class="sortable num" data-sort="sessions_last_7d">Logins 7d <span class="sort-ind">↕</span></th>
-            <th class="sortable num" data-sort="sessions_last_30d">Logins 30d <span class="sort-ind">↕</span></th>
+            <th class="sortable sort-active" data-sort="last_active_at" data-default-dir="desc">Last active <span class="sort-ind">↓</span></th>
+            <th class="sortable num" data-sort="sessions_last_7d" title="Fresh sign-ins in the last 7 days (new browser, magic link, etc.) — doesn't count continued use">Sign-ins 7d <span class="sort-ind">↕</span></th>
+            <th class="sortable num" data-sort="sessions_last_30d" title="Fresh sign-ins in the last 30 days — doesn't count continued use">Sign-ins 30d <span class="sort-ind">↕</span></th>
             <th class="sortable col-signed-up" data-sort="signed_up_at">Joined <span class="sort-ind">↕</span></th>
           </tr>
         </thead>
@@ -346,9 +346,9 @@
     </div>
 
     <div class="metric-note">
-      <strong>About these metrics:</strong> <em>Last login</em> is the authoritative timestamp of each member's most recent sign-in.
-      <em>Logins 7d / 30d</em> count fresh sign-ins inside those windows — each time a member signs in (new browser, magic link, etc.) creates a new session row.
-      Supabase prunes session records after roughly 30 days, so there is no reliable lifetime sign-in total to display.
+      <strong>About these metrics:</strong> <em>Last active</em> is the last time a member's auth session refreshed — i.e. the last time they had the site open in a tab.
+      The Supabase JS SDK refreshes the JWT roughly hourly while a tab is open and revalidates on every visit, so this catches members who stay signed in and keep browsing without re-authenticating.
+      <em>Sign-ins 7d / 30d</em> are a separate signal — they count fresh authentications (new browser, magic link, password reset) and don't reflect continued use of an existing session.
     </div>
 
   </main>
@@ -386,7 +386,7 @@
   /* ---------- Load insights ---------- */
   const tbody = document.getElementById('insights-tbody');
   let rows = [];
-  let sortKey = 'last_sign_in_at';
+  let sortKey = 'last_active_at';
   let sortDir = 'desc';
   let activeFilter = 'all';
   let searchTerm = '';
@@ -458,9 +458,9 @@
       const hay = ((r.name || '') + ' ' + (r.email || '')).toLowerCase();
       if (!hay.includes(searchTerm)) return false;
     }
-    if (activeFilter === 'active7')  return (r.sessions_last_7d || 0) > 0;
-    if (activeFilter === 'dormant')  return daysSince(r.last_sign_in_at) > 30;
-    if (activeFilter === 'never')    return !r.last_sign_in_at;
+    if (activeFilter === 'active7')  return daysSince(r.last_active_at) <= 7;
+    if (activeFilter === 'dormant')  return daysSince(r.last_active_at) > 30;
+    if (activeFilter === 'never')    return !r.last_active_at;
     return true;
   }
 
@@ -485,10 +485,13 @@
 
   function renderTiles () {
     const total = rows.length;
-    const active7  = rows.filter(r => (r.sessions_last_7d  || 0) > 0).length;
-    const active30 = rows.filter(r => (r.sessions_last_30d || 0) > 0).length;
-    const dormant  = rows.filter(r => daysSince(r.last_sign_in_at) > 30).length;
-    const never    = rows.filter(r => !r.last_sign_in_at).length;
+    // Tiles use the authoritative "last active" metric: members who had a
+    // session refresh inside the window count as active, even if their
+    // last fresh sign-in is older.
+    const active7  = rows.filter(r => daysSince(r.last_active_at) <= 7).length;
+    const active30 = rows.filter(r => daysSince(r.last_active_at) <= 30).length;
+    const dormant  = rows.filter(r => daysSince(r.last_active_at) > 30).length;
+    const never    = rows.filter(r => !r.last_active_at).length;
 
     document.getElementById('stat-total').textContent = total;
     document.getElementById('stat-7d').textContent    = active7;
@@ -519,9 +522,9 @@
       return;
     }
     tbody.innerHTML = filtered.map(r => {
-      const bucket = recencyBucket(r.last_sign_in_at);
+      const bucket = recencyBucket(r.last_active_at);
       const planCls = (r.plan || '').toLowerCase();
-      const lastAbs = fmtAbsoluteDate(r.last_sign_in_at);
+      const lastAbs = fmtAbsoluteDate(r.last_active_at);
       const joined  = fmtAbsoluteDate(r.signed_up_at);
       return '' +
         '<tr>' +
