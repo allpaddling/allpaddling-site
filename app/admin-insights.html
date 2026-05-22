@@ -170,6 +170,38 @@
   }
   .activity-dots span.empty { background: var(--border); opacity: 1; }
 
+  /* Threshold cell — current value with the relative-time of last update */
+  .threshold-cell { white-space: nowrap; }
+  .threshold-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600; color: var(--text);
+  }
+  .threshold-value .unit { font-size: 0.75rem; color: var(--text-3); margin-left: 0.18rem; font-weight: 500; }
+  .threshold-updated {
+    display: block; margin-top: 0.18rem;
+    font-size: 0.74rem; color: var(--text-3);
+  }
+  .threshold-empty {
+    color: var(--text-3); font-style: italic; font-size: 0.85rem;
+  }
+
+  /* Sessions-done breakdown — bigger number is 30d total; small split below */
+  .done-cell { white-space: nowrap; text-align: right; }
+  .done-30d {
+    font-family: 'Space Grotesk', sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700; color: var(--text); font-size: 1rem;
+  }
+  .done-30d.zero { color: var(--text-3); font-weight: 500; }
+  .done-breakdown {
+    display: block; margin-top: 0.15rem;
+    font-size: 0.72rem; color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .done-breakdown .seg { white-space: nowrap; }
+  .done-breakdown .seg + .seg::before { content: ' · '; color: var(--border); }
+
   .insights-empty, .insights-loading {
     padding: 3rem 1.5rem; text-align: center;
     color: var(--text-3); font-size: 0.92rem;
@@ -285,7 +317,7 @@
   <main class="app-main">
     <div class="app-page-header">
       <h1 style="margin-bottom:0.15rem;">Insights</h1>
-      <p class="lead" style="margin:0;">Who's visiting the site and who's drifting. "Last active" reflects the last time a member actually had the site open — not just their last sign-in.</p>
+      <p class="lead" style="margin:0;">Who's visiting, who's training, and who's drifting. <em>Last active</em> = last time the site was open in a tab. <em>Sessions done</em> = sessions a member has ticked off in their plan.</p>
     </div>
 
     <!-- Summary tiles -->
@@ -334,21 +366,25 @@
             <th class="sortable" data-sort="name">Member <span class="sort-ind">↕</span></th>
             <th class="sortable" data-sort="plan">Plan <span class="sort-ind">↕</span></th>
             <th class="sortable sort-active" data-sort="last_active_at" data-default-dir="desc">Last active <span class="sort-ind">↓</span></th>
-            <th class="sortable num" data-sort="sessions_last_7d" title="Fresh sign-ins in the last 7 days (new browser, magic link, etc.) — doesn't count continued use">Sign-ins 7d <span class="sort-ind">↕</span></th>
-            <th class="sortable num" data-sort="sessions_last_30d" title="Fresh sign-ins in the last 30 days — doesn't count continued use">Sign-ins 30d <span class="sort-ind">↕</span></th>
+            <th class="sortable" data-sort="last_threshold_at" data-default-dir="desc" title="Most recent threshold pace the member has set, plus how long ago they set it. NULL = never set one.">Threshold <span class="sort-ind">↕</span></th>
+            <th class="sortable num" data-sort="sessions_completed_30d" data-default-dir="desc" title="Sessions ticked off in the last 30 days, with a 7d / 30d / all-time breakdown below.">Sessions done <span class="sort-ind">↕</span></th>
+            <th class="sortable num" data-sort="sessions_last_30d" title="Fresh sign-ins in the last 30 days (new browser, magic link, etc.) — doesn't count continued use">Sign-ins 30d <span class="sort-ind">↕</span></th>
             <th class="sortable col-signed-up" data-sort="signed_up_at">Joined <span class="sort-ind">↕</span></th>
           </tr>
         </thead>
         <tbody id="insights-tbody">
-          <tr><td colspan="6" class="insights-loading">Loading insights…</td></tr>
+          <tr><td colspan="7" class="insights-loading">Loading insights…</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="metric-note">
-      <strong>About these metrics:</strong> <em>Last active</em> is the last time a member's auth session refreshed — i.e. the last time they had the site open in a tab.
+      <strong>About these metrics.</strong>
+      <em>Last active</em> is the last time a member's auth session refreshed — i.e. the last time they had the site open in a tab.
       The Supabase JS SDK refreshes the JWT roughly hourly while a tab is open and revalidates on every visit, so this catches members who stay signed in and keep browsing without re-authenticating.
-      <em>Sign-ins 7d / 30d</em> are a separate signal — they count fresh authentications (new browser, magic link, password reset) and don't reflect continued use of an existing session.
+      <em>Threshold</em> is the member's most recent threshold pace, recorded server-side (one row per change). The pill shows how long ago they last updated it — fresh pills = active training, stale pills = drifting.
+      <em>Sessions done</em> counts the sessions they've ticked off on the session page (7d / 30d / all-time). For members who were active before 2026-05-23, completion history is backfilled from their browser's local state on first visit after this update.
+      <em>Sign-ins 30d</em> are a separate signal — fresh authentications (new browser, magic link, password reset) and don't reflect continued use of an existing session.
     </div>
 
   </main>
@@ -397,7 +433,7 @@
     rows = data || [];
   } catch (err) {
     console.error('admin-insights: rpc failed', err);
-    tbody.innerHTML = '<tr><td colspan="6" class="insights-empty"><strong>Couldn’t load insights.</strong>' +
+    tbody.innerHTML = '<tr><td colspan="7" class="insights-empty"><strong>Couldn’t load insights.</strong>' +
       'Check the console for details — the get_member_insights() function may not be deployed yet.</td></tr>';
     return;
   }
@@ -450,6 +486,25 @@
     if (r.name && r.name.trim()) return r.name.trim();
     if (r.email) return r.email.split('@')[0];
     return 'Unknown';
+  }
+
+  // Format threshold seconds as m:ss (drop hours; threshold is always <1hr).
+  function fmtThresholdPace (sec) {
+    if (sec == null || !Number.isFinite(sec) || sec <= 0) return '';
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+  function thresholdUnitLabel (unit) {
+    return unit === 'imperial' ? '/mi' : '/km';
+  }
+
+  // Render the relative-time pill but smaller/inline — for the "last
+  // threshold update" sub-line and reuses the same colour-grading buckets
+  // so the eye can compare freshness across columns at a glance.
+  function recencyMicroPill (iso) {
+    const b = recencyBucket(iso);
+    return '<span class="login-relative ' + b.cls + '" style="font-size:0.7rem; padding:0.08rem 0.4rem;">' + b.text + '</span>';
   }
 
   /* ---------- Filter + sort + render ---------- */
@@ -518,7 +573,7 @@
   function renderTable () {
     const filtered = rows.filter(matches).sort(compare);
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="insights-empty"><strong>No members match.</strong>Try a different filter or clear the search.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="insights-empty"><strong>No members match.</strong>Try a different filter or clear the search.</td></tr>';
       return;
     }
     tbody.innerHTML = filtered.map(r => {
@@ -526,6 +581,32 @@
       const planCls = (r.plan || '').toLowerCase();
       const lastAbs = fmtAbsoluteDate(r.last_active_at);
       const joined  = fmtAbsoluteDate(r.signed_up_at);
+
+      // Threshold cell — value + relative-time of last update, or em-dash
+      // when the member has never set one.
+      let thresholdHtml;
+      if (r.current_threshold_sec) {
+        thresholdHtml =
+          '<span class="threshold-value">' +
+            escapeHtml(fmtThresholdPace(r.current_threshold_sec)) +
+            '<span class="unit">' + escapeHtml(thresholdUnitLabel(r.threshold_unit)) + '</span>' +
+          '</span>' +
+          '<span class="threshold-updated">' + recencyMicroPill(r.last_threshold_at) + '</span>';
+      } else {
+        thresholdHtml = '<span class="threshold-empty">Not set</span>';
+      }
+
+      // Sessions-done cell — big 30d total, small 7d / 30d / all breakdown.
+      const done7  = r.sessions_completed_7d    || 0;
+      const done30 = r.sessions_completed_30d   || 0;
+      const doneAll= r.sessions_completed_total || 0;
+      const doneHtml =
+        '<span class="done-30d ' + (done30 === 0 ? 'zero' : '') + '">' + done30 + '</span>' +
+        '<span class="done-breakdown">' +
+          '<span class="seg" title="Last 7 days">' + done7  + ' · 7d</span>' +
+          '<span class="seg" title="All-time">'  + doneAll + ' total</span>' +
+        '</span>';
+
       return '' +
         '<tr>' +
           '<td class="member-cell">' +
@@ -537,8 +618,9 @@
             '<span class="login-relative ' + bucket.cls + '">' + bucket.text + '</span>' +
             (lastAbs ? '<span class="login-absolute">' + lastAbs + '</span>' : '') +
           '</td>' +
-          '<td class="num">' + (r.sessions_last_7d  || 0) + activityDots(r.sessions_last_7d || 0) + '</td>' +
-          '<td class="num">' + (r.sessions_last_30d || 0) + '</td>' +
+          '<td class="threshold-cell">' + thresholdHtml + '</td>' +
+          '<td class="done-cell">' + doneHtml + '</td>' +
+          '<td class="num">' + (r.sessions_last_30d || 0) + activityDots(Math.min(4, Math.round((r.sessions_last_30d || 0) / 2))) + '</td>' +
           '<td class="col-signed-up">' + escapeHtml(joined) + '</td>' +
         '</tr>';
     }).join('');

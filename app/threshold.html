@@ -315,6 +315,11 @@
       thresholdHistory: history,
     };
     saveMemberState(next);
+    // Mirror to Supabase: only when the threshold value actually changed
+    // and is non-zero — unit-only changes don't warrant a new log row.
+    if (thresholdChanged && newSec > 0) {
+      pushThresholdToServer(newSec, state.unit, 'manual');
+    }
     if (thresholdChanged || unitChanged) renderHistory();
     showToast('Saved');
   }

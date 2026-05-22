@@ -240,6 +240,163 @@ function getMember() {
   };
 }
 
+/* ============================================================================
+   Engagement tracking — mirror localStorage writes to Supabase so the coach
+   admin can see who's actually doing the training. Two tables introduced in
+   migration 023 (threshold_log + session_completions). All helpers fail
+   silently when there's no session or sb isn't loaded — public pages and
+   logged-out states should never break.
+   ============================================================================ */
+
+const ENGAGEMENT_BACKFILL_FLAG = 'ap.engagementBackfilled_v1';
+
+async function _getEngagementUserId () {
+  try {
+    if (typeof sb === 'undefined' || !sb || !sb.auth) return null;
+    const { data: { session } } = await sb.auth.getSession();
+    return session?.user?.id || null;
+  } catch { return null; }
+}
+
+/* Insert a row into threshold_log. Called from threshold.html when the
+   member commits a change. Source defaults to 'manual'. */
+async function pushThresholdToServer (thresholdSec, unit, source) {
+  const userId = await _getEngagementUserId();
+  if (!userId) return; // not signed in — local-only mode
+  if (!Number.isFinite(thresholdSec) || thresholdSec <= 0 || thresholdSec >= 3600) return;
+  if (unit !== 'metric' && unit !== 'imperial') return;
+  try {
+    const { error } = await sb.from('threshold_log').insert({
+      user_id:       userId,
+      threshold_sec: Math.round(thresholdSec),
+      unit:          unit,
+      source:        source || 'manual',
+    });
+    if (error) console.warn('threshold_log insert failed', error);
+  } catch (e) { console.warn('threshold_log insert exception', e); }
+}
+
+/* Upsert (when completedNow=true) or delete (when false) a session_completions
+   row. session.html calls this on every toggle of the Mark Complete button. */
+async function pushSessionCompletionToServer (planKey, sessionKey, completedNow, rpe, note) {
+  const userId = await _getEngagementUserId();
+  if (!userId) return;
+  if (!sessionKey) return;
+  try {
+    if (completedNow) {
+      // Upsert against the unique (user_id, session_key) constraint so we
+      // don't accumulate duplicates if the user toggles repeatedly.
+      const payload = {
+        user_id:      userId,
+        session_key:  sessionKey,
+        plan_key:     planKey || null,
+        completed_at: new Date().toISOString(),
+        rpe:          (rpe != null && rpe !== '') ? Number(rpe) : null,
+        note:         (note || '').trim() || null,
+      };
+      const { error } = await sb.from('session_completions')
+        .upsert(payload, { onConflict: 'user_id,session_key' });
+      if (error) console.warn('session_completions upsert failed', error);
+    } else {
+      const { error } = await sb.from('session_completions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('session_key', sessionKey);
+      if (error) console.warn('session_completions delete failed', error);
+    }
+  } catch (e) { console.warn('session_completions write exception', e); }
+}
+
+/* Patch RPE / note on an existing completion row without touching completed_at.
+   No-op if the row doesn't exist (member adjusted notes before clicking Mark
+   Complete) — the next push from the Complete toggle will set everything. */
+async function patchSessionCompletionOnServer (sessionKey, patch) {
+  const userId = await _getEngagementUserId();
+  if (!userId || !sessionKey) return;
+  const fields = {};
+  if (patch && 'rpe'  in patch) fields.rpe  = (patch.rpe  != null && patch.rpe !== '') ? Number(patch.rpe) : null;
+  if (patch && 'note' in patch) fields.note = (patch.note || '').trim() || null;
+  if (Object.keys(fields).length === 0) return;
+  try {
+    const { error } = await sb.from('session_completions')
+      .update(fields)
+      .eq('user_id', userId)
+      .eq('session_key', sessionKey);
+    if (error) console.warn('session_completions patch failed', error);
+  } catch (e) { console.warn('session_completions patch exception', e); }
+}
+
+/* One-time push of pre-existing localStorage state to the server. Runs at
+   most once per browser per user (flag in localStorage). Safe to call from
+   any page — bails out fast when nothing to do or no session.
+   Idempotency: threshold rows tagged source='backfill'; session_completions
+   upsert against the unique key so re-running this on another device is a
+   no-op for rows that already exist. */
+async function backfillEngagementOnce () {
+  try {
+    if (localStorage.getItem(ENGAGEMENT_BACKFILL_FLAG)) return;
+    const userId = await _getEngagementUserId();
+    if (!userId) return;
+    const state = loadMemberState();
+
+    // Threshold history → threshold_log
+    const history = Array.isArray(state.thresholdHistory) ? state.thresholdHistory : [];
+    const validHistory = history.filter(h =>
+      h && Number.isFinite(h.thresholdSec) && h.thresholdSec > 0 && h.thresholdSec < 3600 &&
+      (h.unit === 'metric' || h.unit === 'imperial') && h.at
+    );
+    // If there's a current threshold but no history (older state shape),
+    // synthesise one snapshot row so the latest_threshold view has something
+    // to surface.
+    if (!validHistory.length && Number.isFinite(state.thresholdSec) && state.thresholdSec > 0) {
+      validHistory.push({
+        at:            new Date().toISOString(),
+        thresholdSec:  state.thresholdSec,
+        unit:          state.unit || 'metric',
+      });
+    }
+    if (validHistory.length) {
+      const rows = validHistory.map(h => ({
+        user_id:       userId,
+        threshold_sec: Math.round(h.thresholdSec),
+        unit:          h.unit,
+        recorded_at:   h.at,
+        source:        'backfill',
+      }));
+      const { error } = await sb.from('threshold_log').insert(rows);
+      if (error) console.warn('threshold backfill insert failed', error);
+    }
+
+    // Completed sessions → session_completions (upsert idempotently)
+    const completed = state.completedSessions || {};
+    const notes     = state.sessionNotes || {};
+    const rows = Object.keys(completed).filter(k => completed[k]).map(k => {
+      const n = notes[k] || {};
+      // Recover plan_key from the "{plan}-w..s.." prefix.
+      const prefix = (k.split('-')[0] || '').toLowerCase();
+      const planKey = ['prone','sup','oc','ski','primer','custom'].includes(prefix) ? prefix : null;
+      return {
+        user_id:      userId,
+        session_key:  k,
+        plan_key:     planKey,
+        completed_at: n.completedAt || new Date().toISOString(),
+        rpe:          (n.rpe != null) ? Number(n.rpe) : null,
+        note:         (n.note || '').trim() || null,
+      };
+    });
+    if (rows.length) {
+      const { error } = await sb.from('session_completions')
+        .upsert(rows, { onConflict: 'user_id,session_key' });
+      if (error) console.warn('session_completions backfill failed', error);
+    }
+
+    localStorage.setItem(ENGAGEMENT_BACKFILL_FLAG, '1');
+  } catch (e) {
+    // Never break the page on backfill — log and move on.
+    console.warn('backfillEngagementOnce exception', e);
+  }
+}
+
 /* ---- Member access gates ----
    Combined subscription + onboarding gate. Runs on every /app/* page
    that loads app.js (onboarding.html itself doesn't load app.js, so
@@ -533,6 +690,10 @@ function mountApp() {
   // Async — render the "Previewing as <Member>" banner if a coach has
   // toggled preview mode. See getPreviewContext() in admin.js.
   renderPreviewBanner();
+  // Async — one-time push of pre-existing localStorage threshold +
+  // session-completion state to Supabase. No-op after first run per
+  // browser (flag in localStorage). See backfillEngagementOnce().
+  backfillEngagementOnce();
 
   // Ensure a scrim exists for the mobile drawer
   let scrim = document.getElementById('app-scrim');

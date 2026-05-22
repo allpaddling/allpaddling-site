@@ -376,6 +376,16 @@
       delete s.completedSessions[key];
     }
     saveMemberState(s);
+    // Mirror to Supabase (coach engagement insights). Pass current plan_key
+    // for the per-discipline filter; nowDone=true upserts the row, false
+    // deletes it. See pushSessionCompletionToServer in app.js.
+    pushSessionCompletionToServer(
+      getCurrentPlanKey(),
+      key,
+      nowDone,
+      Number(rpe.value) || null,
+      noteEl.value || ''
+    );
     hydrateLog();
     showToast(nowDone ? 'Session logged' : 'Unmarked as complete');
   });
@@ -383,8 +393,16 @@
   rpe.addEventListener('input', () => {
     rpeValue.textContent = rpe.value;
   });
-  rpe.addEventListener('change', () => patchLog({ rpe: Number(rpe.value) }));
-  noteEl.addEventListener('change', () => patchLog({ note: noteEl.value }));
+  rpe.addEventListener('change', () => {
+    patchLog({ rpe: Number(rpe.value) });
+    // Patch the server row too, if one exists (no-op when the session
+    // hasn't been marked complete yet — next Mark Complete writes everything).
+    patchSessionCompletionOnServer(key, { rpe: Number(rpe.value) });
+  });
+  noteEl.addEventListener('change', () => {
+    patchLog({ note: noteEl.value });
+    patchSessionCompletionOnServer(key, { note: noteEl.value });
+  });
 
   /* ---- Prev / Next (navigate within the currently-loaded plan) ---- */
   function coordsAt(delta) {
