@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Insights — All Paddling Admin</title>
+<meta name="description" content="Member login activity and engagement insights for All Paddling coaches." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+  .admin-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--brand-50); color: var(--brand-700);
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem; border-radius: 5px;
+    margin-left: 0.35rem;
+  }
+
+  /* Stat tiles — mirrors admin-members.html so the two pages feel like
+     siblings. Four tiles: total / active 7d / active 30d / dormant. */
+  .stat-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 760px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.95rem 1.05rem;
+  }
+  .stat-tile .label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 0.3rem;
+  }
+  .stat-tile .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.55rem; font-weight: 700; color: var(--text); line-height: 1;
+  }
+  .stat-tile .breakdown {
+    margin-top: 0.5rem;
+    font-size: 0.78rem; color: var(--text-3);
+  }
+  .stat-tile .breakdown b { color: var(--text-2); font-weight: 600; }
+  .stat-tile.warn .value  { color: #b45309; }
+  .stat-tile.good .value  { color: #166534; }
+
+  /* Filter bar + search */
+  .filter-bar {
+    display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .filter-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .filter-tab {
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-2);
+    padding: 0.45rem 0.9rem; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .filter-tab:hover { border-color: var(--text-2); color: var(--text); }
+  .filter-tab.active {
+    background: var(--brand-700); border-color: var(--brand-700); color: white;
+  }
+  .filter-tab .count { font-weight: 500; opacity: 0.8; margin-left: 0.3rem; }
+  .filter-search {
+    flex: 1; min-width: 220px;
+    display: flex; align-items: center; gap: 0.5rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+  }
+  .filter-search:focus-within { border-color: var(--brand-700); background: var(--surface); }
+  .filter-search svg { width: 16px; height: 16px; color: var(--text-3); flex-shrink: 0; }
+  .filter-search input {
+    flex: 1; border: 0; background: transparent;
+    font-family: inherit; font-size: 0.92rem; color: var(--text);
+    outline: none;
+  }
+
+  /* Table */
+  .insights-table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow-x: auto;
+  }
+  .insights-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+  .insights-table thead {
+    background: var(--surface-2);
+  }
+  .insights-table th {
+    text-align: left; padding: 0.75rem 1rem;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .insights-table th.sortable {
+    cursor: pointer; user-select: none;
+  }
+  .insights-table th.sortable:hover { color: var(--text); }
+  .insights-table th.sortable .sort-ind {
+    margin-left: 0.3rem; opacity: 0.4; font-size: 0.7rem;
+  }
+  .insights-table th.sort-active .sort-ind { opacity: 1; color: var(--brand-700); }
+  .insights-table th.num, .insights-table td.num {
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .insights-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .08s;
+  }
+  .insights-table tbody tr:last-child { border-bottom: 0; }
+  .insights-table tbody tr:hover { background: var(--surface-2); }
+  .insights-table td {
+    padding: 0.85rem 1rem;
+    font-size: 0.92rem;
+    vertical-align: top;
+  }
+  .insights-table td.member-cell { min-width: 220px; }
+  .insights-table .member-name { font-weight: 600; color: var(--text); }
+  .insights-table .member-email {
+    font-size: 0.8rem; color: var(--text-3);
+    margin-top: 0.15rem;
+  }
+
+  /* Plan pill */
+  .plan-pill {
+    display: inline-block;
+    padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+    background: var(--brand-50); color: var(--brand-700);
+  }
+  .plan-pill.progressive { background: #ecfeff; color: #155e75; }
+  .plan-pill.custom      { background: #fef3c7; color: #92400e; }
+
+  /* Last-login recency pill — the most-glanced cell. Colour grades by how
+     long it's been since their last sign-in. Coach can scan the column
+     and see who's drifting at a glance. */
+  .login-cell { white-space: nowrap; }
+  .login-relative {
+    font-weight: 600;
+    display: inline-block;
+    padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.78rem;
+  }
+  .login-relative.fresh   { background: #dcfce7; color: #166534; }   /* ≤ 3 days */
+  .login-relative.recent  { background: #ecfeff; color: #155e75; }   /* ≤ 14 days */
+  .login-relative.stale   { background: #fef3c7; color: #92400e; }   /* ≤ 30 days */
+  .login-relative.cold    { background: #fee2e2; color: #991b1b; }   /* > 30 days */
+  .login-relative.never   { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+  .login-absolute {
+    display: block; margin-top: 0.2rem;
+    font-size: 0.76rem; color: var(--text-3);
+  }
+
+  /* Activity dots — small visual showing relative weight of 7d/30d activity */
+  .activity-dots {
+    display: inline-flex; gap: 3px; margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .activity-dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand-700);
+    opacity: 0.85;
+  }
+  .activity-dots span.empty { background: var(--border); opacity: 1; }
+
+  .insights-empty, .insights-loading {
+    padding: 3rem 1.5rem; text-align: center;
+    color: var(--text-3); font-size: 0.92rem;
+  }
+  .insights-empty strong { color: var(--text); display: block; margin-bottom: 0.4rem; font-size: 1rem; }
+
+  /* Helper note under the table that explains the metric semantics —
+     auth.sessions is pruned by Supabase, so the count is a windowed
+     metric, not a lifetime login total. Coach needs to know this. */
+  .metric-note {
+    margin-top: 0.9rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-3);
+    font-size: 0.82rem; line-height: 1.55;
+  }
+  .metric-note strong { color: var(--text-2); font-weight: 600; }
+
+  /* Login gate (mirrors admin-members.html) */
+  .gate-wrap {
+    min-height: 100vh; display: grid; place-items: center;
+    padding: 2rem 1rem; background: var(--surface-2);
+  }
+  .gate-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2.25rem 2.5rem;
+    max-width: 420px; width: 100%; box-shadow: var(--shadow-lg);
+  }
+  .gate-card .gate-eyebrow {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-700); margin-bottom: 0.4rem;
+  }
+  .gate-card h1 { font-size: 1.4rem; margin: 0 0 0.4rem; }
+  .gate-card p  { color: var(--text-3); font-size: 0.93rem; margin: 0 0 1.5rem; }
+
+  @media (max-width: 760px) {
+    .insights-table th.col-signed-up,
+    .insights-table td.col-signed-up { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Login gate -->
+<div id="login-gate" class="gate-wrap" style="display:none;">
+  <div class="gate-card">
+    <div class="gate-eyebrow">Coach Admin</div>
+    <h1>Coach access only</h1>
+    <p>Sign in via the main admin page first.</p>
+    <a href="admin.html" class="btn btn-primary" style="width:100%; box-sizing:border-box; justify-content:center; display:inline-flex;">Go to admin sign-in →</a>
+  </div>
+</div>
+
+<!-- Main shell -->
+<div class="app-shell" id="admin-shell" style="display:none;">
+  <aside class="app-sidebar" aria-label="Admin navigation">
+    <div class="app-sidebar-brand">
+      <span class="brand-mark-sm" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" fill="currentColor" stroke="none"/>
+          <polyline points="3,13 8,13 10,9 14,17 16,13 21,13" stroke="#155e75" stroke-width="2.4" fill="none"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        All Paddling<span class="admin-badge">ADMIN</span>
+        <small>Coach dashboard</small>
+      </span>
+    </div>
+    <nav class="app-sidebar-nav">
+      <a href="admin-overview.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg>
+        <span>Overview</span>
+      </a>
+      <a href="admin.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span>Programs</span>
+      </a>
+      <a href="admin-members.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Members</span>
+      </a>
+      <a href="admin-outreach.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Outreach</span>
+      </a>
+      <a href="admin-insights.html" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 3 5-7"/><circle cx="7" cy="16" r="1.3" fill="currentColor"/><circle cx="11" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="20" cy="8"  r="1.3" fill="currentColor"/></svg>
+        <span>Insights</span>
+      </a>
+    </nav>
+    <div class="app-sidebar-footer">
+      <a href="dashboard.html" class="role-switch-btn" aria-label="Switch to Member view">
+        <span>Member view</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+      </a>
+      <div class="app-member-chip">
+        <div class="app-member-avatar" id="admin-avatar">CO</div>
+        <div class="app-member-meta">
+          <div class="name" id="admin-name">Coach</div>
+          <div class="plan" id="admin-email">—</div>
+        </div>
+      </div>
+      <a href="#" id="signout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign out</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="app-main">
+    <div class="app-page-header">
+      <h1 style="margin-bottom:0.15rem;">Insights</h1>
+      <p class="lead" style="margin:0;">Who's logging in, who's drifted. Activity counts cover the last 30 days (Supabase prunes older session records).</p>
+    </div>
+
+    <!-- Summary tiles -->
+    <div class="stat-row" id="stat-row" aria-live="polite">
+      <div class="stat-tile">
+        <div class="label">Total members</div>
+        <div class="value" id="stat-total">—</div>
+        <div class="breakdown" id="stat-total-sub">&nbsp;</div>
+      </div>
+      <div class="stat-tile good">
+        <div class="label">Active last 7 days</div>
+        <div class="value" id="stat-7d">—</div>
+        <div class="breakdown" id="stat-7d-sub">&nbsp;</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">Active last 30 days</div>
+        <div class="value" id="stat-30d">—</div>
+        <div class="breakdown" id="stat-30d-sub">&nbsp;</div>
+      </div>
+      <div class="stat-tile warn">
+        <div class="label">Dormant (30+ days)</div>
+        <div class="value" id="stat-dormant">—</div>
+        <div class="breakdown" id="stat-dormant-sub">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- Filters / search -->
+    <div class="filter-bar">
+      <div class="filter-tabs" role="tablist" aria-label="Filter by activity">
+        <button type="button" class="filter-tab active" data-filter="all" role="tab" aria-selected="true">All <span class="count" id="count-all">0</span></button>
+        <button type="button" class="filter-tab" data-filter="active7" role="tab" aria-selected="false">Active 7d <span class="count" id="count-active7">0</span></button>
+        <button type="button" class="filter-tab" data-filter="dormant" role="tab" aria-selected="false" title="Haven't signed in for 30+ days">Dormant <span class="count" id="count-dormant">0</span></button>
+        <button type="button" class="filter-tab" data-filter="never" role="tab" aria-selected="false" title="Paid but never logged in">Never logged in <span class="count" id="count-never">0</span></button>
+      </div>
+      <label class="filter-search" aria-label="Search members">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search-input" type="search" placeholder="Search name or email…" autocomplete="off" />
+      </label>
+    </div>
+
+    <!-- Table -->
+    <div class="insights-table-wrap">
+      <table class="insights-table" id="insights-table">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="name">Member <span class="sort-ind">↕</span></th>
+            <th class="sortable" data-sort="plan">Plan <span class="sort-ind">↕</span></th>
+            <th class="sortable sort-active" data-sort="last_sign_in_at" data-default-dir="desc">Last login <span class="sort-ind">↓</span></th>
+            <th class="sortable num" data-sort="sessions_last_7d">Logins 7d <span class="sort-ind">↕</span></th>
+            <th class="sortable num" data-sort="sessions_last_30d">Logins 30d <span class="sort-ind">↕</span></th>
+            <th class="sortable col-signed-up" data-sort="signed_up_at">Joined <span class="sort-ind">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="insights-tbody">
+          <tr><td colspan="6" class="insights-loading">Loading insights…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="metric-note">
+      <strong>About these metrics:</strong> <em>Last login</em> is the authoritative timestamp of each member's most recent sign-in.
+      <em>Logins 7d / 30d</em> count fresh sign-ins inside those windows — each time a member signs in (new browser, magic link, etc.) creates a new session row.
+      Supabase prunes session records after roughly 30 days, so there is no reliable lifetime sign-in total to display.
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/supabase-config.js"></script>
+<script src="../assets/admin.js"></script>
+<script>
+(async function () {
+  const gateEl  = document.getElementById('login-gate');
+  const shellEl = document.getElementById('admin-shell');
+  function showOnly (el) { [gateEl, shellEl].forEach(x => x.style.display = (x === el) ? '' : 'none'); }
+
+  /* ---------- Auth gate (same pattern as admin-members.html) ---------- */
+  const session = await getCurrentSession();
+  if (!session) { showOnly(gateEl); return; }
+  const isCoach = await isCurrentUserCoach();
+  if (!isCoach) { showOnly(gateEl); return; }
+  showOnly(shellEl);
+
+  // Sidebar member chip
+  const adminEmail = (session.user.email || '').toLowerCase();
+  document.getElementById('admin-email').textContent = adminEmail || '—';
+  const initials = adminEmail.split('@')[0].replace(/[._-]+/g, ' ').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  if (initials) document.getElementById('admin-avatar').textContent = initials;
+  document.getElementById('admin-name').textContent = adminEmail.split('@')[0] || 'Coach';
+
+  document.getElementById('signout-btn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    await sb.auth.signOut();
+    location.href = '../login.html';
+  });
+
+  /* ---------- Load insights ---------- */
+  const tbody = document.getElementById('insights-tbody');
+  let rows = [];
+  let sortKey = 'last_sign_in_at';
+  let sortDir = 'desc';
+  let activeFilter = 'all';
+  let searchTerm = '';
+
+  try {
+    const { data, error } = await sb.rpc('get_member_insights');
+    if (error) throw error;
+    rows = data || [];
+  } catch (err) {
+    console.error('admin-insights: rpc failed', err);
+    tbody.innerHTML = '<tr><td colspan="6" class="insights-empty"><strong>Couldn’t load insights.</strong>' +
+      'Check the console for details — the get_member_insights() function may not be deployed yet.</td></tr>';
+    return;
+  }
+
+  /* ---------- Helpers ---------- */
+  // Relative-time bucket (drives both label text and recency colour).
+  function recencyBucket (iso) {
+    if (!iso) return { cls: 'never', text: 'Never' };
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return { cls: 'never', text: 'Never' };
+    const days = Math.floor((now - then) / 86400000);
+    if (days <= 0) return { cls: 'fresh',  text: 'Today' };
+    if (days === 1) return { cls: 'fresh',  text: 'Yesterday' };
+    if (days <= 3)  return { cls: 'fresh',  text: days + ' days ago' };
+    if (days <= 14) return { cls: 'recent', text: days + ' days ago' };
+    if (days <= 30) return { cls: 'stale',  text: days + ' days ago' };
+    if (days <= 60) return { cls: 'cold',   text: days + ' days ago' };
+    const months = Math.floor(days / 30);
+    return { cls: 'cold', text: months + ' months ago' };
+  }
+
+  function fmtAbsoluteDate (iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function daysSince (iso) {
+    if (!iso) return Infinity;
+    const d = new Date(iso).getTime();
+    if (isNaN(d)) return Infinity;
+    return Math.floor((Date.now() - d) / 86400000);
+  }
+
+  // Small visual: up to 4 dots indicating last-7d activity intensity.
+  // Bucket: 0 -> 0 dots, 1 -> 1, 2 -> 2, 3 -> 3, 4+ -> 4.
+  function activityDots (count) {
+    const filled = Math.min(count, 4);
+    let html = '<span class="activity-dots">';
+    for (let i = 0; i < 4; i++) {
+      html += '<span class="' + (i < filled ? '' : 'empty') + '"></span>';
+    }
+    html += '</span>';
+    return html;
+  }
+
+  function displayName (r) {
+    if (r.name && r.name.trim()) return r.name.trim();
+    if (r.email) return r.email.split('@')[0];
+    return 'Unknown';
+  }
+
+  /* ---------- Filter + sort + render ---------- */
+  function matches (r) {
+    if (searchTerm) {
+      const hay = ((r.name || '') + ' ' + (r.email || '')).toLowerCase();
+      if (!hay.includes(searchTerm)) return false;
+    }
+    if (activeFilter === 'active7')  return (r.sessions_last_7d || 0) > 0;
+    if (activeFilter === 'dormant')  return daysSince(r.last_sign_in_at) > 30;
+    if (activeFilter === 'never')    return !r.last_sign_in_at;
+    return true;
+  }
+
+  function compare (a, b) {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    let av = a[sortKey];
+    let bv = b[sortKey];
+    // Name comparison: lowercase display name.
+    if (sortKey === 'name') {
+      av = displayName(a).toLowerCase();
+      bv = displayName(b).toLowerCase();
+    }
+    // Nulls sort last regardless of direction (so "Never logged in" doesn't
+    // float to the top of a date sort).
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (av < bv) return -1 * dir;
+    if (av > bv) return  1 * dir;
+    return 0;
+  }
+
+  function renderTiles () {
+    const total = rows.length;
+    const active7  = rows.filter(r => (r.sessions_last_7d  || 0) > 0).length;
+    const active30 = rows.filter(r => (r.sessions_last_30d || 0) > 0).length;
+    const dormant  = rows.filter(r => daysSince(r.last_sign_in_at) > 30).length;
+    const never    = rows.filter(r => !r.last_sign_in_at).length;
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-7d').textContent    = active7;
+    document.getElementById('stat-30d').textContent   = active30;
+    document.getElementById('stat-dormant').textContent = dormant;
+
+    const pct = (n) => total > 0 ? Math.round((n / total) * 100) + '%' : '—';
+    document.getElementById('stat-total-sub').innerHTML = '<b>' +
+      rows.filter(r => r.plan === 'Custom').length + '</b> Custom · <b>' +
+      rows.filter(r => r.plan === 'Progressive').length + '</b> Progressive';
+    document.getElementById('stat-7d-sub').innerHTML    = pct(active7)  + ' of members';
+    document.getElementById('stat-30d-sub').innerHTML   = pct(active30) + ' of members';
+    document.getElementById('stat-dormant-sub').innerHTML = never > 0
+      ? '<b>' + never + '</b> never signed in'
+      : 'All members have signed in at least once';
+
+    // Filter-tab counts
+    document.getElementById('count-all').textContent     = total;
+    document.getElementById('count-active7').textContent = active7;
+    document.getElementById('count-dormant').textContent = dormant;
+    document.getElementById('count-never').textContent   = never;
+  }
+
+  function renderTable () {
+    const filtered = rows.filter(matches).sort(compare);
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="insights-empty"><strong>No members match.</strong>Try a different filter or clear the search.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map(r => {
+      const bucket = recencyBucket(r.last_sign_in_at);
+      const planCls = (r.plan || '').toLowerCase();
+      const lastAbs = fmtAbsoluteDate(r.last_sign_in_at);
+      const joined  = fmtAbsoluteDate(r.signed_up_at);
+      return '' +
+        '<tr>' +
+          '<td class="member-cell">' +
+            '<div class="member-name">' + escapeHtml(displayName(r)) + '</div>' +
+            '<div class="member-email">' + escapeHtml(r.email || '') + '</div>' +
+          '</td>' +
+          '<td><span class="plan-pill ' + planCls + '">' + escapeHtml(r.plan || '—') + '</span></td>' +
+          '<td class="login-cell">' +
+            '<span class="login-relative ' + bucket.cls + '">' + bucket.text + '</span>' +
+            (lastAbs ? '<span class="login-absolute">' + lastAbs + '</span>' : '') +
+          '</td>' +
+          '<td class="num">' + (r.sessions_last_7d  || 0) + activityDots(r.sessions_last_7d || 0) + '</td>' +
+          '<td class="num">' + (r.sessions_last_30d || 0) + '</td>' +
+          '<td class="col-signed-up">' + escapeHtml(joined) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function escapeHtml (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+      { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+    ));
+  }
+
+  /* ---------- Wire up controls ---------- */
+  // Filter tabs
+  document.querySelectorAll('.filter-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      activeFilter = btn.dataset.filter;
+      renderTable();
+    });
+  });
+
+  // Search
+  document.getElementById('search-input').addEventListener('input', (e) => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    renderTable();
+  });
+
+  // Sortable column headers
+  document.querySelectorAll('.insights-table th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (sortKey === key) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortKey = key;
+        sortDir = th.dataset.defaultDir === 'desc' ? 'desc' : 'asc';
+      }
+      document.querySelectorAll('.insights-table th.sortable').forEach(h => {
+        h.classList.remove('sort-active');
+        const ind = h.querySelector('.sort-ind');
+        if (ind) ind.textContent = '↕';
+      });
+      th.classList.add('sort-active');
+      const ind = th.querySelector('.sort-ind');
+      if (ind) ind.textContent = sortDir === 'asc' ? '↑' : '↓';
+      renderTable();
+    });
+  });
+
+  renderTiles();
+  renderTable();
+})();
+</script>
+</body>
+</html>
