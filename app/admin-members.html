@@ -214,6 +214,31 @@
   .plan-badge.draft     { background: #fef3c7; color: #92400e; }
   .plan-badge.awaiting  { background: #fee2e2; color: #991b1b; }
 
+  /* Payment-status badge — surfaces "is this member currently paid?" so
+     Mick can decide at a glance whether it's safe to publish the next
+     plan block. Sits next to the plan-badge and matches its pill style.
+     Five states; see derivePaymentStatus() for the source-of-truth
+     derivation from the subscriptions row:
+       * 'active'     — green: paid through DD MMM (normal happy path)
+       * 'cancelling' — amber: cancel_at_period_end is true, ends DD MMM
+       * 'paused'     — amber: subscription paused, resumes DD MMM
+       * 'failed'     — red:   status is past_due or unpaid
+       * 'canceled'   — gray:  subscription fully cancelled
+       * 'unknown'    — gray:  active but no period_end (data gap)
+     Members without any subscription row (no sub at all) get no badge —
+     the existing "Not signed in" / onboarding badges cover that case. */
+  .pay-badge {
+    display: inline-block; margin-top: 0.2rem; margin-left: 0.3rem;
+    padding: 0.1rem 0.45rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .pay-badge.active     { background: #dcfce7; color: #166534; }
+  .pay-badge.cancelling { background: #fef3c7; color: #92400e; }
+  .pay-badge.paused     { background: #fef3c7; color: #92400e; }
+  .pay-badge.failed     { background: #fee2e2; color: #991b1b; }
+  .pay-badge.canceled   { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+  .pay-badge.unknown    { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+
   .joined-cell { color: var(--text-3); font-size: 0.84rem; white-space: nowrap; }
 
   .actions-cell { white-space: nowrap; text-align: right; }
@@ -471,7 +496,7 @@
     sb.from('member_profiles')
       .select('user_id, preferred_name, family_name, completed_onboarding_at, goal_race_name, goal_race_date, weekly_training_hours, ability_level'),
     sb.from('subscriptions')
-      .select('user_id, status, current_period_end, cancel_at, cancel_unlocks_at'),
+      .select('user_id, status, current_period_end, cancel_at, cancel_unlocks_at, cancel_at_period_end, pause_resumes_at'),
     sb.from('coaches').select('email'),
     sb.from('custom_plans').select('member_id, published_at, last_edited'),
   ]);
@@ -524,6 +549,46 @@
     return 'awaiting';
   }
 
+  // Short "DD MMM" date formatter for the payment-status badge (e.g.
+  // "Paid → 28 May"). Uses en-AU locale to match the rest of the page;
+  // returns the literal string '?' for missing/unparseable input so the
+  // badge still renders something rather than silently dropping.
+  function fmtShortDate (iso) {
+    if (!iso) return '?';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '?';
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  }
+
+  // Source-of-truth derivation for the payment-status badge. Returns null
+  // for members with no subscription row at all (the onboarding badge
+  // already explains that case). Otherwise returns { state, label } where
+  // state matches a .pay-badge.* CSS class. Order matters: failed states
+  // (past_due / unpaid) override everything else so Mick can't miss them.
+  function derivePaymentStatus (sub) {
+    if (!sub) return null;
+    const periodEnd = sub.current_period_end;
+    if (sub.status === 'past_due' || sub.status === 'unpaid') {
+      return { state: 'failed', label: 'Payment failed' };
+    }
+    if (sub.status === 'canceled') {
+      return { state: 'canceled', label: 'Cancelled' };
+    }
+    if (sub.pause_resumes_at) {
+      return { state: 'paused', label: 'Paused → ' + fmtShortDate(sub.pause_resumes_at) };
+    }
+    if (sub.cancel_at_period_end && periodEnd) {
+      return { state: 'cancelling', label: 'Cancels ' + fmtShortDate(periodEnd) };
+    }
+    if (sub.status === 'active' && periodEnd) {
+      return { state: 'active', label: 'Paid → ' + fmtShortDate(periodEnd) };
+    }
+    if (sub.status === 'active' && !periodEnd) {
+      return { state: 'unknown', label: 'Renewal date unknown' };
+    }
+    return null;
+  }
+
   function buildRow (m, type) {
     const userId  = m.authUserId || null;
     const profile = userId ? profileByUser[userId] : null;
@@ -559,6 +624,7 @@
       abilityLevel:  profile && profile.ability_level || '',
       subStatus:     sub && sub.status || '',
       planStatus:    planStatus,  // 'published' | 'draft' | 'awaiting' | null
+      paymentStatus: derivePaymentStatus(sub),  // { state, label } | null
     };
   }
 
@@ -765,6 +831,26 @@
         planBadge = `<span class="plan-badge awaiting" title="No plan started yet — member sees the empty state on their dashboard">Awaiting plan</span>`;
       }
 
+      // Payment-status badge — answers "is this member currently paid,
+      // and through when?" so Mick can decide whether to publish the
+      // next block. The tooltip carries the more descriptive copy
+      // ("Subscription renews on …", "Payment failed — needs attention",
+      // etc.) so the pill itself can stay compact.
+      let payBadge = '';
+      if (m.paymentStatus) {
+        const ps = m.paymentStatus;
+        const titles = {
+          active:     'Subscription active — paid through the date shown',
+          cancelling: 'Cancels at end of current billing period',
+          paused:     'Subscription paused — resumes on the date shown',
+          failed:     'Payment failed — needs attention before publishing',
+          canceled:   'Subscription cancelled',
+          unknown:    'Active subscription but renewal date is missing in our records',
+        };
+        const title = titles[ps.state] || '';
+        payBadge = `<span class="pay-badge ${ps.state}" title="${escapeHtml(title)}">${escapeHtml(ps.label)}</span>`;
+      }
+
       // "Detail" column surfaces the most useful pre-plan context for
       // Mick: goal race name + date + countdown when set, otherwise
       // notes; with an optional "X hrs/wk · Ability" meta line under
@@ -832,7 +918,7 @@
                 <div class="name">${escapeHtml(m.name)}</div>
                 <div class="email">${escapeHtml(m.email)}</div>
                 <div style="margin-top:0.2rem;">
-                  ${onboardingBadge}${planBadge}
+                  ${onboardingBadge}${planBadge}${payBadge}
                 </div>
               </div>
             </div>
