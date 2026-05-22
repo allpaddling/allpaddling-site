@@ -4,7 +4,63 @@ Continuing AllPaddling project. The canonical project guide is `CLAUDE.md`; this
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-22 (Fri) — calendar-1st billing alignment
+## ⭐⭐⭐ LATEST — 2026-05-23 (Sat) — engagement tracking (threshold + session completions)
+
+Coaches now have visibility into who's actually doing the training, not just who's logging in. Two new tables plus an extended `get_member_insights()` plus two new columns on `admin-insights.html`.
+
+### What changed
+
+**Schema (migrations 023 + 024, both applied to prod):**
+
+- `public.threshold_log` — append-only. Every time a member saves a new threshold pace, one row inserted. Columns: `user_id`, `threshold_sec`, `unit`, `recorded_at`, `source` (`'manual'` or `'backfill'`). RLS: member can insert/read own; coach can read all. No update/delete policies — history is immutable.
+- `public.session_completions` — one row per session a member has marked complete. Unique on `(user_id, session_key)` so toggles upsert idempotently; unmarking deletes. Columns: `user_id`, `session_key` (e.g. `"prone-w1s1"`), `plan_key`, `completed_at`, `rpe`, `note`. RLS: member CRUD on own; coach read all. `updated_at` trigger for RPE/note edits.
+- `get_member_insights()` extended with 6 new columns: `current_threshold_sec`, `threshold_unit`, `last_threshold_at`, `sessions_completed_7d`, `sessions_completed_30d`, `sessions_completed_total`. Same SECURITY DEFINER + `is_coach()` gate as before.
+
+**Frontend (`assets/app.js`):**
+
+- `pushThresholdToServer(thresholdSec, unit, source)` — inserts a `threshold_log` row.
+- `pushSessionCompletionToServer(planKey, sessionKey, completedNow, rpe, note)` — upserts when `completedNow`, deletes when false.
+- `patchSessionCompletionOnServer(sessionKey, patch)` — partial update of RPE/note on an existing row.
+- `backfillEngagementOnce()` — one-time push of pre-existing `localStorage` state to the server, gated by flag `ap.engagementBackfilled_v1`. Runs from `mountApp()` after `enforceMemberGates()`/`renderPreviewBanner()`. Idempotent re-runs (across devices) are no-ops due to the unique constraint on session_completions; threshold_log rows are tagged `source='backfill'` for traceability.
+- All helpers fail silently on no-session or network error — public pages and logged-out states never break.
+
+**Wiring:**
+
+- `app/threshold.html` — `commitSave()` calls `pushThresholdToServer()` when the threshold value (not just the unit) actually changed and is non-zero.
+- `app/session.html` — Mark Complete toggle calls `pushSessionCompletionToServer()`; RPE/note `change` events call `patchSessionCompletionOnServer()`.
+
+**Coach UI (`app/admin-insights.html`):**
+
+- New sortable **Threshold** column: current value (m:ss /km or /mi) + a small relative-time pill ("Today", "3 days ago", "2 months ago") in the same colour-grading scheme as Last Active. "Not set" for members who haven't saved one yet.
+- New sortable **Sessions done** column: big 30d number with a 7d / all-time breakdown beneath.
+- Dropped the redundant "Sign-ins 7d" column to make room — Sign-ins 30d covers the same signal.
+
+### Commit
+
+[`dc2a333`](https://github.com/allpaddling/allpaddling-site/commit/dc2a333e59d593a489a71ffc247f8e2c1ce88bf9) — single commit, 6 files (2 migrations, 1 helper module, 3 page edits).
+
+### Verification done
+
+- Migrations 023 + 024 applied via Supabase MCP, return-shape confirmed.
+- Manual CTE smoke test against current data: 24 rows returned (all 24 paying members), zero threshold rows, zero completions (expected on fresh deploy).
+- GitHub Pages build status `built` at commit dc2a333e.
+- Live admin-insights page loaded in Chrome — columns render correctly, "Not set" / "0" placeholders show as designed, no layout breaks. Screenshot taken during verification.
+
+### Why these table names + design
+
+`threshold_log` is append-only because we want trend lines later (threshold over time is a meaningful training-progress signal). `session_completions` is presence-equals-complete because coaches care about current state, not toggle history — the unique constraint plus upsert/delete keeps row count = checkmarks on screen.
+
+Foreign keys target `auth.users(id)` rather than `progressive_members`/`custom_members.id` because a single user could in theory have both plan types, and the auth row is the stable identity. Both gate semantics (RLS, get_member_insights joins) already use `auth.uid()` as the identity key.
+
+### What's NOT done
+
+- The member-facing `threshold.html` history list still reads from `localStorage` only. Server-side history is available but not yet rendered there — would let members see their history across devices. Defer until someone notices.
+- No "haven't trained in N weeks" coach alert yet. The data is in place to build one (`sessions_completed_7d=0` for a paying, recently-active member is the trigger).
+- Existing 24 paying members will appear with "Not set"/"0" until their next login pushes a backfill. The backfill flag is per-browser, so a member who uses two devices will backfill from both (harmless — dup threshold rows OK, dup completions are upserts).
+
+---
+
+## ⭐⭐ PREVIOUS — 2026-05-22 (Fri) — calendar-1st billing alignment
 
 Big initiative landed: every paying customer now bills on the **1st of the month** (matching Mick's content-block cadence), and the signup flow auto-aligns new customers too. One pre-existing webhook bug found and fixed in passing.
 
@@ -76,7 +132,7 @@ Today the function is back on `verify_jwt:false` (matching the original CLAUDE.m
 
 ---
 
-## ⭐⭐ PREVIOUS — 2026-05-17 (Sun) — project complete: full day summary
+## ⭐ EARLIER — 2026-05-17 (Sun) — project complete: full day summary
 
 Everything previously parked or deferred is now done. No known open tasks.
 
