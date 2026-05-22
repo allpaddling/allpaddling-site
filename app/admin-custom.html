@@ -353,7 +353,9 @@
     let pillClass = 'unknown', pillLabel = d.status || '—';
     if (d.is_paused)               { pillClass = 'paused'; pillLabel = 'Paused'; }
     else if (d.cancel_at_period_end) { pillClass = 'cancel'; pillLabel = 'Cancelling'; }
-    else if (d.status === 'active')  { pillClass = 'active'; pillLabel = 'Active'; }
+    // 'trialing' = paid up but billing cadence shifted via Stripe trial_end
+    // trick — treat as Active for pill + action button purposes.
+    else if (d.status === 'active' || d.status === 'trialing')  { pillClass = 'active'; pillLabel = 'Active'; }
 
     // Period end label
     let periodLine = '';
@@ -385,7 +387,7 @@
       actEl.appendChild(makeSubBtn('Undo cancellation', 'btn-primary', async () => {
         await doSubAction(authUserId, 'undo_cancel');
       }));
-    } else if (d.status === 'active') {
+    } else if (d.status === 'active' || d.status === 'trialing') {
       actEl.appendChild(makeSubBtn('Pause subscription…', 'btn-ghost', () => {
         pauseOpts.style.display = pauseOpts.style.display === 'none' ? '' : 'none';
       }));

@@ -219,12 +219,16 @@
      plan block. Sits next to the plan-badge and matches its pill style.
      Five states; see derivePaymentStatus() for the source-of-truth
      derivation from the subscriptions row:
-       * 'active'     — green: paid through DD MMM (normal happy path)
+       * 'active'     — green: paid through DD MMM (covers Stripe status
+                              'active' AND 'trialing'; trialing shows up
+                              when we've shifted a customer's billing
+                              cadence via the trial_end trick — they're
+                              still paid through period_end)
        * 'cancelling' — amber: cancel_at_period_end is true, ends DD MMM
        * 'paused'     — amber: subscription paused, resumes DD MMM
        * 'failed'     — red:   status is past_due or unpaid
        * 'canceled'   — gray:  subscription fully cancelled
-       * 'unknown'    — gray:  active but no period_end (data gap)
+       * 'unknown'    — gray:  active/trialing but no period_end (data gap)
      Members without any subscription row (no sub at all) get no badge —
      the existing "Not signed in" / onboarding badges cover that case. */
   .pay-badge {
@@ -580,10 +584,17 @@
     if (sub.cancel_at_period_end && periodEnd) {
       return { state: 'cancelling', label: 'Cancels ' + fmtShortDate(periodEnd) };
     }
-    if (sub.status === 'active' && periodEnd) {
+    // 'trialing' is treated the same as 'active' for the purposes of this
+    // pill: when we shift a customer's billing cadence forward (via the
+    // Stripe trial_end trick — see memory reference_stripe_trial_end_silent_
+    // billing_shift), Stripe flips the subscription into 'trialing' until
+    // the new period start, even though the customer has already paid and
+    // is "paid through" that date as far as Mick is concerned. Without
+    // this branch the pill silently disappears for affected members.
+    if ((sub.status === 'active' || sub.status === 'trialing') && periodEnd) {
       return { state: 'active', label: 'Paid → ' + fmtShortDate(periodEnd) };
     }
-    if (sub.status === 'active' && !periodEnd) {
+    if ((sub.status === 'active' || sub.status === 'trialing') && !periodEnd) {
       return { state: 'unknown', label: 'Renewal date unknown' };
     }
     return null;
