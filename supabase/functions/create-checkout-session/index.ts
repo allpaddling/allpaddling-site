@@ -452,8 +452,11 @@ Deno.serve(async (req) => {
       const sydneyDay = sydneyDayOfMonth();
       const nextFirst = nextFirstOfMonthUtcUnix();
       if (sydneyDay >= 21) {
-        subscriptionData.trial_end          = nextFirst;
-        subscriptionData.proration_behavior = 'none';
+        // Trial-end-only: no proration_behavior. Stripe rejects
+        // proration_behavior on subscription_data unless billing_cycle_anchor
+        // (or billing_cycle_anchor_config) is also set, because there's
+        // nothing to prorate when only extending a trial.
+        subscriptionData.trial_end = nextFirst;
       } else {
         subscriptionData.billing_cycle_anchor = nextFirst;
         subscriptionData.proration_behavior   = 'none';
