@@ -433,24 +433,23 @@ Deno.serve(async (req) => {
     // paying customer should renew on the 1st. The signup day-of-month
     // (in Sydney time, since Mick is Aussie-based) determines branching:
     //
-    //   Day 1–20  → "Pay-Now": charge A$140 at checkout via a one-time
-    //               line item, anchor recurring sub to next 1st,
-    //               proration_behavior='none' so the partial first cycle
-    //               doesn't generate its own invoice. Net: customer pays
-    //               A$140 once at checkout for the rest of this month +
-    //               next month's bill on the 1st.
+    //   Day 1–20  → "Pay-Now": one-time A$140 line item at checkout +
+    //               trial_end on next 1st for the recurring sub.
+    //               Customer pays A$140 immediately for "this month";
+    //               recurring sub trials until the 1st, then A$140 fires
+    //               on the 1st (and every 1st after).
     //
-    //               (We tried subscription_data.add_invoice_items but
-    //                Stripe Checkout rejects it — that field only exists
-    //                on direct sub creates, not Checkout-managed ones.
-    //                Mixing recurring + one-time line_items in mode
-    //                'subscription' is the supported pattern.)
+    //   Day 21+   → "Free-until-1st": trial_end-only on next 1st. $0 at
+    //               checkout. Recurring sub trials until the 1st, then
+    //               A$140 fires. Avoids the "I paid full price for 3
+    //               days of access" perception for late-month signups.
     //
-    //   Day 21+   → "Free-until-1st": $0 at checkout via trial_end on the
-    //               next 1st. The signup is essentially a free trial for
-    //               the remainder of the month; first paid invoice fires
-    //               on the 1st. Avoids the "I paid full price for 3 days
-    //               of access" perception for late-month signups.
+    // Both branches use trial_end (not billing_cycle_anchor) because
+    // Stripe Checkout rejects proration_behavior='none' when a one-time
+    // line item is present, and we need 'none' to suppress the partial-
+    // cycle proration charge. trial_end achieves the same alignment
+    // (sub's anchor moves to trial_end on first invoice fire) without
+    // the proration conflict.
     //
     // MIGRATE mode keeps its existing behaviour (immediate charge,
     // anniversary billing). Migration is historical and the per-customer
@@ -466,25 +465,16 @@ Deno.serve(async (req) => {
                            ? forcedDay
                            : sydneyDayOfMonth();
       const nextFirst  = nextFirstOfMonthUtcUnix();
-      if (sydneyDay >= 21) {
-        // Trial-end-only: no proration_behavior. Stripe rejects
-        // proration_behavior on subscription_data unless billing_cycle_anchor
-        // (or billing_cycle_anchor_config) is also set, because there's
-        // nothing to prorate when only extending a trial.
-        subscriptionData.trial_end = nextFirst;
-      } else {
-        subscriptionData.billing_cycle_anchor = nextFirst;
-        subscriptionData.proration_behavior   = 'none';
-        // Add a one-time line item for the upfront A$140 charge.
-        // The recurring subscription's first invoice is $0 (partial
-        // period suppressed by proration_behavior='none'); the one-time
-        // charge gets added to that invoice so the customer pays a
-        // single A$140 at checkout. Subsequent invoices on the 1st are
-        // just the recurring price.
+      subscriptionData.trial_end = nextFirst;
+      if (sydneyDay <= 20) {
+        // PAY-NOW: add a one-time A$140 line item alongside the
+        // recurring sub. The recurring sub itself charges nothing at
+        // checkout (it's trialing); the one-time line item is the
+        // upfront month-of-content fee.
         lineItems.push({
           price_data: {
-            currency: priceForAlignment.currency,
-            product:  priceForAlignment.product as string,
+            currency:    priceForAlignment.currency,
+            product:     priceForAlignment.product as string,
             unit_amount: priceForAlignment.unit_amount ?? 14000,
           },
           quantity: 1,
