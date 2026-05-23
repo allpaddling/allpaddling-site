@@ -408,13 +408,17 @@
         <span>Member view</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
       </a>
-      <div class="user-info">
-        <div class="user-avatar" id="admin-initials">--</div>
-        <div class="user-details">
-          <div class="user-email" id="admin-email">—</div>
-          <button class="btn btn-text" id="signoutBtn">Sign out</button>
+      <div class="app-member-chip">
+        <div class="app-member-avatar" id="admin-avatar">CO</div>
+        <div class="app-member-meta">
+          <div class="name" id="admin-name">Coach</div>
+          <div class="plan" id="admin-email">—</div>
         </div>
       </div>
+      <a href="#" id="signout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign out</span>
+      </a>
     </div>
   </aside>
 
@@ -658,12 +662,14 @@
   const adminEmail = (session.user.email || '').toLowerCase();
   document.getElementById('admin-email').textContent = adminEmail || '—';
   const adminName = session.user.user_metadata?.full_name?.trim() || adminEmail.split('@')[0] || 'Coach';
+  document.getElementById('admin-name').textContent = adminName;
   const initials = adminName.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
-  document.getElementById('admin-initials').textContent = initials || '—';
+  if (initials) document.getElementById('admin-avatar').textContent = initials;
 
-  document.getElementById('signoutBtn').addEventListener('click', async () => {
+  document.getElementById('signout-btn').addEventListener('click', async (e) => {
+    e.preventDefault();
     await sb.auth.signOut();
-    window.location.href = 'admin.html';
+    window.location.href = '../login.html';
   });
 
   await window.OutreachPage.init(adminEmail);
