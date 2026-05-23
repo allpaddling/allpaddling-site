@@ -636,8 +636,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js"></script>
-<script src="../assets/outreach-templates.js"></script>
-<script src="../assets/admin-outreach.js"></script>
+<!-- Bump the ?v= query string whenever outreach-templates.js or admin-outreach.js
+     change. Cloudflare caches /assets/*.js with max-age=14400 (4h) and serves
+     unversioned URLs from cache, so fixes can take hours to reach users. The
+     versioned URL has a distinct cache key → bypasses the stale entry immediately. -->
+<script src="../assets/outreach-templates.js?v=20260523-2"></script>
+<script src="../assets/admin-outreach.js?v=20260523-2"></script>
 <script>
 (async () => {
   const gateEl  = document.getElementById('login-gate');
