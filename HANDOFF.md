@@ -4,7 +4,64 @@ Continuing AllPaddling project. The canonical project guide is `CLAUDE.md`; this
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-23 (Sat) — engagement tracking (threshold + session completions)
+## ⭐⭐⭐ LATEST — 2026-05-23 (Sat, pm) — active-members outreach: tab, template, attribution-ready
+
+The Outreach page now drives campaigns to the 24 paying members alongside the Shopify pool. Email body for the campaign was drafted + previewed to Jake & Mick this morning; sending is gated on Mick's approval. All plumbing is in and verified live.
+
+### What changed
+
+**Schema (migration 025, applied to prod):**
+
+- `public.outreach_sends.member_auth_user_id uuid` — new nullable FK to `auth.users(id)` on delete set null.
+- `outreach_sends_recipient_xor` CHECK constraint dropped and replaced with a three-way XOR over `(shopify_customer_id, newsletter_subscriber_id, member_auth_user_id)`. Existing rows remain valid; new member-targeted sends populate exactly the third FK.
+- `outreach_sends_member_auth_user_id_idx` partial index on the new column for the per-campaign attribution query the engagement dashboard will run.
+
+**Frontend — new "Active members" tab on `app/admin-outreach.html`:**
+
+- Loads via `get_member_insights()` (the same coach-gated RPC `admin-insights.html` uses), so each member row carries `current_threshold_sec`, `last_threshold_at`, `sessions_completed_7d/30d/total` alongside name / plan / signed-up / last-sign-in / last-contacted.
+- Stats row: Active members · Threshold not set · No sessions 30d · Last contacted.
+- Filter pills: All · Progressive · Custom · Dormant. **Dormant** = no threshold ever set OR zero sessions in 30d — surfaces members most in need of this campaign. Dormant rows sort to top of the table and carry a small yellow chip on the name.
+- Per-row Quick send + bulk "Send to selected" — both reuse the existing `send-email` Edge Function path and the same `personalize()` + unsub footer flow. Defaults to the new `active_member_checkin_2026_05` template in both pickers.
+- Truth on the 24-member roster verified at deploy time: all 24 are currently on Custom plans, zero on Progressive. The Progressive=0 filter count is genuine, not a bug.
+
+**Template registration (`assets/outreach-templates.js`):**
+
+- New `active_member_checkin_2026_05` template entry alongside `newsletter_launch_2026_05`. Subject: "A quick check-in — and two small things that'll sharpen your training". Two-ask format (re-check threshold, tick off sessions) framed as athlete benefit, with a brief one-paragraph platform-update lead-in (pause/resume self-serve, calendar-1st billing). Text + HTML bodies, `{{first_name}}` placeholder.
+
+**Cache hardening (`app/admin-outreach.html`):**
+
+- Script tags for `outreach-templates.js` and `admin-outreach.js` now carry `?v=20260523-2` query strings. Cloudflare in front of `allpaddling.online` caches `/assets/*.js` with `max-age=14400` (4h); without versioning, JS deploys took up to 4h to actually reach users. Versioned URLs hit a distinct cache key and bypass the stale entry immediately. **Bump the `?v=` suffix on every future change to either of those JS files.**
+
+### Verification done
+
+- Migration 025 applied via Supabase MCP; constraint def verified post-apply (`outreach_sends_recipient_xor` is now `(shopify + newsletter + member) = 1`).
+- Pages build status `built` for all three commits.
+- Live admin-outreach.html opened in Chrome (Jake's session): Active Members tab present, 24 rows render with correct stats (24 / 23 / 23 / —), threshold "Not set" badge displays for the 23 unset, sessions 30d column shows the 0/7d/all-time breakdown, dormant chips on 23 rows.
+- Filter counts verified after the case-sensitivity fix: All 24 / Progressive 0 / Custom 24 / Dormant 23.
+- Both script tags confirmed loading via the `?v=` URLs (script audit via `document.querySelectorAll('script[src]')`).
+- Email preview sent via direct Resend POST to Jake + Mick this morning (HTTP 200, message id `bd708752-bdfb-43f7-88fe-2c60d89f4b3f`). Awaiting Mick sign-off.
+
+### Schema gotchas (worth knowing for next session)
+
+- **`get_member_insights()` returns `plan` as `'Custom'` / `'Progressive'` (capitalized).** The CTE assembles them as string literals — not the lowercase table name. First pass of the filter predicates compared to lowercase and silently counted 0; fixed via `planKey()` lowercase normalizer that's now used consistently across visibleMembers, filter-count rendering and the row planLabel ternary.
+- The function is `SECURITY DEFINER` with an `is_coach()` gate, so MCP `execute_sql` 403s when calling it directly (the MCP service-role isn't in the `coaches` table). Browser-side calls from a signed-in coach work fine. For SQL-level verification, query `progressive_members` + `custom_members` directly.
+
+### Commits
+
+- [`786e18e`](https://github.com/allpaddling/allpaddling-site/commit/786e18e520819b5d04888fd0ac9db8f13035fd33) — migration + template + tab + JS loader/send flow
+- [`e8a5099`](https://github.com/allpaddling/allpaddling-site/commit/e8a5099ac61d7413953617f3dcdbba66000208c3) — planKey() case-insensitive plan filter
+- [`3bec529`](https://github.com/allpaddling/allpaddling-site/commit/3bec52980bdfe8930b9276dcabc82eed3ffef456) — cache-bust query strings on the outreach script tags
+
+### What's NOT done
+
+- **The campaign has not been sent.** Mick is reviewing the email body; once approved, Jake fires it from the Active Members tab → Select all → Send to selected. Each send writes an `outreach_sends` row with `member_auth_user_id` populated, and the Resend webhook mirrors opens/clicks/deliveries back to those rows in real time via the existing engagement plumbing.
+- **No cross-campaign attribution view yet.** Data is in place to build "who opened the email AND then updated threshold within 7d" — it's a single SELECT joining `outreach_sends.member_auth_user_id` → `auth.users.id` → `threshold_log` + `session_completions`. Defer until the campaign sends and there's data worth aggregating.
+- **EMAIL_BCC will fan out 24 copies to Jake + Mick on send.** Audit-trail by design (see `reference_allpaddling_email_bcc.md`) but worth a Gmail filter rule to bulk-archive.
+- **The `outreach_sends.shopify_customer_id` / `newsletter_subscriber_id` ↔ FK semantics in `admin-outreach.js` quick-send/bulk-send still bucket sends per the old two-FK pattern.** Member sends are routed through the separate `logMemberSend()` helper that sets `member_auth_user_id` instead. Both paths log to the same table; engagement queries are unified.
+
+---
+
+## ⭐⭐ PREVIOUS — 2026-05-23 (Sat, am) — engagement tracking (threshold + session completions)
 
 Coaches now have visibility into who's actually doing the training, not just who's logging in. Two new tables plus an extended `get_member_insights()` plus two new columns on `admin-insights.html`.
 
@@ -60,7 +117,7 @@ Foreign keys target `auth.users(id)` rather than `progressive_members`/`custom_m
 
 ---
 
-## ⭐⭐ PREVIOUS — 2026-05-22 (Fri) — calendar-1st billing alignment
+## ⭐ EARLIER — 2026-05-22 (Fri) — calendar-1st billing alignment
 
 Big initiative landed: every paying customer now bills on the **1st of the month** (matching Mick's content-block cadence), and the signup flow auto-aligns new customers too. One pre-existing webhook bug found and fixed in passing.
 
@@ -132,7 +189,7 @@ Today the function is back on `verify_jwt:false` (matching the original CLAUDE.m
 
 ---
 
-## ⭐ EARLIER — 2026-05-17 (Sun) — project complete: full day summary
+## 2026-05-17 (Sun) — project complete: full day summary
 
 Everything previously parked or deferred is now done. No known open tasks.
 
