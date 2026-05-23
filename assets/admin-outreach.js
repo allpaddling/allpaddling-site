@@ -1186,12 +1186,18 @@
     renderMembers();
   }
 
+  // get_member_insights() returns plan as 'Custom' or 'Progressive' (capitalized
+  // — set explicitly in the function's CTE). All plan comparisons in this module
+  // normalise via planKey() so we don't get bitten if the casing ever changes.
+  function planKey (p) { return (p || '').toLowerCase(); }
+
   function visibleMembers () {
     const q = state.memSearchTerm.trim().toLowerCase();
     return state.members.filter(m => {
-      if (state.memActiveSegment === 'progressive' && m.plan !== 'progressive') return false;
-      if (state.memActiveSegment === 'custom'      && m.plan !== 'custom')      return false;
-      if (state.memActiveSegment === 'dormant'     && !m._is_dormant)           return false;
+      const pk = planKey(m.plan);
+      if (state.memActiveSegment === 'progressive' && pk !== 'progressive') return false;
+      if (state.memActiveSegment === 'custom'      && pk !== 'custom')      return false;
+      if (state.memActiveSegment === 'dormant'     && !m._is_dormant)       return false;
       if (q) {
         const hay = `${m.name||''} ${m.email||''}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -1227,8 +1233,8 @@
       if (el) el.textContent = n;
     };
     setCount('all',         c(() => true));
-    setCount('progressive', c(m => m.plan === 'progressive'));
-    setCount('custom',      c(m => m.plan === 'custom'));
+    setCount('progressive', c(m => planKey(m.plan) === 'progressive'));
+    setCount('custom',      c(m => planKey(m.plan) === 'custom'));
     setCount('dormant',     c(m => m._is_dormant));
   }
 
@@ -1247,9 +1253,10 @@
     const checked = state.memSelection.has(m.auth_user_id) ? 'checked' : '';
     const name = m.name || '(no name)';
 
-    const planLabel = m.plan === 'progressive' ? 'Progressive' :
-                      m.plan === 'custom'      ? 'Custom' : (m.plan || '—');
-    const planPill  = `<span class="pill seg-${m.plan || 'unknown'}">${escHtml(planLabel)}</span>`;
+    const pk = planKey(m.plan);
+    const planLabel = pk === 'progressive' ? 'Progressive' :
+                      pk === 'custom'      ? 'Custom'      : (m.plan || '—');
+    const planPill  = `<span class="pill seg-${pk || 'unknown'}">${escHtml(planLabel)}</span>`;
 
     const signedUp = m.signed_up_at ? fmtDate(m.signed_up_at) : '—';
 
