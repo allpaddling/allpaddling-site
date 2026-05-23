@@ -531,7 +531,7 @@
      ============================================================ */
   function renderAdmin () {
     const email = session.user.email || '';
-    const niceName = nameFromEmail(email);
+    const niceName = session.user.user_metadata?.full_name?.trim() || nameFromEmail(email);
     document.getElementById('admin-email').textContent = email;
     document.getElementById('admin-name').textContent = niceName;
     const avatarEl = document.getElementById('admin-avatar');
