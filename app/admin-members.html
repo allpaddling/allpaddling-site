@@ -483,7 +483,8 @@
     .join('')
     .toUpperCase();
   if (initials) document.getElementById('admin-avatar').textContent = initials;
-  document.getElementById('admin-name').textContent = adminEmail.split('@')[0] || 'Coach';
+  const adminName = session.user.user_metadata?.full_name?.trim() || adminEmail.split('@')[0] || 'Coach';
+  document.getElementById('admin-name').textContent = adminName;
 
   document.getElementById('signout-btn').addEventListener('click', async (e) => {
     e.preventDefault();

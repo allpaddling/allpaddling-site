@@ -299,7 +299,7 @@
 
   /* ---- Sidebar user ---- */
   const email = session.user.email || '';
-  const niceName = (email || 'Coach').split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const niceName = session.user.user_metadata?.full_name?.trim() || (email || 'Coach').split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   document.getElementById('admin-email').textContent = email;
   document.getElementById('admin-name').textContent = niceName;
   const avatarEl = document.getElementById('admin-avatar');

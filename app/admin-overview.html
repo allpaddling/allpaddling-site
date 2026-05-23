@@ -300,10 +300,10 @@
   // ---- Sidebar chip ----
   const adminEmail = (session.user.email || '').toLowerCase();
   document.getElementById('admin-email').textContent = adminEmail || '—';
-  const initials = adminEmail.split('@')[0].replace(/[._-]+/g, ' ')
-    .split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  const initials = adminName.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   if (initials) document.getElementById('admin-avatar').textContent = initials;
-  document.getElementById('admin-name').textContent = adminEmail.split('@')[0] || 'Coach';
+  const adminName = session.user.user_metadata?.full_name?.trim() || adminEmail.split('@')[0] || 'Coach';
+  document.getElementById('admin-name').textContent = adminName;
   document.getElementById('signout-btn').addEventListener('click', async (e) => {
     e.preventDefault();
     await sb.auth.signOut();

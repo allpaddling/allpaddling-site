@@ -657,15 +657,8 @@
 
   const adminEmail = (session.user.email || '').toLowerCase();
   document.getElementById('admin-email').textContent = adminEmail || '—';
-  const initials = adminEmail
-    .split('@')[0]
-    .replace(/[._-]+/g, ' ')
-    .split(' ')
-    .map(s => s[0])
-    .filter(Boolean)
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const adminName = session.user.user_metadata?.full_name?.trim() || adminEmail.split('@')[0] || 'Coach';
+  const initials = adminName.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   document.getElementById('admin-initials').textContent = initials || '—';
 
   document.getElementById('signoutBtn').addEventListener('click', async () => {
