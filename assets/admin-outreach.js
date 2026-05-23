@@ -85,6 +85,16 @@
     adminEmail:           '',
     archiveLoaded:        false,
     engagementLoaded:     false,
+
+    // Active-members tab state (separate selection/filter from Shopify pool
+    // so the two surfaces don't interfere with each other).
+    members:              [],   // get_member_insights() rows + computed fields
+    memSendsByUserId:     new Map(),
+    memSelection:         new Set(),   // auth_user_id set
+    memActiveSegment:     'all',
+    memSearchTerm:        '',
+    membersLoaded:        false,
+    memEventsBound:       false,
   };
 
   // ---------- DOM helpers ----------
@@ -1047,8 +1057,13 @@
         const pane = btn.dataset.pane;
         document.querySelectorAll('.surface-tab').forEach(b => b.classList.toggle('active', b === btn));
         $('pane-outreach').hidden   = (pane !== 'outreach');
+        $('pane-members').hidden    = (pane !== 'members');
         $('pane-engagement').hidden = (pane !== 'engagement');
         $('pane-archive').hidden    = (pane !== 'archive');
+        if (pane === 'members') {
+          bindMemberEvents();        // idempotent — no-op after first call
+          loadActiveMembers();       // idempotent — no-op once cached
+        }
         if (pane === 'archive')    loadArchive();
         if (pane === 'engagement') loadEngagement();
       });
@@ -1107,6 +1122,407 @@
       const id = btn.dataset.id;
       if (btn.dataset.act === 'unsub-set')   setUnsubscribed(id, true);
       if (btn.dataset.act === 'unsub-clear') setUnsubscribed(id, false);
+    });
+  }
+
+  // ============================================================
+  // Active members pane
+  // ------------------------------------------------------------
+  // Loads via get_member_insights() — the same coach-gated RPC
+  // admin-insights.html uses. Returns one row per paying member with
+  // threshold + session-completion data already aggregated, so the
+  // Outreach page can show who's dormant at a glance.
+  //
+  // Sends reuse the send-email Edge Function and template registry
+  // from above. The only difference is logMemberSend(), which sets
+  // outreach_sends.member_auth_user_id instead of shopify_customer_id
+  // / newsletter_subscriber_id (the third XOR slot added in
+  // migration 025).
+  // ============================================================
+  async function loadActiveMembers (force = false) {
+    if (state.membersLoaded && !force) return;
+
+    const [insightsRes, sendsRes] = await Promise.all([
+      sb.rpc('get_member_insights'),
+      sb.from('outreach_sends')
+        .select('id, member_auth_user_id, sent_at, campaign_name, subject, status, opened_at, clicked_at')
+        .not('member_auth_user_id', 'is', null)
+        .order('sent_at', { ascending: false }),
+    ]);
+
+    if (insightsRes.error) {
+      console.error('Failed to load get_member_insights', insightsRes.error);
+      $('membersBody').innerHTML = `<tr><td colspan="9" class="empty-state">
+        Couldn't load active members — ${escHtml(insightsRes.error.message)}
+      </td></tr>`;
+      return;
+    }
+
+    const byMember = new Map();
+    (sendsRes.data || []).forEach(s => {
+      if (!s.member_auth_user_id) return;
+      const arr = byMember.get(s.member_auth_user_id) || [];
+      arr.push(s);
+      byMember.set(s.member_auth_user_id, arr);
+    });
+    state.memSendsByUserId = byMember;
+
+    state.members = (insightsRes.data || []).map(m => {
+      const sends = byMember.get(m.auth_user_id) || [];
+      return {
+        ...m,
+        _sends:        sends,
+        _last_contact: sends.length > 0 ? sends[0].sent_at : null,
+        // "Dormant" surfaces members most in need of this campaign:
+        // no threshold ever set, OR zero session completions in 30 days.
+        _is_dormant:   !m.last_threshold_at || (m.sessions_completed_30d || 0) === 0,
+      };
+    }).sort((a, b) => {
+      if (a._is_dormant !== b._is_dormant) return a._is_dormant ? -1 : 1;
+      return (a.name || a.email || '').localeCompare(b.name || b.email || '');
+    });
+
+    state.membersLoaded = true;
+    renderMembers();
+  }
+
+  function visibleMembers () {
+    const q = state.memSearchTerm.trim().toLowerCase();
+    return state.members.filter(m => {
+      if (state.memActiveSegment === 'progressive' && m.plan !== 'progressive') return false;
+      if (state.memActiveSegment === 'custom'      && m.plan !== 'custom')      return false;
+      if (state.memActiveSegment === 'dormant'     && !m._is_dormant)           return false;
+      if (q) {
+        const hay = `${m.name||''} ${m.email||''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderMembers () {
+    renderMembersStats();
+    renderMembersFilterCounts();
+    renderMembersTable();
+    renderMembersSelection();
+  }
+
+  function renderMembersStats () {
+    const all = state.members;
+    $('memStatTotal').textContent       = all.length;
+    $('memStatNoThreshold').textContent = all.filter(m => !m.last_threshold_at).length;
+    $('memStatNoSessions').textContent  = all.filter(m => (m.sessions_completed_30d || 0) === 0).length;
+    const latest = all
+      .map(m => m._last_contact)
+      .filter(Boolean)
+      .sort()
+      .pop();
+    $('memStatLastContact').textContent = latest ? fmtDate(latest) : '—';
+  }
+
+  function renderMembersFilterCounts () {
+    const c = (pred) => state.members.filter(pred).length;
+    const setCount = (seg, n) => {
+      const el = document.querySelector(`#memFilterTabs [data-mseg="${seg}"] .count`);
+      if (el) el.textContent = n;
+    };
+    setCount('all',         c(() => true));
+    setCount('progressive', c(m => m.plan === 'progressive'));
+    setCount('custom',      c(m => m.plan === 'custom'));
+    setCount('dormant',     c(m => m._is_dormant));
+  }
+
+  function renderMembersTable () {
+    const tbody = $('membersBody');
+    if (!tbody) return;
+    const rows = visibleMembers();
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No members match.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(renderMemberRow).join('');
+  }
+
+  function renderMemberRow (m) {
+    const checked = state.memSelection.has(m.auth_user_id) ? 'checked' : '';
+    const name = m.name || '(no name)';
+
+    const planLabel = m.plan === 'progressive' ? 'Progressive' :
+                      m.plan === 'custom'      ? 'Custom' : (m.plan || '—');
+    const planPill  = `<span class="pill seg-${m.plan || 'unknown'}">${escHtml(planLabel)}</span>`;
+
+    const signedUp = m.signed_up_at ? fmtDate(m.signed_up_at) : '—';
+
+    const lastSignIn = m.last_sign_in_at
+      ? `<span title="${escHtml(m.last_sign_in_at)}">${fmtDate(m.last_sign_in_at)}</span>`
+      : '<span class="ago">never</span>';
+
+    // Threshold: current pace + when last set, or "Not set" if absent
+    let thresholdCell = '<span class="ago" style="color:#b45309;">Not set</span>';
+    if (m.current_threshold_sec && m.last_threshold_at) {
+      const secs = m.current_threshold_sec;
+      const mm = Math.floor(secs / 60);
+      const ss = String(secs % 60).padStart(2, '0');
+      const unit = m.threshold_unit || '/km';
+      thresholdCell = `<div style="font-weight:600;">${mm}:${ss} ${escHtml(unit)}</div>` +
+                      `<div class="ago" style="font-size:0.78rem;">${fmtDate(m.last_threshold_at)}</div>`;
+    }
+
+    // Sessions: big 30d number, breakdown beneath
+    const s30  = m.sessions_completed_30d   || 0;
+    const s7   = m.sessions_completed_7d    || 0;
+    const sAll = m.sessions_completed_total || 0;
+    const sessionsCell =
+      `<div style="font-weight:700; font-size:1.05rem;">${s30}</div>` +
+      `<div class="ago" style="font-size:0.78rem;">${s7} in 7d &middot; ${sAll} all-time</div>`;
+
+    const lastContact = m._last_contact
+      ? fmtDate(m._last_contact)
+      : '<span class="ago">never</span>';
+
+    const templates = (typeof OUTREACH_TEMPLATES !== 'undefined' && Array.isArray(OUTREACH_TEMPLATES))
+      ? OUTREACH_TEMPLATES : [];
+    const templateOpts = templates.length === 0
+      ? '<option value="">(no templates loaded)</option>'
+      : templates.map(t => `<option value="${escHtml(t.id)}" ${t.id === 'active_member_checkin_2026_05' ? 'selected' : ''}>${escHtml(t.label)}</option>`).join('');
+
+    const dormantTag = m._is_dormant
+      ? ' <span class="pill" style="background:#fef3c7; color:#92400e; font-size:0.7rem; margin-left:4px;">dormant</span>'
+      : '';
+
+    return `
+      <tr class="row" data-mid="${m.auth_user_id}">
+        <td class="col-check"><input type="checkbox" class="mem-row-check" data-mid="${m.auth_user_id}" ${checked}/></td>
+        <td>
+          <div class="customer-cell">
+            <div class="name">${escHtml(name)}${dormantTag}</div>
+            <div class="email" title="${escHtml(m.email)}">${escHtml(m.email)}</div>
+          </div>
+        </td>
+        <td>${planPill}</td>
+        <td class="date-cell">${signedUp}</td>
+        <td class="date-cell">${lastSignIn}</td>
+        <td>${thresholdCell}</td>
+        <td>${sessionsCell}</td>
+        <td class="date-cell">${lastContact}</td>
+        <td class="col-send">
+          <div class="send-row">
+            <select class="email-kind-select" data-action="mem-template-select">${templateOpts}</select>
+            <button class="btn-mini btn-mini-primary" data-action="mem-quicksend" data-mid="${m.auth_user_id}" title="Send the selected template to this member.">Send</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function renderMembersSelection () {
+    const ids = Array.from(state.memSelection);
+    const recipients = state.members.filter(m => ids.includes(m.auth_user_id));
+    if (recipients.length === 0) {
+      $('memSelectionBar').hidden = true;
+      return;
+    }
+    $('memSelectionBar').hidden = false;
+    $('memSelCount').textContent = recipients.length;
+  }
+
+  function populateMemberBulkTemplates () {
+    const sel = $('memBulkTemplateSelect');
+    if (!sel) return;
+    const templates = (typeof OUTREACH_TEMPLATES !== 'undefined' && Array.isArray(OUTREACH_TEMPLATES))
+      ? OUTREACH_TEMPLATES : [];
+    sel.innerHTML = templates.length === 0
+      ? '<option value="">(no templates loaded)</option>'
+      : templates.map(t => `<option value="${escHtml(t.id)}">${escHtml(t.label)}</option>`).join('');
+    // Default to the active-member check-in if present — that's the campaign
+    // this whole tab is built for.
+    const preferred = templates.find(t => t.id === 'active_member_checkin_2026_05');
+    if (preferred) sel.value = preferred.id;
+    sel.disabled = templates.length === 0;
+  }
+
+  async function sendToMember (member, template) {
+    const { data: { session } } = await sb.auth.getSession();
+    const jwt = session?.access_token;
+    if (!jwt) throw new Error('Not signed in');
+
+    // get_member_insights returns `name` (full name) but personalize() expects
+    // first_name. Split on whitespace to derive a sensible greeting.
+    const firstName = (member.name || '').trim().split(/\s+/)[0] || 'there';
+    const personalText = personalize(template.text, { first_name: firstName, last_name: '', email: member.email }) + UNSUB_FOOTER_TEXT;
+    const personalHtml = personalize(template.html, { first_name: firstName, last_name: '', email: member.email }, true) + UNSUB_FOOTER_HTML;
+
+    const res = await fetch(SEND_EMAIL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({
+        mode: 'raw',
+        to: member.email,
+        subject: template.subject,
+        text: personalText,
+        html: personalHtml,
+        tags: [
+          { name: 'campaign', value: template.campaign_name.slice(0, 60).replace(/[^A-Za-z0-9_-]/g, '_') },
+          { name: 'kind',     value: 'outreach' },
+          { name: 'template', value: template.id },
+        ],
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      await logMemberSend(member, template.campaign_name, template.subject, personalText, personalHtml, 'failed', null, payload.error || `HTTP ${res.status}`);
+      throw new Error(payload.error || `HTTP ${res.status}`);
+    }
+    await logMemberSend(member, template.campaign_name, template.subject, personalText, personalHtml, 'sent', payload.id, null);
+  }
+
+  async function logMemberSend (member, campaignName, subject, bodyText, bodyHtml, status, resendId, error) {
+    const row = {
+      shopify_customer_id:      null,
+      newsletter_subscriber_id: null,
+      member_auth_user_id:      member.auth_user_id,
+      recipient_email:          member.email,
+      campaign_name:            campaignName,
+      subject,
+      body_text:                bodyText,
+      body_html:                bodyHtml,
+      status,
+      resend_id:                resendId,
+      error,
+      sent_by:                  state.adminEmail,
+    };
+    const { error: insErr } = await sb.from('outreach_sends').insert(row);
+    if (insErr) console.error('Failed to log member outreach_send', insErr);
+  }
+
+  async function onMemberBulkSend () {
+    const ids = Array.from(state.memSelection);
+    const recipients = state.members.filter(m => ids.includes(m.auth_user_id));
+    if (recipients.length === 0) { alert('No recipients selected.'); return; }
+
+    const templateId = $('memBulkTemplateSelect')?.value;
+    const template = OUTREACH_TEMPLATES.find(t => t.id === templateId);
+    if (!template) { alert('Pick a template first.'); return; }
+
+    if (!confirm(
+      `Send "${template.label}" to ${recipients.length} active member${recipients.length === 1 ? '' : 's'} right now?\n\n` +
+      `Subject: ${template.subject}\n\n` +
+      `Logged under campaign "${template.campaign_name}".`
+    )) return;
+
+    const sendBtn     = $('memBulkSendBtn');
+    const progressEl  = $('memBulkProgress');
+    const templateSel = $('memBulkTemplateSelect');
+    const clearBtn    = $('memClearSelBtn');
+    sendBtn.disabled = true; templateSel.disabled = true; clearBtn.disabled = true;
+    progressEl.className = 'bulk-progress';
+    sendBtn.textContent = 'Sending…';
+
+    let okCount = 0, failCount = 0;
+    const failures = [];
+
+    for (let i = 0; i < recipients.length; i++) {
+      const m = recipients[i];
+      progressEl.textContent = `Sending ${i + 1} of ${recipients.length}…`;
+      try { await sendToMember(m, template); okCount++; }
+      catch (err) { failCount++; failures.push(`${m.email}: ${err.message}`); }
+    }
+
+    if (failCount === 0) {
+      progressEl.className = 'bulk-progress ok';
+      progressEl.textContent = `Sent ${okCount} of ${recipients.length} ✓`;
+      sendBtn.textContent = 'Sent ✓';
+    } else {
+      progressEl.className = 'bulk-progress error';
+      progressEl.textContent = `${okCount} sent, ${failCount} failed`;
+      sendBtn.textContent = 'Done (with errors)';
+      console.error('Member bulk-send failures:', failures);
+      alert(`${failCount} send${failCount === 1 ? '' : 's'} failed — see console:\n\n${failures.slice(0, 5).join('\n')}${failures.length > 5 ? '\n…' : ''}`);
+    }
+
+    await loadActiveMembers(/*force*/ true);
+    state.memSelection.clear();
+
+    setTimeout(() => {
+      progressEl.className = 'bulk-progress';
+      progressEl.textContent = '';
+      sendBtn.textContent = 'Send to selected →';
+      sendBtn.disabled = false; templateSel.disabled = false; clearBtn.disabled = false;
+    }, 3000);
+  }
+
+  async function onMemberQuickSend (userId, templateId) {
+    const m = state.members.find(x => x.auth_user_id === userId);
+    if (!m) return;
+    const template = OUTREACH_TEMPLATES.find(t => t.id === templateId);
+    if (!template) { alert('Pick a template first.'); return; }
+    if (!confirm(`Send "${template.label}" to ${m.email}?`)) return;
+    try {
+      await sendToMember(m, template);
+      await loadActiveMembers(/*force*/ true);
+      alert(`Sent to ${m.email} ✓`);
+    } catch (err) {
+      alert(`Send failed: ${err.message}`);
+    }
+  }
+
+  function bindMemberEvents () {
+    if (state.memEventsBound) return;
+    state.memEventsBound = true;
+
+    document.querySelectorAll('#memFilterTabs .filter-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.memActiveSegment = btn.dataset.mseg;
+        document.querySelectorAll('#memFilterTabs .filter-tab').forEach(b => b.classList.toggle('active', b === btn));
+        renderMembersTable();
+      });
+    });
+
+    $('memSearchInput')?.addEventListener('input', (e) => {
+      state.memSearchTerm = e.target.value;
+      renderMembersTable();
+    });
+
+    $('memSelectAll')?.addEventListener('change', (e) => {
+      const rows = visibleMembers();
+      if (e.target.checked) rows.forEach(m => state.memSelection.add(m.auth_user_id));
+      else                  rows.forEach(m => state.memSelection.delete(m.auth_user_id));
+      renderMembersTable();
+      renderMembersSelection();
+    });
+
+    $('memClearSelBtn')?.addEventListener('click', () => {
+      state.memSelection.clear();
+      const sa = $('memSelectAll');
+      if (sa) sa.checked = false;
+      renderMembersTable();
+      renderMembersSelection();
+    });
+
+    populateMemberBulkTemplates();
+    $('memBulkSendBtn')?.addEventListener('click', onMemberBulkSend);
+
+    // Per-row: quick-send button + checkbox toggle, via event delegation
+    $('membersBody')?.addEventListener('click', (e) => {
+      const sendBtn = e.target.closest('[data-action="mem-quicksend"]');
+      if (sendBtn) {
+        const userId = sendBtn.dataset.mid;
+        const tr = sendBtn.closest('tr');
+        const sel = tr?.querySelector('[data-action="mem-template-select"]');
+        onMemberQuickSend(userId, sel?.value);
+        return;
+      }
+    });
+    $('membersBody')?.addEventListener('change', (e) => {
+      const check = e.target.closest('.mem-row-check');
+      if (!check) return;
+      const userId = check.dataset.mid;
+      if (check.checked) state.memSelection.add(userId);
+      else               state.memSelection.delete(userId);
+      renderMembersSelection();
     });
   }
 

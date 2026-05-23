@@ -342,6 +342,187 @@ All Paddling
 https://allpaddling.online`;
 
   // ---------------------------------------------------------------
+  // Template: Active member check-in (May 2026)
+  // ---------------------------------------------------------------
+  // Personal nudge from Mick to the 24 active paying members.
+  // Two asks, framed entirely around athlete benefit:
+  //   1. Re-check threshold pace (so TZ1–TZ5 zones stay accurate)
+  //   2. Tick off sessions (visible training record + journal)
+  // Brief one-paragraph platform-update intro grounded in
+  // actually-shipped features (pause/resume self-serve in Settings,
+  // calendar-1st billing alignment).
+  //
+  // Drafted + previewed 2026-05-23; reviewed by Jake + Mick.
+
+  const ACTIVE_CHECKIN_TEXT = `Hi {{first_name}},
+
+Quick note from me — Mick.
+
+It's been a little while since I checked in with everyone training with All Paddling, so a couple of things from me.
+
+First, on the platform side. I've kept working away at it in the background. A few things that have landed: you can now pause and resume your subscription yourself from Settings (handy for off-season), billing now lands on the 1st of every month instead of bouncing around your signup date, and there's a stack of smaller polish across the dashboard and program views.
+
+Second — and this is the more important one — two things that'll make your training land properly. They each take about two minutes:
+
+1. RE-CHECK YOUR THRESHOLD PACE.
+
+Your TZ1–TZ5 pace zones are calculated off your threshold. If your threshold has shifted since you last set it — and after a few weeks of structured work it almost always has — then the zones you're paddling to aren't quite where they need to be anymore. "Moderate" stops actually meaning moderate, and intervals stop hitting the energy system they were designed for.
+
+Two minutes of work: do a short re-test (1km flat-out, or a hard 6 minutes), then update the number on your Threshold page. Every session from that point on recalibrates automatically.
+
+→ https://allpaddling.online/app/threshold.html
+
+2. TICK OFF YOUR SESSIONS AS YOU DO THEM.
+
+When you finish a session, hit Mark Complete on the program page. You can drop in an RPE and a one-line note while you're there — "legs cooked", "felt strong", "downwind run" — anything that's useful to your future self.
+
+Two reasons it matters for you:
+
+• You build up a visible record of what you've actually trained. That matters more than you'd think when you're a month or two into a block and asking yourself "is this actually working?" — you can scroll back and see exactly what you've done.
+
+• You've got a quick training journal you can look back on next block to spot patterns. Which sessions felt great. Which kept beating you up. What you did the week before a good race.
+
+→ https://allpaddling.online/app/program.html
+
+That's it. Two minutes each. Both of them feed straight back into the plan giving you what it should.
+
+Anything you're stuck on — race coming up, training not feeling right, anything at all — just reply to this email. Always happy to talk.
+
+See you on the water,
+
+Mick Di Betta
+All Paddling
+https://allpaddling.online`;
+
+  const ACTIVE_CHECKIN_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A quick check-in</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:#1f2937; line-height:1.6;">
+
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+  Re-check your threshold pace and start ticking off sessions — both feed straight back into the plan working for you.
+</div>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4f6f8;">
+  <tr>
+    <td align="center" style="padding: 32px 16px;">
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="padding: 28px 40px 12px 40px; border-bottom:1px solid #e5e7eb;">
+            <a href="https://allpaddling.online" style="text-decoration:none; color:#0e7490; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; font-size: 22px; font-weight:700; letter-spacing: -0.01em;">
+              All&nbsp;Paddling
+            </a>
+            <div style="font-size: 12px; color:#64748b; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px;">A quick check-in</div>
+          </td>
+        </tr>
+
+        <!-- Opening -->
+        <tr>
+          <td style="padding: 32px 40px 0 40px;">
+            <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">Hi {{first_name}},</p>
+            <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">Quick note from me — Mick.</p>
+            <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">
+              It's been a little while since I checked in with everyone training with All Paddling, so a couple of things from me.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Platform update -->
+        <tr>
+          <td style="padding: 8px 40px 0 40px;">
+            <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">
+              <strong>First, on the platform side.</strong> I've kept working away at it in the background. A few things that have landed: you can now pause and resume your subscription yourself from Settings (handy for off-season), billing now lands on the 1st of every month instead of bouncing around your signup date, and there's a stack of smaller polish across the dashboard and program views.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Lead-in to the asks -->
+        <tr>
+          <td style="padding: 8px 40px 0 40px;">
+            <p style="margin: 0 0 8px 0; font-size: 16px; color:#1f2937;">
+              <strong>Second — and this is the more important one — two things that'll make your training land properly.</strong> They each take about two minutes:
+            </p>
+          </td>
+        </tr>
+
+        <!-- Ask 1: threshold -->
+        <tr>
+          <td style="padding: 20px 40px 0 40px;">
+            <h2 style="margin:0 0 12px 0; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; font-size: 20px; line-height: 1.3; color:#0f172a; font-weight:700;">
+              Re-check your threshold pace.
+            </h2>
+            <p style="margin: 0 0 14px 0; font-size: 15.5px; color:#1f2937;">
+              Your TZ1–TZ5 pace zones are calculated off your threshold. If your threshold has shifted since you last set it — and after a few weeks of structured work it almost always has — then the zones you're paddling to aren't quite where they need to be anymore. "Moderate" stops actually meaning moderate, and intervals stop hitting the energy system they were designed for.
+            </p>
+            <p style="margin: 0 0 14px 0; font-size: 15.5px; color:#1f2937;">
+              Two minutes of work: do a short re-test (1km flat-out, or a hard 6 minutes), then update the number on your Threshold page. Every session from that point on recalibrates automatically.
+            </p>
+            <p style="margin: 0; font-size: 15px;">
+              <a href="https://allpaddling.online/app/threshold.html" style="color:#0e7490; font-weight:600; text-decoration: none; border-bottom: 1px solid #a5f3fc;">Update your threshold &rarr;</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr>
+          <td style="padding: 28px 40px 0 40px;">
+            <hr style="border:0; border-top:1px solid #e5e7eb; margin:0;">
+          </td>
+        </tr>
+
+        <!-- Ask 2: sessions -->
+        <tr>
+          <td style="padding: 24px 40px 0 40px;">
+            <h2 style="margin:0 0 12px 0; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; font-size: 20px; line-height: 1.3; color:#0f172a; font-weight:700;">
+              Tick off your sessions as you do them.
+            </h2>
+            <p style="margin: 0 0 14px 0; font-size: 15.5px; color:#1f2937;">
+              When you finish a session, hit Mark Complete on the program page. You can drop in an RPE and a one-line note while you're there — "legs cooked", "felt strong", "downwind run" — anything that's useful to your future self.
+            </p>
+            <p style="margin: 0 0 10px 0; font-size: 15.5px; color:#1f2937;">Two reasons it matters for you:</p>
+            <ul style="margin: 0 0 14px 0; padding-left: 20px; font-size: 15.5px; color:#1f2937;">
+              <li style="margin-bottom: 10px;">You build up a visible record of what you've actually trained. That matters more than you'd think when you're a month or two into a block and asking yourself "is this actually working?" — you can scroll back and see exactly what you've done.</li>
+              <li>You've got a quick training journal you can look back on next block to spot patterns. Which sessions felt great. Which kept beating you up. What you did the week before a good race.</li>
+            </ul>
+            <p style="margin: 0; font-size: 15px;">
+              <a href="https://allpaddling.online/app/program.html" style="color:#0e7490; font-weight:600; text-decoration: none; border-bottom: 1px solid #a5f3fc;">Open your program &rarr;</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Sign-off -->
+        <tr>
+          <td style="padding: 32px 40px 32px 40px;">
+            <hr style="border:0; border-top:1px solid #e5e7eb; margin: 0 0 24px 0;">
+            <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">
+              That's it. Two minutes each. Both of them feed straight back into the plan giving you what it should.
+            </p>
+            <p style="margin: 0 0 20px 0; font-size: 16px; color:#1f2937;">
+              Anything you're stuck on — race coming up, training not feeling right, anything at all — just reply to this email. Always happy to talk.
+            </p>
+            <p style="margin: 0 0 4px 0; font-size: 16px; color:#1f2937;">See you on the water,</p>
+            <p style="margin: 0; font-size: 16px; color:#0f172a; font-weight:700;">Mick Di Betta</p>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color:#64748b;">All Paddling &middot; <a href="https://allpaddling.online" style="color:#0e7490;">allpaddling.online</a></p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>`;
+
+  // ---------------------------------------------------------------
   // Registry
   // ---------------------------------------------------------------
   root.OUTREACH_TEMPLATES = [
@@ -352,6 +533,14 @@ https://allpaddling.online`;
       subject:       'The new All Paddling is live — train smarter, paddle faster.',
       text:          NEWSLETTER_LAUNCH_TEXT,
       html:          NEWSLETTER_LAUNCH_HTML,
+    },
+    {
+      id:            'active_member_checkin_2026_05',
+      label:         'Active member check-in — May 2026',
+      campaign_name: 'Active member check-in — May 2026',
+      subject:       'A quick check-in — and two small things that\'ll sharpen your training',
+      text:          ACTIVE_CHECKIN_TEXT,
+      html:          ACTIVE_CHECKIN_HTML,
     },
   ];
 })(window);

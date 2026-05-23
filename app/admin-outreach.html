@@ -422,13 +422,14 @@
     <header class="page-header">
       <div>
         <h1>Customer outreach</h1>
-        <p class="page-subtitle">Re-engage past Shopify customers. Every send is manual — pick the segment, write the email, hit send.</p>
+        <p class="page-subtitle">Coach-driven sends to active members and past customers. Every send is manual — pick the audience, pick the template, hit send.</p>
       </div>
     </header>
 
-    <!-- Tabs: Outreach / Engagement / Migration archive -->
+    <!-- Tabs: Outreach / Active members / Engagement / Migration archive -->
     <div class="surface-tabs">
       <button class="surface-tab active" data-pane="outreach">Outreach</button>
+      <button class="surface-tab" data-pane="members">Active members</button>
       <button class="surface-tab" data-pane="engagement">Engagement</button>
       <button class="surface-tab" data-pane="archive">Migration archive</button>
     </div>
@@ -498,6 +499,73 @@
           </tbody>
         </table>
       </div>
+    </section>
+
+    <!-- Active members pane -->
+    <!-- Surfaces every paying member (progressive_members + custom_members)
+         enriched with the engagement signals shipped in migrations 023+024:
+         current threshold pace, when it was last set, sessions completed
+         in the last 30 days. Lets Mick pick exactly which members need
+         this campaign most — dormant threshold, zero session ticks, etc. -->
+    <section id="pane-members" hidden>
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-tile"><div class="label">Active members</div><div class="value" id="memStatTotal">—</div></div>
+        <div class="stat-tile"><div class="label">Threshold not set</div><div class="value" id="memStatNoThreshold">—</div></div>
+        <div class="stat-tile"><div class="label">No sessions 30d</div><div class="value" id="memStatNoSessions">—</div></div>
+        <div class="stat-tile"><div class="label">Last contacted</div><div class="value" id="memStatLastContact">—</div></div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <div class="filter-tabs" id="memFilterTabs">
+          <button class="filter-tab active" data-mseg="all">All <span class="count" id="memCntAll">—</span></button>
+          <button class="filter-tab" data-mseg="progressive">Progressive <span class="count">—</span></button>
+          <button class="filter-tab" data-mseg="custom">Custom <span class="count">—</span></button>
+          <button class="filter-tab" data-mseg="dormant">Dormant <span class="count">—</span></button>
+        </div>
+        <label class="filter-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="memSearchInput" placeholder="Search by name or email" aria-label="Search members" />
+        </label>
+      </div>
+
+      <!-- Selection summary + bulk send -->
+      <div class="selection-bar" id="memSelectionBar" hidden>
+        <div>
+          <span class="summary"><span id="memSelCount">0</span> selected</span>
+        </div>
+        <div class="actions">
+          <span class="bulk-progress" id="memBulkProgress"></span>
+          <select class="email-kind-select" id="memBulkTemplateSelect" aria-label="Campaign template"></select>
+          <button class="btn btn-text" id="memClearSelBtn">Clear</button>
+          <button class="btn btn-primary" id="memBulkSendBtn">Send to selected →</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="ot-table-wrap">
+        <table class="ot-table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="memSelectAll" aria-label="Select all visible" /></th>
+              <th>Member</th>
+              <th>Plan</th>
+              <th>Signed up</th>
+              <th>Last sign-in</th>
+              <th>Threshold</th>
+              <th>Sessions 30d</th>
+              <th>Last contact</th>
+              <th class="col-send">Quick send</th>
+            </tr>
+          </thead>
+          <tbody id="membersBody">
+            <tr><td colspan="9" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
     </section>
 
     <!-- Engagement pane -->
