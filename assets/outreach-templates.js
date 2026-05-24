@@ -344,15 +344,15 @@ https://allpaddling.online`;
   // ---------------------------------------------------------------
   // Template: Active member check-in (May 2026)
   // ---------------------------------------------------------------
-  // Personal nudge from Mick to the 24 active paying members.
+  // Personal nudge from Mick to the active paying members.
   // Two asks, framed entirely around athlete benefit:
-  //   1. Re-check threshold pace (so TZ1–TZ5 zones stay accurate)
+  //   1. Re-check threshold pace via the 3-minute Threshold Pace test
+  //      (so TZ1–TZ5 zones stay accurate; TZ3 = threshold, others
+  //      computed as a % of TZ3)
   //   2. Tick off sessions (visible training record + journal)
-  // Brief one-paragraph platform-update intro grounded in
-  // actually-shipped features (pause/resume self-serve in Settings,
-  // calendar-1st billing alignment).
   //
-  // Drafted + previewed 2026-05-23; reviewed by Jake + Mick.
+  // Drafted 2026-05-23; revised 2026-05-24 (platform-update paragraph
+  // dropped; threshold action rewritten to specify the 3-minute test).
 
   const ACTIVE_CHECKIN_TEXT = `Hi {{first_name}},
 
@@ -360,15 +360,13 @@ Quick note from me — Mick.
 
 It's been a little while since I checked in with everyone training with All Paddling, so a couple of things from me.
 
-First, on the platform side. I've kept working away at it in the background. A few things that have landed: you can now pause and resume your subscription yourself from Settings (handy for off-season), billing now lands on the 1st of every month instead of bouncing around your signup date, and there's a stack of smaller polish across the dashboard and program views.
-
-Second — and this is the more important one — two things that'll make your training land properly. They each take about two minutes:
+Two things that'll make your training land properly:
 
 1. RE-CHECK YOUR THRESHOLD PACE.
 
 Your TZ1–TZ5 pace zones are calculated off your threshold. If your threshold has shifted since you last set it — and after a few weeks of structured work it almost always has — then the zones you're paddling to aren't quite where they need to be anymore. "Moderate" stops actually meaning moderate, and intervals stop hitting the energy system they were designed for.
 
-Two minutes of work: do a short re-test (1km flat-out, or a hard 6 minutes), then update the number on your Threshold page. Every session from that point on recalibrates automatically.
+3-minute Threshold Pace test. Paddle for 3 minutes all out — your pace over the last 45 seconds is your Threshold paddling pace for training using the 5 Training Zones. Threshold pace is your TZ3 zone, and every other TZ pace is calculated as a % of TZ3.
 
 → https://allpaddling.online/app/threshold.html
 
@@ -384,7 +382,7 @@ Two reasons it matters for you:
 
 → https://allpaddling.online/app/program.html
 
-That's it. Two minutes each. Both of them feed straight back into the plan giving you what it should.
+That's it. Both feed straight back into the plan giving you what it should.
 
 Anything you're stuck on — race coming up, training not feeling right, anything at all — just reply to this email. Always happy to talk.
 
@@ -434,20 +432,11 @@ https://allpaddling.online`;
           </td>
         </tr>
 
-        <!-- Platform update -->
-        <tr>
-          <td style="padding: 8px 40px 0 40px;">
-            <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">
-              <strong>First, on the platform side.</strong> I've kept working away at it in the background. A few things that have landed: you can now pause and resume your subscription yourself from Settings (handy for off-season), billing now lands on the 1st of every month instead of bouncing around your signup date, and there's a stack of smaller polish across the dashboard and program views.
-            </p>
-          </td>
-        </tr>
-
         <!-- Lead-in to the asks -->
         <tr>
           <td style="padding: 8px 40px 0 40px;">
             <p style="margin: 0 0 8px 0; font-size: 16px; color:#1f2937;">
-              <strong>Second — and this is the more important one — two things that'll make your training land properly.</strong> They each take about two minutes:
+              <strong>Two things that'll make your training land properly:</strong>
             </p>
           </td>
         </tr>
@@ -462,7 +451,7 @@ https://allpaddling.online`;
               Your TZ1–TZ5 pace zones are calculated off your threshold. If your threshold has shifted since you last set it — and after a few weeks of structured work it almost always has — then the zones you're paddling to aren't quite where they need to be anymore. "Moderate" stops actually meaning moderate, and intervals stop hitting the energy system they were designed for.
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15.5px; color:#1f2937;">
-              Two minutes of work: do a short re-test (1km flat-out, or a hard 6 minutes), then update the number on your Threshold page. Every session from that point on recalibrates automatically.
+              3-minute Threshold Pace test. Paddle for 3 minutes all out — your pace over the last 45 seconds is your Threshold paddling pace for training using the 5 Training Zones. Threshold pace is your TZ3 zone, and every other TZ pace is calculated as a % of TZ3.
             </p>
             <p style="margin: 0; font-size: 15px;">
               <a href="https://allpaddling.online/app/threshold.html" style="color:#0e7490; font-weight:600; text-decoration: none; border-bottom: 1px solid #a5f3fc;">Update your threshold &rarr;</a>
@@ -502,7 +491,7 @@ https://allpaddling.online`;
           <td style="padding: 32px 40px 32px 40px;">
             <hr style="border:0; border-top:1px solid #e5e7eb; margin: 0 0 24px 0;">
             <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">
-              That's it. Two minutes each. Both of them feed straight back into the plan giving you what it should.
+              That's it. Both feed straight back into the plan giving you what it should.
             </p>
             <p style="margin: 0 0 20px 0; font-size: 16px; color:#1f2937;">
               Anything you're stuck on — race coming up, training not feeling right, anything at all — just reply to this email. Always happy to talk.
