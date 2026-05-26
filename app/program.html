@@ -161,9 +161,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
 <script src="../assets/supabase-config.js"></script>
-<script src="../assets/admin.js"></script>
+<script src="../assets/admin.js?v=20260526-1"></script>
 <script src="../assets/published-plans.js?v=20260429-2"></script>
-<script src="../assets/app.js"></script>
+<script src="../assets/app.js?v=20260526-1"></script>
 <script>
 /* ============ Program page logic ============ */
 
@@ -179,6 +179,12 @@
   const profile = await getEffectiveMemberProfile();
   const isCoachUser = await isCurrentUserCoach();
   if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+
+  // Preview-as-member: pull the previewed member's training state from
+  // Supabase so loadMemberState() below returns their threshold + ticks
+  // + RPE/notes rather than the coach's localStorage. No-op when not
+  // previewing. See ensurePreviewStateLoaded() in app.js.
+  await ensurePreviewStateLoaded();
 
   // === Coach Preview-as-member mode (?preview=draft&plan=<key>[&member=<id>]) ===
   // When a coach hits this URL, we render the DRAFT version of the

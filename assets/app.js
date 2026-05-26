@@ -174,7 +174,135 @@ function defaultState() {
   };
 }
 
+/* ============================================================
+   Preview-mode state cache
+   ----------------------------------------------------------------
+   The training-state functions below (loadMemberState/saveMemberState,
+   plus the Supabase mirror pushers) are the source of truth for
+   threshold pace, completed sessions, and RPE/notes on every
+   member-facing page. Pre-2026-05-26 they always read from the
+   COACH'S OWN localStorage even when "Preview as Member" was on —
+   so Mick would see Kanesa's plan rendered against his own ticks
+   and threshold (the original preview-mode bug).
+   The fix: when preview mode is active, each page calls
+   ensurePreviewStateLoaded() once at boot, which fetches the
+   previewed member's threshold_log + session_completions rows from
+   Supabase and assembles a synthetic state object identical in
+   shape to defaultState(). loadMemberState() returns that cache
+   instead of localStorage; saveMemberState() mutates the cache
+   in-memory only (no localStorage write, no Supabase push). All
+   three push helpers + backfillEngagementOnce() bail out when
+   preview is active so Mick can't accidentally pollute Kanesa's
+   history by ticking a session while previewing.
+   The cache is cleared on every ensurePreviewStateLoaded() call,
+   so toggling preview off and back on always pulls fresh.
+   ============================================================ */
+let _previewStateCache = null;
+
+/* Deep-clone helper — keeps loadMemberState's contract of returning
+   a fresh object on each call, so existing call sites that mutate
+   the returned object don't accidentally mutate the shared cache. */
+function _cloneState (s) {
+  try { return JSON.parse(JSON.stringify(s)); }
+  catch (e) { return { ...defaultState(), ...(s || {}) }; }
+}
+
+/* Called once at the top of each member-facing page's boot IIFE,
+   after the auth gate. No-op when preview mode is off. When on,
+   loads the previewed member's Supabase rows into _previewStateCache
+   and returns it. Pages don't need to use the return value — every
+   subsequent loadMemberState() call will pick the cache up. */
+async function ensurePreviewStateLoaded () {
+  _previewStateCache = null;
+  try {
+    if (typeof getPreviewContext !== 'function') return null;
+    const ctx = await getPreviewContext();
+    if (!ctx || !ctx.isPreview || !ctx.previewMember) return null;
+
+    const authUserId = ctx.previewMember.authUserId;
+    if (!authUserId) {
+      // Member hasn't signed in yet — no rows to fetch. Use defaults
+      // so the page renders cleanly instead of falling through to the
+      // coach's localStorage.
+      const seed = defaultState();
+      if (ctx.previewMember.type === 'progressive' && ctx.previewMember.planKey) {
+        const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+        seed.discipline = PLAN_KEY_TO_DISC[ctx.previewMember.planKey] || 'Prone';
+      }
+      _previewStateCache = seed;
+      return seed;
+    }
+
+    const [thrRes, scRes] = await Promise.all([
+      sb.from('threshold_log')
+        .select('threshold_sec, unit, recorded_at')
+        .eq('user_id', authUserId)
+        .order('recorded_at', { ascending: true }),
+      sb.from('session_completions')
+        .select('session_key, plan_key, completed_at, rpe, note')
+        .eq('user_id', authUserId),
+    ]);
+
+    const thr = (thrRes && thrRes.data) || [];
+    const sc  = (scRes  && scRes.data)  || [];
+    const latest = thr[thr.length - 1];
+
+    const state = defaultState();
+    if (latest) {
+      state.thresholdSec = latest.threshold_sec || state.thresholdSec;
+      state.unit         = (latest.unit === 'imperial' || latest.unit === 'metric')
+        ? latest.unit : state.unit;
+    }
+    state.thresholdHistory = thr.map(r => ({
+      at:           r.recorded_at,
+      thresholdSec: r.threshold_sec,
+      unit:         r.unit,
+    }));
+
+    for (const r of sc) {
+      if (!r || !r.session_key) continue;
+      state.completedSessions[r.session_key] = true;
+      const noteObj = {};
+      if (r.rpe != null)         noteObj.rpe = r.rpe;
+      if (r.note)                noteObj.note = r.note;
+      if (r.completed_at)        noteObj.completedAt = r.completed_at;
+      if (Object.keys(noteObj).length) {
+        state.sessionNotes[r.session_key] = noteObj;
+      }
+    }
+
+    if (ctx.previewMember.type === 'progressive' && ctx.previewMember.planKey) {
+      const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
+      state.discipline = PLAN_KEY_TO_DISC[ctx.previewMember.planKey] || state.discipline;
+    }
+
+    _previewStateCache = state;
+    return state;
+  } catch (e) {
+    console.warn('ensurePreviewStateLoaded failed (non-fatal):', e);
+    _previewStateCache = null;
+    return null;
+  }
+}
+
+/* Sync helper for write-side guards. Returns true when preview is
+   active *right now*, based on the sessionStorage flag — used by
+   the Supabase push helpers below to refuse to write while in
+   preview without needing to be async. */
+function _isPreviewActiveSync () {
+  try {
+    if (typeof getPreviewMemberIdRaw === 'function') {
+      return !!getPreviewMemberIdRaw();
+    }
+    return !!sessionStorage.getItem('viewAsMemberId');
+  } catch (_) { return false; }
+}
+
 function loadMemberState() {
+  // Preview mode: serve the cached previewed-member state instead of
+  // the coach's localStorage. ensurePreviewStateLoaded() must have
+  // been awaited by the page boot for this to be populated.
+  if (_previewStateCache) return _cloneState(_previewStateCache);
   try {
     const raw = localStorage.getItem(STATE_KEY);
     if (!raw) return defaultState();
@@ -224,6 +352,13 @@ function disciplinePlanKey (d) {
 }
 
 function saveMemberState(state) {
+  // Preview mode: update the in-memory cache so the UI stays responsive
+  // if Mick fiddles with controls, but do NOT touch localStorage or
+  // mirror to Supabase. Preview is read-only by design.
+  if (_previewStateCache) {
+    _previewStateCache = _cloneState(state);
+    return;
+  }
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch (e) {
@@ -261,6 +396,8 @@ async function _getEngagementUserId () {
 /* Insert a row into threshold_log. Called from threshold.html when the
    member commits a change. Source defaults to 'manual'. */
 async function pushThresholdToServer (thresholdSec, unit, source) {
+  // Refuse writes while previewing — preview is read-only.
+  if (_isPreviewActiveSync()) return;
   const userId = await _getEngagementUserId();
   if (!userId) return; // not signed in — local-only mode
   if (!Number.isFinite(thresholdSec) || thresholdSec <= 0 || thresholdSec >= 3600) return;
@@ -279,6 +416,8 @@ async function pushThresholdToServer (thresholdSec, unit, source) {
 /* Upsert (when completedNow=true) or delete (when false) a session_completions
    row. session.html calls this on every toggle of the Mark Complete button. */
 async function pushSessionCompletionToServer (planKey, sessionKey, completedNow, rpe, note) {
+  // Refuse writes while previewing — preview is read-only.
+  if (_isPreviewActiveSync()) return;
   const userId = await _getEngagementUserId();
   if (!userId) return;
   if (!sessionKey) return;
@@ -311,6 +450,8 @@ async function pushSessionCompletionToServer (planKey, sessionKey, completedNow,
    No-op if the row doesn't exist (member adjusted notes before clicking Mark
    Complete) — the next push from the Complete toggle will set everything. */
 async function patchSessionCompletionOnServer (sessionKey, patch) {
+  // Refuse writes while previewing — preview is read-only.
+  if (_isPreviewActiveSync()) return;
   const userId = await _getEngagementUserId();
   if (!userId || !sessionKey) return;
   const fields = {};
@@ -334,6 +475,11 @@ async function patchSessionCompletionOnServer (sessionKey, patch) {
    no-op for rows that already exist. */
 async function backfillEngagementOnce () {
   try {
+    // Never backfill while previewing — this fires at mountApp time and
+    // could race with ensurePreviewStateLoaded(). Without this guard,
+    // a coach previewing a member could push the previewed-member's
+    // (or worse, their own localStorage) state under the coach's user_id.
+    if (_isPreviewActiveSync()) return;
     if (localStorage.getItem(ENGAGEMENT_BACKFILL_FLAG)) return;
     const userId = await _getEngagementUserId();
     if (!userId) return;

@@ -174,9 +174,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
 <script src="../assets/supabase-config.js"></script>
-<script src="../assets/admin.js"></script>
+<script src="../assets/admin.js?v=20260526-1"></script>
 <script src="../assets/published-plans.js?v=20260429-2"></script>
-<script src="../assets/app.js"></script>
+<script src="../assets/app.js?v=20260526-1"></script>
 <script>
 /* ============ Threshold pace page ============ */
 
@@ -187,6 +187,13 @@
   const profile = await getCurrentMemberProfile();
   const isCoachUser = await isCurrentUserCoach();
   if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+
+  // Preview-as-member: hydrate the previewed member's threshold pace +
+  // history from Supabase so loadMemberState() below returns their data
+  // rather than the coach's localStorage. No-op when not previewing.
+  // See ensurePreviewStateLoaded() in app.js.
+  await ensurePreviewStateLoaded();
+
   if (profile && profile.type === 'progressive') {
     setSessionPlanKey(profile.planKey);
     const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };

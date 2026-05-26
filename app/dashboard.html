@@ -160,9 +160,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/program-data.js"></script>
 <script src="../assets/supabase-config.js"></script>
-<script src="../assets/admin.js"></script>
+<script src="../assets/admin.js?v=20260526-1"></script>
 <script src="../assets/published-plans.js?v=20260429-2"></script>
-<script src="../assets/app.js"></script>
+<script src="../assets/app.js?v=20260526-1"></script>
 <script>
 /* ============ Dashboard logic ============ */
 (async function () {
@@ -178,6 +178,12 @@
   const isCoachUser = await isCurrentUserCoach();
   const effectiveUserId = await getEffectiveAuthUserId(session);
   if (!profile && !isCoachUser) { location.href = '../login.html'; return; }
+
+  // Preview-mode: hydrate threshold + completed-session + RPE/note state
+  // from the previewed member's Supabase rows so loadMemberState() below
+  // returns their data, not the coach's localStorage. No-op when not
+  // previewing. See ensurePreviewStateLoaded() in app.js.
+  await ensurePreviewStateLoaded();
 
   // === Onboarding gate (§3.3): if the member hasn't completed the
   // onboarding form yet, route them there before showing a dashboard
