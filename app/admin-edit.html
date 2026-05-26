@@ -700,14 +700,13 @@
     const customerCopyBtn = document.getElementById('copy-from-customer-btn');
     if (customerZone && customerSelect && customerCopyBtn) {
       // Populate dropdown with other custom members, sorted alphabetically.
-      // Skip the current member (can't copy from self) and any coach test
-      // rows (Mick + Jake are seeded as members for member-view preview;
-      // they're not real customers and shouldn't be templates).
-      const { data: coachRows } = await sb.from('coaches').select('email');
-      const coachEmails = new Set((coachRows || []).map(r => (r.email || '').toLowerCase()));
+      // Skip the current member (can't copy from self). Coach accounts that
+      // are ALSO custom_members rows (notably Mick — dibetta1@gmail.com) are
+      // intentionally kept: Mick edits his own plan as the canonical
+      // template, and other members are seeded from it. We previously
+      // filtered coaches out here and broke that workflow — see 2026-05-26.
       const others = (typeof getCustomMembers === 'function' ? getCustomMembers() : [])
         .filter(m => m.id !== member.id)
-        .filter(m => !coachEmails.has((m.email || '').toLowerCase()))
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       others.forEach(m => {
         const opt = document.createElement('option');
