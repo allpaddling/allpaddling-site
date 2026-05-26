@@ -424,10 +424,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="search-input" type="search" placeholder="Search name or email…" autocomplete="off" />
       </label>
-      <div class="filter-actions">
-        <a href="admin-progressive.html" class="btn btn-secondary" style="font-size:0.85rem;">+ Progressive member</a>
-        <a href="admin-custom.html" class="btn btn-primary" style="font-size:0.85rem;">+ Custom member</a>
-      </div>
     </div>
 
     <!-- Table -->
@@ -627,9 +623,6 @@
       discipline: type === 'progressive' ? (PROGRESSIVE_LABELS[m.planKey] || m.planKey || '') : '',
       notes:      m.notes     || '',
       createdAt:  m.createdAt || m.created_at || null,
-      editHref:   type === 'progressive'
-        ? 'admin-progressive.html?edit=' + encodeURIComponent(m.id)
-        : 'admin-custom.html?edit=' + encodeURIComponent(m.id),
       planHref:   type === 'custom' ? 'admin-edit.html?plan=custom&member=' + encodeURIComponent(m.id) : null,
       // ---- joined data ----
       hasProfile:    !!profile,
@@ -810,7 +803,7 @@
       tbody.innerHTML = `<tr><td colspan="6" class="members-empty">
         <strong>${allMembers.length === 0 ? 'No members yet.' : 'No members match those filters.'}</strong>
         ${allMembers.length === 0
-          ? `Add a Progressive or Custom member from the buttons above to get started.`
+          ? `New members appear here automatically after completing their Stripe checkout.`
           : `Try clearing the search or switching to "All".`}
       </td></tr>`;
       return;
@@ -917,14 +910,12 @@
       // 2px stroke, currentColor) for visual consistency.
       const iconEye = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
       const iconDoc = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
-      const iconPencil = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
 
       const previewLabel = `Preview as ${m.name}`;
       const previewBtn = `<button type="button" class="btn-mini icon-btn" data-action="preview-as" data-member-id="${escapeHtml(m.id)}" data-member-name="${escapeHtml(m.name)}" title="${escapeHtml(previewLabel)}" aria-label="${escapeHtml(previewLabel)}">${iconEye}</button>`;
       const planLink = m.planHref
         ? `<a class="btn-mini icon-btn" href="${escapeHtml(m.planHref)}" title="Open plan" aria-label="Open plan">${iconDoc}</a>`
         : '';
-      const editLink = `<a class="btn-mini icon-btn" href="${escapeHtml(m.editHref)}" title="Edit member" aria-label="Edit member">${iconPencil}</a>`;
       return `
         <tr>
           <td>
@@ -946,7 +937,6 @@
           <td class="actions-cell">
             ${previewBtn}
             ${planLink}
-            ${editLink}
           </td>
         </tr>
       `;

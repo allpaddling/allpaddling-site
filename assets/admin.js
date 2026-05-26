@@ -548,50 +548,6 @@ function getCustomPublishedAt (memberId) {
 
 /* ---------- Mutations (write through Supabase, then update cache) ---------- */
 
-async function addCustomMember (partial) {
-  const p = partial || {};
-  const insertRow = {
-    name:      (p.name      || '').trim(),
-    email:     (p.email     || '').trim() || null,
-    race_goal: (p.raceGoal  || '').trim() || null,
-    race_date: (p.raceDate  || '') || null,
-    notes:     (p.notes     || '').trim() || null,
-  };
-  const { data: memberRow, error: memberErr } = await sb
-    .from('custom_members')
-    .insert(insertRow)
-    .select()
-    .single();
-  if (memberErr) { console.error('addCustomMember — insert failed', memberErr); throw memberErr; }
-
-  // Seed a fresh plan row with PROGRAM_1 defaults in the draft.
-  // Members see nothing until Mick reviews and publishes.
-  const fresh = defaultCustomPlanContent();
-  const { data: planRow, error: planErr } = await sb
-    .from('custom_plans')
-    .insert({
-      member_id:      memberRow.id,
-      draft_meta:     fresh.meta,
-      draft_programs: fresh.programs,
-      meta:           {},
-      programs:       [],
-      last_edited:    new Date().toISOString(),
-    })
-    .select()
-    .single();
-  if (planErr) {
-    console.error('addCustomMember — plan insert failed', planErr);
-    // Roll back the member if plan creation failed
-    await sb.from('custom_members').delete().eq('id', memberRow.id);
-    throw planErr;
-  }
-
-  const member = memberRowToCache(memberRow);
-  __customCache.members.unshift(member);
-  __customCache.plans[member.id] = planRowToCacheEntry(planRow);
-  return member;
-}
-
 async function updateCustomMember (id, patch) {
   const p = patch || {};
   const updateRow = {};
@@ -722,17 +678,6 @@ let __progressiveMembersCache = { loaded: false, members: [] };
 
 const PROGRESSIVE_PLAN_KEYS = ['prone', 'sup', 'oc', 'ski'];
 
-function defaultProgressiveMember () {
-  return {
-    id: '',
-    email: '',
-    name: '',
-    planKey: 'prone',
-    notes: '',
-    createdAt: new Date().toISOString(),
-  };
-}
-
 function progressiveMemberRowToCache (row) {
   if (!row) return null;
   return {
@@ -771,32 +716,6 @@ function getProgressiveMember (id) {
 /* Group helper for showing member counts per discipline. */
 function getProgressiveMembersByPlan (planKey) {
   return __progressiveMembersCache.members.filter(m => m.planKey === planKey);
-}
-
-async function addProgressiveMember (partial) {
-  const p = partial || {};
-  if (!PROGRESSIVE_PLAN_KEYS.includes(p.planKey)) {
-    throw new Error('Invalid plan_key: must be prone/sup/oc/ski');
-  }
-  const insertRow = {
-    email:    (p.email || '').trim().toLowerCase(),
-    name:     (p.name  || '').trim(),
-    plan_key: p.planKey,
-    notes:    (p.notes || '').trim() || null,
-  };
-  if (!insertRow.email) throw new Error('Email is required');
-  if (!insertRow.name)  throw new Error('Name is required');
-
-  const { data, error } = await sb
-    .from('progressive_members')
-    .insert(insertRow)
-    .select()
-    .single();
-  if (error) { console.error('addProgressiveMember failed', error); throw error; }
-
-  const member = progressiveMemberRowToCache(data);
-  __progressiveMembersCache.members.unshift(member);
-  return member;
 }
 
 async function updateProgressiveMember (id, patch) {

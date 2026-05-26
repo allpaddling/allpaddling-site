@@ -506,7 +506,7 @@
   }
   // Custom plans are per-member — must have ?member=<id>
   if (planKey === 'custom' && !memberId) {
-    location.href = 'admin-custom.html';
+    location.href = 'admin-members.html';
     return;
   }
 
@@ -518,7 +518,7 @@
     if (!member) {
       // Genuinely no member — likely a stale link or deletion.
       alert('This member could not be found. Returning to the members list.');
-      location.href = 'admin-custom.html';
+      location.href = 'admin-members.html';
       return;
     }
     plan = getCustomPlanDraft(memberId);
