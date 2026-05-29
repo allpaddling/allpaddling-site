@@ -245,6 +245,18 @@
 
   .joined-cell { color: var(--text-3); font-size: 0.84rem; white-space: nowrap; }
 
+  /* Published column — date for Custom members. "Not published" is the
+     quiet placeholder for Custom rows with no published plan yet (the
+     plan-status badge under the name carries the actionable detail). */
+  .published-date { color: var(--text); font-size: 0.88rem; white-space: nowrap; }
+  .published-none { color: var(--text-3); font-size: 0.84rem; font-style: italic; white-space: nowrap; }
+
+  /* Sortable header affordance — click the "Published" th to sort by
+     publish date. Arrow span fills with ▲ / ▼ from the JS sort handler. */
+  .members-table th.sortable { cursor: pointer; user-select: none; }
+  .members-table th.sortable:hover { color: var(--text); }
+  .members-table th.sortable .sort-arrow { font-size: 0.7rem; margin-left: 0.15rem; }
+
   .actions-cell { white-space: nowrap; text-align: right; }
   /* Tightened from 0.35/0.7rem padding + 0.35rem margin so 3 buttons
      (Preview as / Open plan / Edit) fit on Custom rows without
@@ -307,8 +319,8 @@
     .members-table td.col-notes { display: none; }
   }
   @media (max-width: 540px) {
-    .members-table th.col-discipline,
-    .members-table td.col-discipline,
+    .members-table th.col-published,
+    .members-table td.col-published,
     .members-table th.col-joined,
     .members-table td.col-joined { display: none; }
   }
@@ -433,7 +445,10 @@
           <tr>
             <th>Member</th>
             <th>Plan</th>
-            <th class="col-discipline">Discipline</th>
+            <th class="col-published sortable" data-sort="published" role="button" tabindex="0"
+                title="Sort by plan publish date — oldest first surfaces who's most overdue for a new plan">
+              Published <span class="sort-arrow" id="sort-arrow-published" aria-hidden="true"></span>
+            </th>
             <th class="col-notes">Detail</th>
             <th class="col-joined">Joined</th>
             <th style="text-align:right;">Actions</th>
@@ -606,6 +621,13 @@
     const profile = userId ? profileByUser[userId] : null;
     const sub     = userId ? subByUser[userId]     : null;
     const planStatus = type === 'custom' ? deriveCustomPlanStatus(m.id) : null;
+    // Published date for Custom members — source of truth is the
+    // custom_plans.published_at column (null until Mick publishes). Drives
+    // the adaptive "Published" column (replaces Discipline, which only
+    // applies to Progressive members — none exist yet). Progressive rows
+    // get null here and fall back to showing the discipline pill instead.
+    const customPlan = type === 'custom' ? planByCustomMember[m.id] : null;
+    const publishedAt = customPlan && customPlan.published_at ? customPlan.published_at : null;
     // Display name: prefer "preferred_name family_name" from onboarding when
     // both fields are present (the canonical first+last we ask the member
     // for). Fall back to the Stripe billing name on the member row, then
@@ -633,6 +655,7 @@
       abilityLevel:  profile && profile.ability_level || '',
       subStatus:     sub && sub.status || '',
       planStatus:    planStatus,  // 'published' | 'draft' | 'awaiting' | null
+      publishedAt:   publishedAt, // ISO string | null (Custom only)
       paymentStatus: derivePaymentStatus(sub),  // { state, label } | null
     };
   }
@@ -716,6 +739,40 @@
   const searchEl  = document.getElementById('search-input');
   const tabs      = document.querySelectorAll('.filter-tab');
   let activeFilter = 'all';
+  // Sort state. Default 'joined' desc (newest signup first — the original
+  // behaviour). Clicking the Published header switches to 'published' and
+  // toggles asc/desc; asc (oldest publish first) surfaces the members most
+  // overdue for a plan refresh at the top of the list.
+  let sortState = { key: 'joined', dir: 'desc' };
+
+  // Comparator over the unified row shape. Rows with no value for the
+  // active sort key always sort to the bottom regardless of direction, so
+  // "Not published" Custom rows don't crowd out the meaningful dates.
+  function sortMembers (arr) {
+    const { key, dir } = sortState;
+    const mult = dir === 'asc' ? 1 : -1;
+    return arr.slice().sort((a, b) => {
+      if (key === 'published') {
+        const aT = a.publishedAt ? Date.parse(a.publishedAt) : null;
+        const bT = b.publishedAt ? Date.parse(b.publishedAt) : null;
+        if (aT === null && bT === null) return 0;
+        if (aT === null) return 1;   // nulls last
+        if (bT === null) return -1;  // nulls last
+        return (aT - bT) * mult;
+      }
+      const aJ = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const bJ = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return (aJ - bJ) * mult;
+    });
+  }
+
+  function updateSortArrow () {
+    const arrow = document.getElementById('sort-arrow-published');
+    if (!arrow) return;
+    arrow.textContent = sortState.key === 'published'
+      ? (sortState.dir === 'asc' ? '▲' : '▼')
+      : '';
+  }
 
   function escapeHtml (s) {
     return String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
@@ -799,7 +856,9 @@
       return true;
     });
 
-    if (filtered.length === 0) {
+    const sorted = sortMembers(filtered);
+
+    if (sorted.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" class="members-empty">
         <strong>${allMembers.length === 0 ? 'No members yet.' : 'No members match those filters.'}</strong>
         ${allMembers.length === 0
@@ -809,13 +868,29 @@
       return;
     }
 
-    tbody.innerHTML = filtered.map(m => {
+    tbody.innerHTML = sorted.map(m => {
       const planPill = m.type === 'progressive'
         ? '<span class="pill progressive">Progressive</span>'
         : '<span class="pill custom">Custom</span>';
-      const disciplineCell = m.discipline
-        ? `<span class="pill discipline">${escapeHtml(m.discipline)}</span>`
-        : `<span style="color: var(--text-3);">—</span>`;
+      // Adaptive "Published" column. For Custom members (everyone, today)
+      // this shows the plan's publish date so Mick can scan who's overdue
+      // for a refresh. For Progressive members (none yet, but future-proof)
+      // the same cell falls back to the discipline pill, since "published
+      // date" is per-member and doesn't apply to the shared Progressive
+      // templates.
+      let publishedCell;
+      if (m.type === 'progressive') {
+        publishedCell = m.discipline
+          ? `<span class="pill discipline">${escapeHtml(m.discipline)}</span>`
+          : `<span style="color: var(--text-3);">—</span>`;
+      } else if (m.publishedAt) {
+        const pubStr = fmtDate(m.publishedAt);
+        publishedCell = `<span class="published-date" title="Plan published ${escapeHtml(pubStr)}">${escapeHtml(pubStr)}</span>`;
+      } else {
+        // Custom member with no published plan yet — the plan-status badge
+        // under their name already says Draft/Awaiting; keep this cell quiet.
+        publishedCell = `<span class="published-none" title="No plan published yet">Not published</span>`;
+      }
 
       // Onboarding badge under the email line. Three states:
       //   onboarded:           no badge (default — happy path is silent)
@@ -931,7 +1006,7 @@
             </div>
           </td>
           <td>${planPill}</td>
-          <td class="col-discipline">${disciplineCell}</td>
+          <td class="col-published">${publishedCell}</td>
           <td class="col-notes">${detailHtml}</td>
           <td class="col-joined joined-cell">${fmtDate(m.createdAt)}</td>
           <td class="actions-cell">
@@ -950,6 +1025,27 @@
     activeFilter = t.dataset.filter;
     renderTable();
   }));
+
+  // Published-column sort toggle. First click sorts oldest-first (asc) so
+  // the most overdue plans rise to the top; subsequent clicks flip the
+  // direction. Keyboard-accessible (Enter / Space) since the th is
+  // role="button" tabindex="0".
+  const publishedHeader = document.querySelector('th.sortable[data-sort="published"]');
+  function togglePublishedSort () {
+    if (sortState.key === 'published') {
+      sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortState = { key: 'published', dir: 'asc' };
+    }
+    updateSortArrow();
+    renderTable();
+  }
+  if (publishedHeader) {
+    publishedHeader.addEventListener('click', togglePublishedSort);
+    publishedHeader.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePublishedSort(); }
+    });
+  }
 
   let searchTimer = null;
   searchEl.addEventListener('input', () => {
