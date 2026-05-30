@@ -464,27 +464,36 @@ Deno.serve(async (req) => {
       const sydneyDay  = (typeof forcedDay === 'number' && forcedDay >= 1 && forcedDay <= 31)
                            ? forcedDay
                            : sydneyDayOfMonth();
-      // Stripe requires trial_end to be at least 2 days in the future.
-      // Branch on whether the next 1st is close enough to violate that:
+      // Stripe requires trial_end ≥ 2 days in the future.
+      // Three branches based on Sydney day-of-month:
       //
-      //   Normal (> 2 days away):
-      //     Day 1–20  → PAY-NOW: charge upfront now + trial_end = next 1st.
-      //     Day 21+   → FREE-UNTIL-1ST: trial_end = next 1st, $0 at checkout.
+      //   Too close (next 1st is ≤ 2 days away, e.g. May 30):
+      //     Skip alignment entirely. Subscription charges immediately from
+      //     today; billing date will be 1-2 days off the 1st, which is
+      //     acceptable. Avoids Stripe's "X days free" headline appearing
+      //     alongside what is effectively an immediate charge.
       //
-      //   Too close (≤ 2 days to next 1st, e.g. signing up May 30):
-      //     Force PAY-NOW: charge full amount now + trial_end = month-after-next
-      //     1st (e.g. July 1). Member pays for the upcoming month's content
-      //     immediately; recurring billing aligns to the following 1st.
-      //     Stripe accepts trial_end because it's now > 2 days away.
+      //   Day 1–20 (normal PAY-NOW):
+      //     One-time upfront charge now + trial_end = next 1st.
+      //     Member pays for this month's content immediately; recurring
+      //     billing is anchored to the 1st from next month onwards.
+      //
+      //   Day 21+ (FREE-UNTIL-1ST):
+      //     No upfront charge + trial_end = next 1st. Avoids the
+      //     "I paid full price for 3 days" perception for late-month signups.
+      //     Stripe's "X days free" headline is accurate here.
       const TWO_DAYS_S = 2 * 24 * 60 * 60;
       const nowUnix    = Math.floor(Date.now() / 1000);
       const nextFirst  = nextFirstOfMonthUtcUnix();
       const tooClose   = (nextFirst - nowUnix) < TWO_DAYS_S;
 
       if (tooClose) {
-        // PAY-NOW (forced): charge upfront now, trial until the 1st of the
-        // month after the upcoming one (which is definitely > 2 days away).
-        subscriptionData.trial_end = nextMonthFirstUtcUnix(nextFirst);
+        // Skip alignment — subscription charges from today, no trial_end.
+      } else if (sydneyDay <= 20) {
+        // PAY-NOW: add a one-time line item alongside the recurring sub.
+        // The recurring sub itself charges nothing at checkout (it's trialing);
+        // the one-time line item is the upfront month-of-content fee.
+        subscriptionData.trial_end = nextFirst;
         lineItems.push({
           price_data: {
             currency:    priceForAlignment.currency,
@@ -494,21 +503,8 @@ Deno.serve(async (req) => {
           quantity: 1,
         });
       } else {
+        // FREE-UNTIL-1ST: trial until next 1st, $0 at checkout.
         subscriptionData.trial_end = nextFirst;
-        if (sydneyDay <= 20) {
-          // PAY-NOW (normal): add a one-time line item alongside the
-          // recurring sub. The recurring sub itself charges nothing at
-          // checkout (it's trialing); the one-time line item is the
-          // upfront month-of-content fee.
-          lineItems.push({
-            price_data: {
-              currency:    priceForAlignment.currency,
-              product:     priceForAlignment.product as string,
-              unit_amount: priceForAlignment.unit_amount ?? 14000,
-            },
-            quantity: 1,
-          });
-        }
       }
     }
 
