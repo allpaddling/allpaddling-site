@@ -388,10 +388,12 @@
       actions.innerHTML = `
         <button class="btn-pause"  id="open-pause-btn">Pause membership</button>
         <button class="btn-cancel" id="open-cancel-btn">Cancel membership</button>
+        <button class="btn-pause"  id="update-payment-btn" style="margin-left:auto;">Update payment method</button>
       `;
       mini.textContent = 'Pause keeps your history, threshold and onboarding answers. Cancel does too — you can rejoin any time.';
       document.getElementById('open-pause-btn').addEventListener('click', () => openPauseModal(row));
       document.getElementById('open-cancel-btn').addEventListener('click', () => openCancelModal(row));
+      document.getElementById('update-payment-btn').addEventListener('click', openPortal);
 
     } else if (st === 'pause_scheduled') {
       badge.className = 'sub-badge warn';
@@ -407,10 +409,12 @@
       actions.innerHTML = `
         <button class="btn-pause" id="change-resume-btn">Change resume date</button>
         <button class="btn-undo"  id="undo-pause-btn">Undo pause</button>
+        <button class="btn-pause" id="update-payment-btn" style="margin-left:auto;">Update payment method</button>
       `;
       mini.textContent = '';
       document.getElementById('change-resume-btn').addEventListener('click', () => openPauseModal(row, /*editing*/true));
       document.getElementById('undo-pause-btn').addEventListener('click', () => callManageSub('resume', null, 'Pause cancelled'));
+      document.getElementById('update-payment-btn').addEventListener('click', openPortal);
 
     } else if (st === 'paused') {
       badge.className = 'sub-badge muted';
@@ -429,11 +433,13 @@
       actions.innerHTML = `
         <button class="btn-resume" id="resume-now-btn">Resume now</button>
         <button class="btn-pause"  id="change-resume-btn">Change resume date</button>
+        <button class="btn-pause"  id="update-payment-btn">Update payment method</button>
         <button class="btn-cancel" id="cancel-from-paused-btn" style="margin-left:auto;">Cancel instead</button>
       `;
       mini.textContent = 'Your training history, threshold pace and program progress are saved. They\'ll be waiting when you come back.';
       document.getElementById('resume-now-btn').addEventListener('click', () => callManageSub('resume', null, 'Welcome back!'));
       document.getElementById('change-resume-btn').addEventListener('click', () => openPauseModal(row, /*editing*/true));
+      document.getElementById('update-payment-btn').addEventListener('click', openPortal);
       document.getElementById('cancel-from-paused-btn').addEventListener('click', () => openCancelModal(row));
 
     } else if (st === 'cancel_scheduled') {
@@ -555,20 +561,21 @@
   // ---- Stripe Billing Portal ----
   // Opens the Stripe Customer Portal so the member can update their
   // payment method, download invoices, or manage billing details.
-  async function openPortal () {
-    const btn = document.getElementById('update-card-btn');
+  async function openPortal (e) {
+    const btn = e?.currentTarget ?? null;
+    const origText = btn?.textContent ?? '';
     if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
     try {
       const { data, error } = await sb.functions.invoke('create-portal-session', { body: {} });
       if (error || !data?.url) {
         showToast('Could not open billing portal — please try again.', /*err*/true);
-        if (btn) { btn.disabled = false; btn.textContent = 'Update payment method →'; }
+        if (btn) { btn.disabled = false; btn.textContent = origText; }
         return;
       }
       window.location.href = data.url;
-    } catch (e) {
+    } catch (e2) {
       showToast('Network error — please try again.', /*err*/true);
-      if (btn) { btn.disabled = false; btn.textContent = 'Update payment method →'; }
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
     }
   }
 
