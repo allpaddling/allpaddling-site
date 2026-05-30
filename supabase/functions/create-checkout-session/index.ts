@@ -464,7 +464,17 @@ Deno.serve(async (req) => {
       const sydneyDay  = (typeof forcedDay === 'number' && forcedDay >= 1 && forcedDay <= 31)
                            ? forcedDay
                            : sydneyDayOfMonth();
-      const nextFirst  = nextFirstOfMonthUtcUnix();
+      // Stripe requires trial_end to be at least 2 days in the future.
+      // If the next 1st is too close (e.g. signing up on May 30), advance
+      // trial_end to the following month's 1st (e.g. July 1) so Stripe
+      // accepts it. The member still gets the same "free until billing
+      // starts on the 1st" experience — just a slightly longer free window.
+      const TWO_DAYS_S = 2 * 24 * 60 * 60;
+      const nowUnix    = Math.floor(Date.now() / 1000);
+      let   nextFirst  = nextFirstOfMonthUtcUnix();
+      if (nextFirst - nowUnix < TWO_DAYS_S) {
+        nextFirst = nextMonthFirstUtcUnix(nextFirst);
+      }
       subscriptionData.trial_end = nextFirst;
       if (sydneyDay <= 20) {
         // PAY-NOW: add a one-time A$140 line item alongside the
@@ -594,6 +604,20 @@ function nextFirstOfMonthUtcUnix (): number {
   let nextMonth = month + 1;
   if (nextMonth > 12) { nextMonth = 1; nextYear++; }
   return Math.floor(Date.UTC(nextYear, nextMonth - 1, 1, 0, 0, 0) / 1000);
+}
+
+/**
+ * Given a Unix timestamp that is already a 1st-of-month 00:00 UTC,
+ * returns the Unix timestamp for the 1st of the *following* month.
+ * Used when trial_end would otherwise be within 2 days and Stripe
+ * would reject it.
+ */
+function nextMonthFirstUtcUnix (firstOfMonthUnix: number): number {
+  const d = new Date(firstOfMonthUnix * 1000);
+  let nextMonth = d.getUTCMonth() + 1; // 0-indexed, so +1 advances one month
+  let nextYear  = d.getUTCFullYear();
+  if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+  return Math.floor(Date.UTC(nextYear, nextMonth, 1, 0, 0, 0) / 1000);
 }
 
 function corsHeaders (): HeadersInit {
