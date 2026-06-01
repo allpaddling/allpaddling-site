@@ -567,7 +567,10 @@ async function handleInvoicePaymentFailed (invoice: Stripe.Invoice): Promise<voi
       amount,
       currency,
       retry_date:      retryTs ? formatDate(retryTs) : 'shortly',
-      update_card_url: UPDATE_CARD_URL,
+      // Stripe's hosted invoice page lets the member update their card and
+      // pay the overdue amount with no login — the true self-serve fix.
+      // Falls back to the settings page if Stripe didn't supply one.
+      update_card_url: invoice.hosted_invoice_url ?? UPDATE_CARD_URL,
       coach_name:      COACH_NAME,
     });
   } catch (emailErr) {

@@ -208,6 +208,7 @@
   const isCanceled  = status === 'canceled' || status === 'incomplete_expired';
   const isPaused    = status === 'paused';
   const isUnpaid    = status === 'unpaid';
+  const isPastDue   = status === 'past_due';
 
   document.getElementById('status-card').style.display = 'block';
   document.getElementById('action-row').style.display = 'flex';
@@ -245,15 +246,15 @@
       <a href="/plans.html"><button class="btn-resume" type="button">Sign up again</button></a>
     `;
 
-  } else if (isUnpaid) {
+  } else if (isUnpaid || isPastDue) {
     document.getElementById('status-title').textContent = 'Your last payment didn\'t go through';
-    document.getElementById('status-sub').textContent = `We tried your card a few times but the charge didn't succeed. Update your payment method to keep your membership active.`;
+    document.getElementById('status-sub').textContent = isPastDue
+      ? `We couldn't process your latest payment — usually a card expiry or a temporary bank hold. Update your card to switch your training straight back on.`
+      : `We tried your card a few times but the charge didn't succeed. Update your payment method to keep your membership active.`;
     document.getElementById('action-row').innerHTML = `
-      <a href="https://billing.stripe.com/p/login/test_xxx" id="portal-link" target="_blank"><button class="btn-resume" type="button">Update payment method</button></a>
+      <button class="btn-resume" id="portal-btn" type="button">Update payment method</button>
     `;
-    // NB: TODO — Stripe Customer Portal URL needs to be created via stripe.billingPortal.sessions.create
-    // before launch. For now, link them to email Mick.
-    document.getElementById('portal-link').href = 'mailto:mick@allpaddling.online';
+    document.getElementById('portal-btn').addEventListener('click', openPortal);
 
   } else {
     // Defensive — shouldn't reach here, but show generic fallback
@@ -271,6 +272,19 @@
   });
 
   // ---- Action handlers ----
+  async function openPortal () {
+    const btn = document.getElementById('portal-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening secure portal…'; }
+    try {
+      const { data, error } = await sb.functions.invoke('create-portal-session', { body: {} });
+      if (error || !data?.url) throw error || new Error('no portal url');
+      window.location.href = data.url;
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Update payment method'; }
+      alert('Sorry — we couldn\'t open the secure billing portal just now. Please email mick@allpaddling.online and he\'ll sort it out with you.');
+    }
+  }
+
   async function resumeSub () {
     const btn = document.getElementById('resume-btn');
     btn.disabled = true;
