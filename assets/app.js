@@ -629,9 +629,10 @@ async function enforceMemberGates () {
     // history, threshold, and a one-click resume path; we don't want
     // to treat them like fresh visitors).
     //
-    // Active / trialing / past_due  → allow.
+    // Active / trialing                → allow.
     // Active with cancel_at_period_end=true → allow until period ends.
     // Active with pause_collection scheduled → allow until period ends.
+    // Status='past_due'            → lock (payment failed; no grace period).
     // Status='paused'              → lock (Stripe activated the pause).
     // Status='canceled'            → lock (sub deleted; access ended).
     // Status='unpaid' / 'incomplete_expired' → lock (defensive).
@@ -644,7 +645,7 @@ async function enforceMemberGates () {
       .limit(1)
       .maybeSingle();
     if (subRow) {
-      const blockedStatuses = ['paused', 'canceled', 'unpaid', 'incomplete_expired'];
+      const blockedStatuses = ['past_due', 'paused', 'canceled', 'unpaid', 'incomplete_expired'];
       if (blockedStatuses.includes(subRow.status)) {
         location.href = '/app/membership-paused.html';
         return;
