@@ -415,7 +415,7 @@ async function pushThresholdToServer (thresholdSec, unit, source) {
 
 /* Upsert (when completedNow=true) or delete (when false) a session_completions
    row. session.html calls this on every toggle of the Mark Complete button. */
-async function pushSessionCompletionToServer (planKey, sessionKey, completedNow, rpe, note) {
+async function pushSessionCompletionToServer (planKey, sessionKey, completedNow, rpe, note, meta) {
   // Refuse writes while previewing — preview is read-only.
   if (_isPreviewActiveSync()) return;
   const userId = await _getEngagementUserId();
@@ -432,6 +432,12 @@ async function pushSessionCompletionToServer (planKey, sessionKey, completedNow,
         completed_at: new Date().toISOString(),
         rpe:          (rpe != null && rpe !== '') ? Number(rpe) : null,
         note:         (note || '').trim() || null,
+        // Display context captured at completion time so History can render
+        // independently of the live plan (Custom weeks get deleted block-by-
+        // block). Shape: { week_label, session_title, session_index, focus }.
+        // Only written when provided, so a notes-only re-toggle never clobbers
+        // an existing snapshot with null.
+        ...(meta && typeof meta === 'object' ? { meta } : {}),
       };
       const { error } = await sb.from('session_completions')
         .upsert(payload, { onConflict: 'user_id,session_key' });

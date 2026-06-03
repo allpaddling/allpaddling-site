@@ -207,7 +207,7 @@
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js?v=20260526-1"></script>
 <script src="../assets/published-plans.js?v=20260603-1"></script>
-<script src="../assets/app.js?v=20260601-1"></script>
+<script src="../assets/app.js?v=20260603-2"></script>
 <script>
 /* ============ Session detail logic ============ */
 
@@ -390,12 +390,20 @@
     // Mirror to Supabase (coach engagement insights). Pass current plan_key
     // for the per-discipline filter; nowDone=true upserts the row, false
     // deletes it. See pushSessionCompletionToServer in app.js.
+    // meta = display context snapshot so History renders even after the coach
+    // deletes this week from the live plan (Custom plans rotate block-by-block).
     pushSessionCompletionToServer(
       getCurrentPlanKey(),
       key,
       nowDone,
       Number(rpe.value) || null,
-      noteEl.value || ''
+      noteEl.value || '',
+      nowDone ? {
+        week_label:    week.label || ('Week ' + weekNum),
+        session_title: sessionTitle(session),
+        session_index: sessionNum,
+        focus:         Array.isArray(session.focus) ? session.focus : [],
+      } : null
     );
     hydrateLog();
     showToast(nowDone ? 'Session logged' : 'Unmarked as complete');
