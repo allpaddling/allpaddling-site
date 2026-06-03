@@ -519,7 +519,7 @@ https://allpaddling.online`;
 
   const BLOCK2_ENCOURAGEMENT_TEXT = `Hi {{first_name}},
 
-Good work getting through last month's program. As you push into the next one, two things worth doing:
+Good work getting through last month's program. As you push into the next one, three things worth doing:
 
 Check your History. The History tab in your dashboard has every session you've ticked off — RPE & notes. It's also your answer if you find yourself wondering "is this working?" — scroll back and look.
 
@@ -528,6 +528,10 @@ Check your History. The History tab in your dashboard has every session you've t
 Update your threshold pace. A block of structured work may move your fitness, which means your zones may have shifted. Keep the next block accurate:
 
 → https://allpaddling.online/app/threshold.html
+
+Check the strength program. Paddling fitness and strength work together — the strength program is there to complement what you're doing on the water, not replace it.
+
+→ https://allpaddling.online/app/strength.html
 
 That's it. See you on the water,
 
@@ -545,7 +549,7 @@ https://allpaddling.online`;
 <body style="margin:0; padding:0; background-color:#f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:#1f2937; line-height:1.6;">
 
 <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
-  Good work through last month. Two things worth doing before your next block.
+  Good work through last month. Three things worth doing before your next block.
 </div>
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4f6f8;">
@@ -568,7 +572,7 @@ https://allpaddling.online`;
           <td style="padding: 32px 40px 0 40px;">
             <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">Hi {{first_name}},</p>
             <p style="margin: 0 0 24px 0; font-size: 16px; color:#1f2937;">
-              Good work getting through last month's program. As you push into the next one, two things worth doing:
+              Good work getting through last month's program. As you push into the next one, three things worth doing:
             </p>
           </td>
         </tr>
@@ -606,6 +610,28 @@ https://allpaddling.online`;
             </p>
             <p style="margin: 0; font-size: 15px;">
               <a href="https://allpaddling.online/app/threshold.html" style="color:#0e7490; font-weight:600; text-decoration: none; border-bottom: 1px solid #a5f3fc;">Update your threshold &rarr;</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr>
+          <td style="padding: 28px 40px 0 40px;">
+            <hr style="border:0; border-top:1px solid #e5e7eb; margin:0;">
+          </td>
+        </tr>
+
+        <!-- Strength -->
+        <tr>
+          <td style="padding: 24px 40px 0 40px;">
+            <h2 style="margin:0 0 10px 0; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; font-size: 19px; line-height: 1.3; color:#0f172a; font-weight:700;">
+              Check the strength program.
+            </h2>
+            <p style="margin: 0 0 12px 0; font-size: 15.5px; color:#1f2937;">
+              Paddling fitness and strength work together — the strength program is there to complement what you're doing on the water, not replace it.
+            </p>
+            <p style="margin: 0; font-size: 15px;">
+              <a href="https://allpaddling.online/app/strength.html" style="color:#0e7490; font-weight:600; text-decoration: none; border-bottom: 1px solid #a5f3fc;">View the strength program &rarr;</a>
             </p>
           </td>
         </tr>
