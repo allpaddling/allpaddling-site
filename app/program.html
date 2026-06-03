@@ -162,7 +162,7 @@
 <script src="../assets/program-data.js"></script>
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js?v=20260526-1"></script>
-<script src="../assets/published-plans.js?v=20260429-2"></script>
+<script src="../assets/published-plans.js?v=20260603-1"></script>
 <script src="../assets/app.js?v=20260601-1"></script>
 <script>
 /* ============ Program page logic ============ */
@@ -201,7 +201,11 @@
   }
   const isPreview = previewMode && isCoachUser && !!previewPlanKey;
 
-  if (profile && profile.type === 'progressive') {
+  if (profile && profile.type === 'custom') {
+    // Custom members get their own completion-key namespace so their ticks
+    // don't collide with any Progressive history under their discipline.
+    setSessionPlanKey('custom');
+  } else if (profile && profile.type === 'progressive') {
     setSessionPlanKey(profile.planKey);
     const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
     const _s = loadMemberState();
@@ -314,7 +318,8 @@
 
   // Completion helpers
   function isComplete(weekNum, sessionNum) {
-    return !!(state.completedSessions[memberSessionKey(getCurrentPlanKey(), weekNum, sessionNum)]);
+    const pk = getCurrentPlanKey();
+    return !!(state.completedSessions[memberSessionKey(pk, memberWeekToken(pk, program, weekNum), sessionNum)]);
   }
   function weekCompletion(weekNum) {
     const week = program.weeks[weekNum - 1];

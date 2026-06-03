@@ -45,7 +45,10 @@ function disciplineToPlanKey (d) {
    tampering with localStorage. */
 let __sessionPlanKey = null;
 function setSessionPlanKey (planKey) {
-  if (typeof planKey === 'string' && VALID_PLAN_KEYS.includes(planKey)) {
+  // 'custom' is accepted here even though it isn't a Progressive discipline:
+  // Custom members need their own completion-key namespace so their ticks
+  // don't collide with any Progressive (prone/sup/oc/ski) history they have.
+  if (typeof planKey === 'string' && (VALID_PLAN_KEYS.includes(planKey) || planKey === 'custom')) {
     __sessionPlanKey = planKey;
   }
 }
@@ -284,4 +287,26 @@ async function loadDraftCustomPlan (memberId) {
    Replaces the legacy "p1w2s3" format which didn't track discipline. */
 function memberSessionKey (planKey, weekNum, sessionNum) {
   return planKey + '-w' + weekNum + 's' + sessionNum;
+}
+
+/* Stable week token for the week slot of a completion key.
+   Progressive plans keep positional numbering (their primer vs cohort
+   split already namespaces them, so positions never collide).
+   Custom plans, however, reuse positions 1..N every block — when a coach
+   publishes the next block its weeks land on the same positions, so a
+   positional key would inherit the previous block's ticks. Derive a token
+   from the week's label + startDate instead, which advances block to block.
+   Returns the positional number unchanged for non-custom plans, so existing
+   Progressive completion keys are untouched. */
+function memberWeekToken (planKey, program, weekNum) {
+  if (planKey === 'custom' && program && Array.isArray(program.weeks)) {
+    const wk = program.weeks[weekNum - 1];
+    if (wk) {
+      const raw = [wk.label, wk.startDate].filter(Boolean).join('-')
+        .toString().trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      if (raw) return raw;
+    }
+  }
+  return weekNum;
 }

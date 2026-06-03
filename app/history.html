@@ -137,7 +137,7 @@
 <script src="../assets/program-data.js"></script>
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js?v=20260526-1"></script>
-<script src="../assets/published-plans.js?v=20260429-2"></script>
+<script src="../assets/published-plans.js?v=20260603-1"></script>
 <script src="../assets/app.js?v=20260601-1"></script>
 <script>
 /* ============ History page logic ============ */
@@ -155,7 +155,11 @@
   // when not previewing. See ensurePreviewStateLoaded() in app.js.
   await ensurePreviewStateLoaded();
 
-  if (profile && profile.type === 'progressive') {
+  if (profile && profile.type === 'custom') {
+    // Custom members get their own completion-key namespace so their ticks
+    // don't collide with any Progressive history under their discipline.
+    setSessionPlanKey('custom');
+  } else if (profile && profile.type === 'progressive') {
     setSessionPlanKey(profile.planKey);
     const PLAN_KEY_TO_DISC = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
     const _s = loadMemberState();
@@ -207,17 +211,23 @@
       </div>
     `;
   } else {
+    // Build entries by walking the member's current plan and recomputing each
+    // completion key the same way it's written, rather than parsing the key
+    // string. This is format-agnostic — it works for both positional
+    // Progressive keys and the label-derived Custom week tokens, and naturally
+    // skips other-discipline stamps (their keys won't match this plan's keys).
     const planKey = getCurrentPlanKey();
-    const entries = completed.map(key => {
-      const m = /^([a-z]+)-w(\d+)s(\d+)$/.exec(key);
-      if (!m) return null;
-      if (m[1] !== planKey) return null;  // skip other-discipline stamps
-      const w = Number(m[2]), s = Number(m[3]);
-      const week    = program.weeks[w - 1] || null;
-      const session = week && week.sessions ? week.sessions[s - 1] : null;
-      const notes   = (state.sessionNotes && state.sessionNotes[key]) || {};
-      return { discipline: m[1], w, s, key, session, week, notes };
-    }).filter(e => e && e.session && e.week);
+    const entries = [];
+    (program.weeks || []).forEach((week, wi) => {
+      const w = wi + 1;
+      (week.sessions || []).forEach((session, si) => {
+        const s = si + 1;
+        const key = memberSessionKey(planKey, memberWeekToken(planKey, program, w), s);
+        if (!state.completedSessions[key]) return;
+        const notes = (state.sessionNotes && state.sessionNotes[key]) || {};
+        entries.push({ discipline: planKey, w, s, key, session, week, notes });
+      });
+    });
 
     entries.sort((a, b) => {
       const at = a.notes.completedAt ? new Date(a.notes.completedAt).getTime() : 0;
@@ -225,7 +235,13 @@
       return bt - at;
     });
 
-    listEl.innerHTML = entries.map(e => {
+    listEl.innerHTML = !entries.length ? `
+      <div class="empty-state">
+        <h3>No completed sessions in this plan yet.</h3>
+        <p>Once you mark a session complete it'll show up here.</p>
+        <a href="program.html" class="btn btn-primary">Open your program</a>
+      </div>
+    ` : entries.map(e => {
       const dateStr = e.notes.completedAt
         ? new Date(e.notes.completedAt).toLocaleDateString('en-AU', { day:'numeric', month:'short' })
         : '—';
