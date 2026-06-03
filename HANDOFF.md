@@ -4,7 +4,47 @@ Continuing AllPaddling project. The canonical project guide is `CLAUDE.md`; this
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-05-23 (Sat, pm) — active-members outreach: tab, template, attribution-ready
+## ⭐⭐⭐ LATEST — 2026-06-03 (Wed) — Custom-member session-completion key collision fixed (Cole Klick)
+
+Member Cole Klick (Custom, `coleklick@gmail.com`) reported two things: (1) viewing upcoming workouts showed them as already complete, and (2) his plan title said "M2O" but he races Catalina. Both resolved.
+
+### Root cause — completion-key collision (not a real marking action)
+
+The "Mark complete" code only writes on a button click; sessions merely *displayed* as complete because their keys collided with Cole's earlier prone history. Two contributors:
+
+- **Custom members had no completion-key namespace.** Every member page called `setSessionPlanKey(profile.planKey)` only inside the `type==='progressive'` branch. Custom profiles carry no `planKey` (`admin.js` returns only `{type:'custom', id, email, name, createdAt}`), so `__sessionPlanKey` stayed null and `getCurrentPlanKey()` fell back to the member's **discipline** (`prone`). Cole's Custom ticks therefore shared the `prone-*` namespace with the prone primer/progressive block he did in May.
+- **The week slot of the key was positional** (1-based array index). Cole's Custom plan (weeks labelled Week 5–8) sits at positions 1–4, so its keys `prone-w1*`…`prone-w4*` collided exactly with his real May completions at those positions → future sessions rendered pre-completed.
+
+Confirmed in `session_completions`: all of Cole's rows were `plan_key='prone'`, zero `custom-*` rows — nothing was actually lost.
+
+### Fix (commit [`4f67de9`](https://github.com/allpaddling/allpaddling-site/commit/4f67de9f8cbb349eab30812017af1f8bddc38680), 5 files)
+
+- **`assets/published-plans.js`** — `setSessionPlanKey` now also accepts `'custom'`. New `memberWeekToken(planKey, program, weekNum)`: returns the positional number unchanged for Progressive (so existing Progressive keys are untouched, no history orphaned), but for Custom derives a stable token from `slug(week.label + '-' + week.startDate)` so a re-published block (which reuses positions 1..N) no longer inherits the previous block's ticks.
+- **`app/session.html`, `app/program.html`, `app/dashboard.html`** — added an `else if (profile.type==='custom') setSessionPlanKey('custom')` branch, and threaded `memberWeekToken(...)` into every `memberSessionKey(...)` call.
+- **`app/history.html`** — same custom branch, plus the completed-list builder was rewritten to walk the current plan and recompute keys via `memberSessionKey`/`memberWeekToken` instead of regex-parsing `([a-z]+)-w(\d+)s(\d+)` (the old regex can't parse the new Custom token). Added an "in this plan yet" empty-state so a member with completions in another namespace doesn't see a blank list.
+- Cache-buster on the `published-plans.js` script tag bumped to `?v=20260603-1` on all four pages.
+
+**Design rule for next session: do NOT revert Custom keys to positional** — that reintroduces the cross-block collision. Progressive keys intentionally stay positional (their primer vs cohort split already namespaces them).
+
+### Verification done
+
+- `published-plans.js` passes `node --check`; all four edited pages' inline scripts parse via `new Function()`.
+- GitHub `main` confirmed carrying `memberWeekToken` and the new `?v=` (Contents API).
+- **Live** `allpaddling.online/assets/published-plans.js?v=20260603-1` loaded in Chrome and confirmed serving the new `setSessionPlanKey` + `memberWeekToken` (Pages published).
+
+### M2O title
+
+Separate, not a bug: Cole's **published** `custom_plans.meta.name` was `Custom Season Race Plan M2O` while the draft already had it removed. **Jake fixed/published this on 2026-06-03.** Whether the taper targets Catalina vs Molokai was a coaching call left to Mick.
+
+### Not done / follow-ups
+
+- Jake is handling the reply email to Cole.
+- Cole's pre-fix `prone-w*` rows (incl. a `prone-w1s1` dated 2026-06-02 that may have been a mis-namespaced Custom tick) are left as-is — indistinguishable and low-stakes; they count toward his lifetime "completed" stat only.
+- Optional hardening: stamp a persistent per-week `id` in `admin-edit.html` on save + backfill existing custom plans, then key on that instead of the label/startDate slug — fully immune to label/date edits.
+
+---
+
+## ⭐⭐ 2026-05-23 (Sat, pm) — active-members outreach: tab, template, attribution-ready
 
 The Outreach page now drives campaigns to the 24 paying members alongside the Shopify pool. Email body for the campaign was drafted + previewed to Jake & Mick this morning; sending is gated on Mick's approval. All plumbing is in and verified live.
 
