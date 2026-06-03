@@ -427,10 +427,11 @@
     <!-- Filters -->
     <div class="filter-bar">
       <div class="filter-tabs" role="tablist" aria-label="Filter by plan type">
-        <button type="button" class="filter-tab active" data-filter="all" role="tab" aria-selected="true">All <span class="count" id="count-all">0</span></button>
+        <button type="button" class="filter-tab active" data-filter="active" role="tab" aria-selected="true">Active <span class="count" id="count-active">0</span></button>
         <button type="button" class="filter-tab" data-filter="progressive" role="tab" aria-selected="false">Progressive <span class="count" id="count-progressive">0</span></button>
         <button type="button" class="filter-tab" data-filter="custom" role="tab" aria-selected="false">Custom <span class="count" id="count-custom">0</span></button>
         <button type="button" class="filter-tab" data-filter="awaiting-plan" role="tab" aria-selected="false" title="Custom members whose plan hasn't been published yet">Awaiting plan <span class="count" id="count-awaiting">0</span></button>
+        <button type="button" class="filter-tab" data-filter="cancelled" role="tab" aria-selected="false" title="Members whose subscription has been cancelled">Cancelled <span class="count" id="count-cancelled">0</span></button>
       </div>
       <label class="filter-search" aria-label="Search members">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -728,17 +729,23 @@
   const recentSubEl = document.querySelector('#stat-row .stat-tile:last-child .breakdown');
   if (recentSubEl && recentSubBits.length) recentSubEl.innerHTML = recentSubBits.join('');
 
-  // Tab counts
-  document.getElementById('count-all').textContent         = total;
-  document.getElementById('count-progressive').textContent = progCount;
-  document.getElementById('count-custom').textContent      = customCount;
-  document.getElementById('count-awaiting').textContent    = customByStatus.awaiting;
+  // Tab counts — active excludes fully-cancelled subscriptions
+  const cancelledCount  = allMembers.filter(m => m.subStatus === 'canceled').length;
+  const activeCount     = allMembers.filter(m => m.subStatus !== 'canceled').length;
+  const activeProgCount = allMembers.filter(m => m.type === 'progressive' && m.subStatus !== 'canceled').length;
+  const activeCustCount = allMembers.filter(m => m.type === 'custom' && m.subStatus !== 'canceled').length;
+  const activeAwaitCount = allMembers.filter(m => m.type === 'custom' && m.planStatus === 'awaiting' && m.subStatus !== 'canceled').length;
+  document.getElementById('count-active').textContent      = activeCount;
+  document.getElementById('count-progressive').textContent = activeProgCount;
+  document.getElementById('count-custom').textContent      = activeCustCount;
+  document.getElementById('count-awaiting').textContent    = activeAwaitCount;
+  document.getElementById('count-cancelled').textContent   = cancelledCount;
 
   // ---------- Render & filter ----------
   const tbody     = document.getElementById('members-tbody');
   const searchEl  = document.getElementById('search-input');
   const tabs      = document.querySelectorAll('.filter-tab');
-  let activeFilter = 'all';
+  let activeFilter = 'active';
   // Sort state. Default 'joined' desc (newest signup first — the original
   // behaviour). Clicking the Published header switches to 'published' and
   // toggles asc/desc; asc (oldest publish first) surfaces the members most
@@ -843,14 +850,22 @@
 
   function renderTable () {
     const q = searchEl.value.trim().toLowerCase();
+    const isCancelled = (m) => m.subStatus === 'canceled';
     const filtered = allMembers.filter(m => {
-      // 'awaiting-plan' is a special filter that picks out Custom
-      // members whose plan hasn't been published yet — the actionable
-      // queue for Mick. Other filters are plan-type-based.
-      if (activeFilter === 'awaiting-plan') {
-        if (m.type !== 'custom' || m.planStatus !== 'awaiting') return false;
-      } else if (activeFilter !== 'all' && m.type !== activeFilter) {
-        return false;
+      // 'cancelled' tab: only fully-cancelled subscriptions.
+      if (activeFilter === 'cancelled') {
+        if (!isCancelled(m)) return false;
+      } else if (activeFilter === 'awaiting-plan') {
+        // Actionable queue for Mick — Custom members with no published plan,
+        // excluding cancelled (they're not receiving service anyway).
+        if (m.type !== 'custom' || m.planStatus !== 'awaiting' || isCancelled(m)) return false;
+      } else if (activeFilter === 'progressive') {
+        if (m.type !== 'progressive' || isCancelled(m)) return false;
+      } else if (activeFilter === 'custom') {
+        if (m.type !== 'custom' || isCancelled(m)) return false;
+      } else {
+        // 'active' (default) — everything except cancelled.
+        if (isCancelled(m)) return false;
       }
       if (q && !(m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))) return false;
       return true;
@@ -863,7 +878,7 @@
         <strong>${allMembers.length === 0 ? 'No members yet.' : 'No members match those filters.'}</strong>
         ${allMembers.length === 0
           ? `New members appear here automatically after completing their Stripe checkout.`
-          : `Try clearing the search or switching to "All".`}
+          : `Try clearing the search or switching to "Active".`}
       </td></tr>`;
       return;
     }
