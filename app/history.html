@@ -56,6 +56,19 @@
   }
   .history-meta .title { font-weight: 600; color: var(--text); margin-bottom: 0.15rem; }
   .history-meta .sub { font-size: 0.84rem; color: var(--text-3); }
+  .history-note {
+    font-size: 0.84rem; color: var(--text-2);
+    margin-top: 0.3rem; line-height: 1.45; white-space: pre-wrap;
+  }
+  .history-note.clamped {
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .history-note-toggle {
+    display: inline-block; margin-top: 0.2rem;
+    font-size: 0.8rem; font-weight: 600; color: var(--brand-700); cursor: pointer;
+  }
+  .history-note-toggle:hover { text-decoration: underline; }
   .history-focus { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }
   .focus-tag {
     font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em;
@@ -240,6 +253,43 @@
 
   if (isCustom) renderCustomHistory();
   else renderProgressiveHistory();
+  wireNoteToggles();
+
+  /* Escape user-entered note text before inserting into innerHTML. */
+  function esc (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* Render a session note on its own line. Long notes are clamped to two
+     lines with a Show more / Show less toggle so the list stays compact but
+     the member can read the whole thing. Replaces the old 60-char snippet. */
+  function noteBlock (note) {
+    if (!note) return '';
+    const long = note.length > 90;
+    return `<div class="history-note${long ? ' clamped' : ''}">${esc(note)}</div>`
+      + (long ? `<span class="history-note-toggle" role="button" tabindex="0">Show more</span>` : '');
+  }
+
+  /* Wire up every Show more / Show less toggle. stopPropagation/preventDefault
+     so tapping the toggle inside a row that links to the session detail doesn't
+     navigate away. */
+  function wireNoteToggles () {
+    listEl.querySelectorAll('.history-note-toggle').forEach(span => {
+      const note = span.previousElementSibling;
+      if (!note || !note.classList.contains('history-note')) return;
+      const toggle = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const clamped = note.classList.toggle('clamped');
+        span.textContent = clamped ? 'Show more' : 'Show less';
+      };
+      span.addEventListener('click', toggle);
+      span.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') toggle(e);
+      });
+    });
+  }
 
   /* Parse a label/session out of a legacy completion key like "prone-w3s1"
      (pre-3-Jun rows have no meta). Custom slug keys won't match the \d+ week
@@ -277,14 +327,14 @@
       const title = meta.session_title || 'Completed session';
       const focusArr = Array.isArray(meta.focus) ? meta.focus : [];
       const focusHtml = focusArr.map(f => `<span class="focus-tag ${focusClass(f)}">${f}</span>`).join('');
-      const noteSnippet = r.note ? ' · ' + r.note.slice(0, 60) + (r.note.length > 60 ? '…' : '') : '';
       const rpeHtml = r.rpe ? 'RPE ' + r.rpe : '—';
       const live = liveKeys.get(r.session_key);
       const inner = `
             <div class="history-date">${dateStr}</div>
             <div class="history-meta">
               <div class="title">${title}</div>
-              <div class="sub">${label}${noteSnippet}</div>
+              <div class="sub">${label}</div>
+              ${noteBlock(r.note)}
               <div class="history-focus">${focusHtml}</div>
             </div>
             <div class="history-rpe">${rpeHtml}</div>`;
@@ -337,7 +387,8 @@
           <div class="history-date">${dateStr}</div>
           <div class="history-meta">
             <div class="title">${sessionTitle(e.session)}</div>
-            <div class="sub">${e.week.label} · Session ${e.s}${e.notes.note ? ' · ' + e.notes.note.slice(0, 60) + (e.notes.note.length > 60 ? '…' : '') : ''}</div>
+            <div class="sub">${e.week.label} · Session ${e.s}</div>
+            ${noteBlock(e.notes.note)}
             <div class="history-focus">${focusHtml}</div>
           </div>
           <div class="history-rpe">${e.notes.rpe ? 'RPE ' + e.notes.rpe : '—'}</div>
