@@ -4,7 +4,53 @@ Continuing AllPaddling project. The canonical project guide is `CLAUDE.md`; this
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-06-03 (Wed) — Custom-member session-completion key collision fixed (Cole Klick)
+## ⭐⭐⭐ LATEST — 2026-06-03 (Wed, pm) — Custom History survives Mick deleting past weeks
+
+Mick's Custom block workflow: publish the next block (e.g. weeks 5–8), then ~a week later delete the prior weeks from the live plan so members stay focused forward. Problem reported by Jake: doing this **wiped those weeks from the member's History page**. Kanesa Seraphin was the live example — 6 completed sessions (with notes) showing as 0.
+
+### Root cause
+
+`app/history.html` rebuilt its completed-list by walking the **live** `custom_plans` document and recomputing keys to match. The moment Mick deletes a week, there's nothing to walk, so its completions can't render — even though the `session_completions` rows are intact in the DB. (Kanesa's 6 rows were all present, keyed `prone-*` because she logged them before the 3-Jun namespace fix.) Also confirmed: **no snapshot table exists for Custom plans**, so deleting weeks permanently drops the workout *prescription* — but the member's *log* (date/RPE/note) lives on in `session_completions`.
+
+Decision (Jake): show **"their log"** fidelity for deleted weeks — date, RPE, note, week/session label. Full original workout detail for deleted weeks is not preserved (no Custom snapshot table built).
+
+### Fix (commit [`cba91f0`](https://github.com/allpaddling/allpaddling-site/commit/cba91f0555d95a451f36c05718678bd2bbc8d554), scoped to Custom only)
+
+- **Migration `20260603_027_session_completion_meta.sql`** — `session_completions.meta jsonb` (additive, nullable). Already applied to prod. Stores a per-completion display snapshot `{week_label, session_title, session_index, focus}` captured at Mark Complete time.
+- **`assets/app.js`** — `pushSessionCompletionToServer(..., meta)` writes the snapshot.
+- **`app/session.html`** — passes `meta` (week label, `sessionTitle`, session index, focus) on the Mark Complete toggle.
+- **`app/history.html`** — the Custom branch now renders **straight from the member's `session_completions` rows** (immune to week deletion), not from the live plan. Rows with `meta` show full label/title/focus; legacy pre-3-Jun rows fall back to a `Week N · Session N` label parsed from `session_key` + the note. Deep-link to session detail kept only for weeks still present in the live plan. Progressive History is **unchanged** (still walks the plan — their weeks aren't deleted block-by-block).
+- Cache-buster `app.js?v=20260601-1 → 20260603-2` on all 8 app pages that load it (app.js content changed).
+
+**Design rule: Custom History must read from completion rows, not the live plan.** Don't revert it to walking the plan — that reintroduces the disappearing-history bug every block.
+
+### Follow-up — full notes readable in History (commit [`3fe44a7`](https://github.com/allpaddling/allpaddling-site/commit/3fe44a752923f6540f0984df8cac172b79486c94), `app/history.html` only)
+
+Jake noticed History notes were chopped at 60 chars (the note was crammed into the `.sub` line with a `…`). Fixed:
+
+- Notes now render on their **own line** (`.history-note`), clamped to 2 lines by default, with a **Show more / Show less** toggle (`.history-note-toggle`) that appears only when the note is longer than 90 chars.
+- Toggle calls `preventDefault`/`stopPropagation` so tapping it inside a row that still deep-links to the session detail doesn't navigate away. Keyboard-accessible (`role=button`, Enter/Space).
+- Note text is now HTML-escaped (`esc()`) before insertion — previously inserted raw.
+- Applied to **both** the Custom and Progressive render branches for consistency (Progressive has 0 members, so zero live impact).
+- No shared asset changed → no cache-buster bump needed; only `app/history.html` was pushed.
+
+### Verification done
+
+- DB column confirmed present; admin.js unchanged (same SHA local vs repo).
+- GitHub Pages builds of `cba91f0` and `3fe44a7` confirmed `status: built`.
+- **Live, previewing as Kanesa** via Chrome: History shows all **6 sessions, avg RPE 7.2, with her full notes** (e.g. 1 Jun Week 1·S2, 29 May Week 4·S3 RPE 8, etc.). Confirmed the **Show more** toggle expands a long note in full and collapses back to **Show less**. Verified end-to-end.
+- Note: HTML pages are served via Cloudflare — a member with History already open may see the prior version until their next fresh load (force-reloaded with `?cb=` to verify the new build).
+
+### Not done / follow-ups
+
+- Legacy pre-3-Jun Custom rows show a generic "Completed session" title + parsed `Week N` (no `meta`). New completions carry full meta. Acceptable per "their log" decision; no backfill attempted (the deleted weeks' prescription is gone).
+- Kanesa's preview sidebar shows "Progressive · Prone" — cosmetic, derived from her discipline; unrelated to this fix.
+- If full prescription history is ever wanted: add a `custom_plan_snapshots` table + snapshot-on-publish (mirrors `progressive_plan_snapshots`) and merge into History. Deliberately NOT built this session.
+- Plan doc for this work: `custom-history-persistence-plan.md` (working dir).
+
+---
+
+## ⭐⭐ 2026-06-03 (Wed) — Custom-member session-completion key collision fixed (Cole Klick)
 
 Member Cole Klick (Custom, `coleklick@gmail.com`) reported two things: (1) viewing upcoming workouts showed them as already complete, and (2) his plan title said "M2O" but he races Catalina. Both resolved.
 
