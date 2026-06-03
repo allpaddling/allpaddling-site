@@ -512,6 +512,124 @@ https://allpaddling.online`;
 </html>`;
 
   // ---------------------------------------------------------------
+  // Template: Block 2 encouragement (Jun 2026)
+  // ---------------------------------------------------------------
+  // Short encouragement for active members heading into their second
+  // block on the platform. Drives engagement to History and Threshold pages.
+
+  const BLOCK2_ENCOURAGEMENT_TEXT = `Hi {{first_name}},
+
+Good work getting through last month's program. As you push into the next one, two things worth doing:
+
+Check your History. The History tab in your dashboard has every session you've ticked off — RPE & notes. It's also your answer if you find yourself wondering "is this working?" — scroll back and look.
+
+→ https://allpaddling.online/app/history.html
+
+Update your threshold pace. A block of structured work may move your fitness, which means your zones may have shifted. Keep the next block accurate:
+
+→ https://allpaddling.online/app/threshold.html
+
+That's it. See you on the water,
+
+Mick Di Betta
+All Paddling
+https://allpaddling.online`;
+
+  const BLOCK2_ENCOURAGEMENT_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keep the momentum going</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:#1f2937; line-height:1.6;">
+
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+  Good work through last month. Two things worth doing before your next block.
+</div>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4f6f8;">
+  <tr>
+    <td align="center" style="padding: 32px 16px;">
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+
+        <!-- Header -->
+        <tr>
+          <td style="padding: 28px 40px 12px 40px; border-bottom:1px solid #e5e7eb;">
+            <a href="https://allpaddling.online" style="text-decoration:none; color:#0e7490; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; font-size: 22px; font-weight:700; letter-spacing: -0.01em;">
+              All&nbsp;Paddling
+            </a>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding: 32px 40px 0 40px;">
+            <p style="margin: 0 0 16px 0; font-size: 16px; color:#1f2937;">Hi {{first_name}},</p>
+            <p style="margin: 0 0 24px 0; font-size: 16px; color:#1f2937;">
+              Good work getting through last month's program. As you push into the next one, two things worth doing:
+            </p>
+          </td>
+        </tr>
+
+        <!-- History -->
+        <tr>
+          <td style="padding: 0 40px 0 40px;">
+            <h2 style="margin:0 0 10px 0; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; font-size: 19px; line-height: 1.3; color:#0f172a; font-weight:700;">
+              Check your History.
+            </h2>
+            <p style="margin: 0 0 12px 0; font-size: 15.5px; color:#1f2937;">
+              The History tab in your dashboard has every session you've ticked off — RPE &amp; notes. It's also your answer if you find yourself wondering "is this working?" — scroll back and look.
+            </p>
+            <p style="margin: 0; font-size: 15px;">
+              <a href="https://allpaddling.online/app/history.html" style="color:#0e7490; font-weight:600; text-decoration: none; border-bottom: 1px solid #a5f3fc;">View your history &rarr;</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr>
+          <td style="padding: 28px 40px 0 40px;">
+            <hr style="border:0; border-top:1px solid #e5e7eb; margin:0;">
+          </td>
+        </tr>
+
+        <!-- Threshold -->
+        <tr>
+          <td style="padding: 24px 40px 0 40px;">
+            <h2 style="margin:0 0 10px 0; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; font-size: 19px; line-height: 1.3; color:#0f172a; font-weight:700;">
+              Update your threshold pace.
+            </h2>
+            <p style="margin: 0 0 12px 0; font-size: 15.5px; color:#1f2937;">
+              A block of structured work may move your fitness, which means your zones may have shifted. Keep the next block accurate:
+            </p>
+            <p style="margin: 0; font-size: 15px;">
+              <a href="https://allpaddling.online/app/threshold.html" style="color:#0e7490; font-weight:600; text-decoration: none; border-bottom: 1px solid #a5f3fc;">Update your threshold &rarr;</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Sign-off -->
+        <tr>
+          <td style="padding: 32px 40px 32px 40px;">
+            <hr style="border:0; border-top:1px solid #e5e7eb; margin: 0 0 24px 0;">
+            <p style="margin: 0 0 4px 0; font-size: 16px; color:#1f2937;">That's it. See you on the water,</p>
+            <p style="margin: 0; font-size: 16px; color:#0f172a; font-weight:700;">Mick Di Betta</p>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color:#64748b;">All Paddling &middot; <a href="https://allpaddling.online" style="color:#0e7490;">allpaddling.online</a></p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>`;
+
+  // ---------------------------------------------------------------
   // Registry
   // ---------------------------------------------------------------
   root.OUTREACH_TEMPLATES = [
@@ -530,6 +648,14 @@ https://allpaddling.online`;
       subject:       'A quick check-in — and two small things that\'ll sharpen your training',
       text:          ACTIVE_CHECKIN_TEXT,
       html:          ACTIVE_CHECKIN_HTML,
+    },
+    {
+      id:            'block2_encouragement_2026_06',
+      label:         'Block 2 encouragement — Jun 2026',
+      campaign_name: 'Block 2 encouragement — Jun 2026',
+      subject:       'Keep the momentum going',
+      text:          BLOCK2_ENCOURAGEMENT_TEXT,
+      html:          BLOCK2_ENCOURAGEMENT_HTML,
     },
   ];
 })(window);
