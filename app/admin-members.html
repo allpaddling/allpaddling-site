@@ -252,6 +252,15 @@
     text-transform: uppercase;
   }
 
+  /* Coach badge */
+  .coach-badge {
+    display: inline-block; margin-top: 0.2rem; margin-left: 0.3rem;
+    padding: 0.1rem 0.45rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+    background: #ccfbf1; color: #0f766e;
+    text-transform: uppercase;
+  }
+
   .joined-cell { color: var(--text-3); font-size: 0.84rem; white-space: nowrap; }
 
   /* Published column — date for Custom members. "Not published" is the
@@ -437,6 +446,7 @@
     <div class="filter-bar">
       <div class="filter-tabs" role="tablist" aria-label="Filter by plan type">
         <button type="button" class="filter-tab active" data-filter="active" role="tab" aria-selected="true">Active <span class="count" id="count-active">0</span></button>
+        <button type="button" class="filter-tab" data-filter="paying" role="tab" aria-selected="false" title="Active members excluding Elite Team and coaches — your paying customers">Paying <span class="count" id="count-paying">0</span></button>
         <button type="button" class="filter-tab" data-filter="progressive" role="tab" aria-selected="false">Progressive <span class="count" id="count-progressive">0</span></button>
         <button type="button" class="filter-tab" data-filter="custom" role="tab" aria-selected="false">Custom <span class="count" id="count-custom">0</span></button>
         <button type="button" class="filter-tab" data-filter="awaiting-plan" role="tab" aria-selected="false" title="Custom members whose plan hasn't been published yet">Awaiting plan <span class="count" id="count-awaiting">0</span></button>
@@ -677,6 +687,7 @@
       publishedAt:   publishedAt, // ISO string | null (Custom only)
       paymentStatus: derivePaymentStatus(sub),  // { state, label } | null
       isElite:       ELITE_TEAM_EMAILS.has((m.email || '').toLowerCase()),
+      isCoach:       isCoachEmail(m.email),
     };
   }
 
@@ -751,10 +762,12 @@
   // Tab counts — active excludes fully-cancelled subscriptions
   const cancelledCount  = allMembers.filter(m => m.subStatus === 'canceled').length;
   const activeCount     = allMembers.filter(m => m.subStatus !== 'canceled').length;
+  const payingCount     = allMembers.filter(m => m.subStatus !== 'canceled' && !m.isElite && !m.isCoach).length;
   const activeProgCount = allMembers.filter(m => m.type === 'progressive' && m.subStatus !== 'canceled').length;
   const activeCustCount = allMembers.filter(m => m.type === 'custom' && m.subStatus !== 'canceled').length;
   const activeAwaitCount = allMembers.filter(m => m.type === 'custom' && m.planStatus === 'awaiting' && m.subStatus !== 'canceled').length;
   document.getElementById('count-active').textContent      = activeCount;
+  document.getElementById('count-paying').textContent      = payingCount;
   document.getElementById('count-progressive').textContent = activeProgCount;
   document.getElementById('count-custom').textContent      = activeCustCount;
   document.getElementById('count-awaiting').textContent    = activeAwaitCount;
@@ -874,6 +887,9 @@
       // 'cancelled' tab: only fully-cancelled subscriptions.
       if (activeFilter === 'cancelled') {
         if (!isCancelled(m)) return false;
+      } else if (activeFilter === 'paying') {
+        // Paying customers only — excludes Elite Team and coaches.
+        if (isCancelled(m) || m.isElite || m.isCoach) return false;
       } else if (activeFilter === 'awaiting-plan') {
         // Actionable queue for Mick — Custom members with no published plan,
         // excluding cancelled (they're not receiving service anyway).
@@ -972,6 +988,9 @@
       const eliteBadge = m.isElite
         ? `<span class="elite-badge" title="Elite Team — complimentary access">Elite Team</span>`
         : '';
+      const coachBadge = m.isCoach
+        ? `<span class="coach-badge" title="Coach — internal account">Coach</span>`
+        : '';
 
       // "Detail" column surfaces the most useful pre-plan context for
       // Mick: goal race name + date + countdown when set, otherwise
@@ -1038,7 +1057,7 @@
                 <div class="name">${escapeHtml(m.name)}</div>
                 <div class="email">${escapeHtml(m.email)}</div>
                 <div style="margin-top:0.2rem;">
-                  ${onboardingBadge}${planBadge}${payBadge}${eliteBadge}
+                  ${onboardingBadge}${planBadge}${payBadge}${eliteBadge}${coachBadge}
                 </div>
               </div>
             </div>
