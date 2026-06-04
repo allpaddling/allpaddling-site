@@ -243,6 +243,15 @@
   .pay-badge.canceled   { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
   .pay-badge.unknown    { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
 
+  /* Elite Team badge — complimentary members, coach-visible only */
+  .elite-badge {
+    display: inline-block; margin-top: 0.2rem; margin-left: 0.3rem;
+    padding: 0.1rem 0.45rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+    background: #ede9fe; color: #5b21b6;
+    text-transform: uppercase;
+  }
+
   .joined-cell { color: var(--text-3); font-size: 0.84rem; white-space: nowrap; }
 
   /* Published column — date for Custom members. "Not published" is the
@@ -617,6 +626,15 @@
     return null;
   }
 
+  // Elite Team — complimentary members. Badge shown in admin portal only.
+  const ELITE_TEAM_EMAILS = new Set([
+    'charlie.verco@gmail.com',
+    'lewy_betts@outlook.com',
+    'george@plsek.us',
+    'kanesa@hawaii.edu',
+    'tpere808@icloud.com',
+  ]);
+
   function buildRow (m, type) {
     const userId  = m.authUserId || null;
     const profile = userId ? profileByUser[userId] : null;
@@ -658,6 +676,7 @@
       planStatus:    planStatus,  // 'published' | 'draft' | 'awaiting' | null
       publishedAt:   publishedAt, // ISO string | null (Custom only)
       paymentStatus: derivePaymentStatus(sub),  // { state, label } | null
+      isElite:       ELITE_TEAM_EMAILS.has((m.email || '').toLowerCase()),
     };
   }
 
@@ -950,6 +969,10 @@
         payBadge = `<span class="pay-badge ${ps.state}" title="${escapeHtml(title)}">${escapeHtml(ps.label)}</span>`;
       }
 
+      const eliteBadge = m.isElite
+        ? `<span class="elite-badge" title="Elite Team — complimentary access">Elite Team</span>`
+        : '';
+
       // "Detail" column surfaces the most useful pre-plan context for
       // Mick: goal race name + date + countdown when set, otherwise
       // notes; with an optional "X hrs/wk · Ability" meta line under
@@ -1015,7 +1038,7 @@
                 <div class="name">${escapeHtml(m.name)}</div>
                 <div class="email">${escapeHtml(m.email)}</div>
                 <div style="margin-top:0.2rem;">
-                  ${onboardingBadge}${planBadge}${payBadge}
+                  ${onboardingBadge}${planBadge}${payBadge}${eliteBadge}
                 </div>
               </div>
             </div>
