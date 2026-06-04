@@ -156,7 +156,7 @@ async function handleWebhook (req: Request, rawBody: string, event: ResendEvent)
   // Find the matching row.
   const { data: rows, error: selErr } = await sb
     .from('outreach_sends')
-    .select('id, events, open_count, click_count')
+    .select('id, events, open_count, click_count, recipient_email')
     .eq('resend_id', emailId)
     .limit(1);
 
@@ -171,7 +171,7 @@ async function handleWebhook (req: Request, rawBody: string, event: ResendEvent)
     console.log(`resend-webhook: no outreach_sends row for resend_id=${emailId}, event=${event.type} (ignored)`);
     return json(200, { ok: true, matched: false });
   }
-  const row = rows[0] as { id: string; events: unknown[]; open_count: number; click_count: number };
+  const row = rows[0] as { id: string; events: unknown[]; open_count: number; click_count: number; recipient_email: string | null };
 
   // Idempotency: skip if this svix-id has already been recorded.
   const existing = Array.isArray(row.events) ? row.events as Array<Record<string, unknown>> : [];
@@ -179,7 +179,21 @@ async function handleWebhook (req: Request, rawBody: string, event: ResendEvent)
     return json(200, { ok: true, duplicate: true });
   }
 
-  const updates = projectEvent(event, row.open_count, row.click_count);
+  // BCC filter: Resend fires open/click events for BCC recipients using
+  // the same email_id, so they get attributed to the primary recipient's
+  // row. Only count engagement for the actual primary recipient.
+  const eventTo: string[] = Array.isArray(event.data?.to)
+    ? (event.data.to as string[]).map((e: string) => e.toLowerCase())
+    : [];
+  const isPrimaryRecipient = row.recipient_email
+    ? eventTo.includes(row.recipient_email.toLowerCase())
+    : true; // unknown recipient — don't filter
+
+  if (!isPrimaryRecipient) {
+    console.log(`resend-webhook: skipping ${event.type} engagement for BCC recipient ${eventTo.join(',')} on row ${row.id} (primary: ${row.recipient_email})`);
+  }
+
+  const updates = projectEvent(event, row.open_count, row.click_count, isPrimaryRecipient);
 
   const { error: updErr } = await sb
     .from('outreach_sends')
@@ -206,7 +220,9 @@ async function handleWebhook (req: Request, rawBody: string, event: ResendEvent)
 }
 
 // Map a Resend event to the column-level updates we want to apply.
-function projectEvent (event: ResendEvent, openCount: number, clickCount: number): OutreachUpdates {
+// isPrimaryRecipient: false = BCC/CC recipient; skip engagement counters
+// so coach opens/clicks don't inflate member stats.
+function projectEvent (event: ResendEvent, openCount: number, clickCount: number, isPrimaryRecipient = true): OutreachUpdates {
   const at = event.created_at;
   const u: OutreachUpdates = {
     last_event:    event.type,           // keep the dotted form, e.g. 'email.opened'
@@ -218,34 +234,47 @@ function projectEvent (event: ResendEvent, openCount: number, clickCount: number
       // We already wrote status='sent' at send time; nothing to add.
       break;
     case 'email.delivered':
-      u.status       = 'delivered';
-      u.delivered_at = at;
+      if (isPrimaryRecipient) {
+        u.status       = 'delivered';
+        u.delivered_at = at;
+      }
       break;
     case 'email.delivery_delayed':
-      u.status = 'delivered_delayed';
+      if (isPrimaryRecipient) {
+        u.status = 'delivered_delayed';
+      }
       break;
     case 'email.opened':
-      u.opened_at  = at;                 // first-open semantics on column
-      u.open_count = openCount + 1;
-      // Don't downgrade status if we've already recorded a click.
-      u.status     = 'opened';
+      // Only count opens from the primary recipient, not BCC coaches.
+      if (isPrimaryRecipient) {
+        u.opened_at  = at;               // first-open semantics on column
+        u.open_count = openCount + 1;
+        u.status     = 'opened';
+      }
       break;
     case 'email.clicked':
-      u.clicked_at  = at;
-      u.click_count = clickCount + 1;
-      u.status      = 'clicked';
-      // A click implies an open; backfill opened_at if Resend never
-      // sent the open event (some clients block the tracking pixel
-      // but the click redirect still fires).
-      u.opened_at   = at;
+      // Only count clicks from the primary recipient, not BCC coaches.
+      if (isPrimaryRecipient) {
+        u.clicked_at  = at;
+        u.click_count = clickCount + 1;
+        u.status      = 'clicked';
+        // A click implies an open; backfill opened_at if Resend never
+        // sent the open event (some clients block the tracking pixel
+        // but the click redirect still fires).
+        u.opened_at   = at;
+      }
       break;
     case 'email.bounced':
-      u.status     = 'bounced';
-      u.bounced_at = at;
+      if (isPrimaryRecipient) {
+        u.status     = 'bounced';
+        u.bounced_at = at;
+      }
       break;
     case 'email.complained':
-      u.status       = 'complained';
-      u.complained_at = at;
+      if (isPrimaryRecipient) {
+        u.status        = 'complained';
+        u.complained_at = at;
+      }
       break;
     default:
       // Unknown event type — keep last_event but don't touch status.
