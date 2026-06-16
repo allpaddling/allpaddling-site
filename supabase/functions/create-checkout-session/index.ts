@@ -59,12 +59,16 @@
 //   metadata.source     — 'self' | 'migrate' (analytics + audit)
 //
 // Deploy:
-//   supabase functions deploy create-checkout-session
+//   supabase functions deploy create-checkout-session --no-verify-jwt
 //
-// JWT verification stays ON for this function — we want the
-// SELF path to require a valid user JWT. The MIGRATE path
-// detects the service-role key by signature and bypasses the
-// user-id-from-JWT step.
+// JWT verification MUST be OFF (verify_jwt: false / --no-verify-jwt).
+// ANON mode (public self-signup, added 2026-04-29) sends NO Authorization
+// header by design — with verify_jwt ON the Supabase gateway 401s every
+// anon signup before this handler runs, silently breaking the public
+// funnel (incident 2026-06-17: redeployed 2026-05-30 without the flag).
+// Auth is enforced INSIDE the handler per-mode: SELF verifies the user
+// JWT via auth.getUser(), MIGRATE verifies coach role or service-role key.
+// Never redeploy this function without --no-verify-jwt.
 // ============================================================
 
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
