@@ -163,7 +163,7 @@
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js?v=20260526-1"></script>
 <script src="../assets/published-plans.js?v=20260603-1"></script>
-<script src="../assets/app.js?v=20260603-2"></script>
+<script src="../assets/app.js?v=20260623-1"></script>
 <script>
 /* ============ Program page logic ============ */
 
@@ -185,6 +185,10 @@
   // + RPE/notes rather than the coach's localStorage. No-op when not
   // previewing. See ensurePreviewStateLoaded() in app.js.
   await ensurePreviewStateLoaded();
+  // Cross-device sync: pull this member's own ticks + threshold from
+  // Supabase into localStorage so updates made on another device show up
+  // here. No-op while previewing or signed out. See app.js.
+  await ensureMemberStateHydrated();
 
   // === Coach Preview-as-member mode (?preview=draft&plan=<key>[&member=<id>]) ===
   // When a coach hits this URL, we render the DRAFT version of the

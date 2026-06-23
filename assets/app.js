@@ -54,6 +54,12 @@ const APP_NAV_LINKS = [
 
 const APP_FOOTER_NAV = [
   {
+    href: '#',
+    label: 'Send feedback',
+    action: 'feedback',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  },
+  {
     href: 'settings.html',
     label: 'Settings',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
@@ -282,6 +288,109 @@ async function ensurePreviewStateLoaded () {
     console.warn('ensurePreviewStateLoaded failed (non-fatal):', e);
     _previewStateCache = null;
     return null;
+  }
+}
+
+/* ============================================================
+   Cross-device hydration — pull the SIGNED-IN member's own training
+   state (completed sessions, RPE/notes, threshold history) down from
+   Supabase into localStorage on page load, so an update made on one
+   device shows up on every other device.
+
+   Why this is needed: completed sessions + threshold live in
+   localStorage (the original "stub") and are *mirrored* to Supabase on
+   every write (session_completions / threshold_log) for the coach's
+   engagement view. But the member's own read path (loadMemberState)
+   only ever read localStorage — so a tick on the phone never appeared
+   on the desktop. This seeds localStorage from the server before the
+   page renders. It is the member-facing twin of
+   ensurePreviewStateLoaded() (which does the same for a coach
+   previewing a member).
+
+   Source-of-truth model: the SERVER is authoritative for the set of
+   completions, so a cross-device *un-tick* (delete) propagates too. To
+   avoid dropping a local-only row that never reached the server (e.g. a
+   mirror write that failed offline), we await the idempotent backfill
+   push first — it uploads any such rows before we pull them back down.
+
+   No-op while previewing (preview is read-only and owned by
+   ensurePreviewStateLoaded) and when signed out (local-only mode).
+   Never throws — on any failure the page falls back to localStorage. */
+async function ensureMemberStateHydrated () {
+  // Preview is the coach's read-only view of a member — handled by
+  // ensurePreviewStateLoaded(). Never hydrate over it here.
+  if (_isPreviewActiveSync()) return;
+  try {
+    const userId = await _getEngagementUserId();
+    if (!userId) return; // signed out → stay in local-only mode
+
+    // Push any local-only ticks/threshold up first (idempotent, flag-
+    // guarded). Guarantees the server-authoritative pull below can't drop
+    // a row that was logged on this device but never mirrored.
+    await backfillEngagementOnce();
+
+    const [thrRes, scRes] = await Promise.all([
+      sb.from('threshold_log')
+        .select('threshold_sec, unit, recorded_at')
+        .eq('user_id', userId)
+        .order('recorded_at', { ascending: true }),
+      sb.from('session_completions')
+        .select('session_key, completed_at, rpe, note')
+        .eq('user_id', userId),
+    ]);
+
+    // Start from current local state so device-side prefs not represented
+    // server-side (e.g. discipline) survive the hydrate.
+    let state;
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      state = raw ? { ...defaultState(), ...JSON.parse(raw) } : defaultState();
+    } catch (_) { state = defaultState(); }
+
+    let changed = false;
+
+    // Completed sessions + notes — server authoritative (so un-ticks sync).
+    // Only overwrite if the fetch succeeded; a failed query must not wipe
+    // the member's local ticks.
+    if (!scRes.error && Array.isArray(scRes.data)) {
+      const completedSessions = {};
+      const sessionNotes = {};
+      for (const r of scRes.data) {
+        if (!r || !r.session_key) continue;
+        completedSessions[r.session_key] = true;
+        const noteObj = {};
+        if (r.rpe != null)  noteObj.rpe = r.rpe;
+        if (r.note)         noteObj.note = r.note;
+        if (r.completed_at) noteObj.completedAt = r.completed_at;
+        if (Object.keys(noteObj).length) sessionNotes[r.session_key] = noteObj;
+      }
+      state.completedSessions = completedSessions;
+      state.sessionNotes = sessionNotes;
+      changed = true;
+    }
+
+    // Threshold history + latest threshold/unit — server authoritative.
+    if (!thrRes.error && Array.isArray(thrRes.data)) {
+      const thr = thrRes.data;
+      state.thresholdHistory = thr.map(r => ({
+        at: r.recorded_at, thresholdSec: r.threshold_sec, unit: r.unit,
+      }));
+      const latest = thr[thr.length - 1];
+      if (latest) {
+        if (latest.threshold_sec) state.thresholdSec = latest.threshold_sec;
+        if (latest.unit === 'metric' || latest.unit === 'imperial') state.unit = latest.unit;
+      }
+      changed = true;
+    }
+
+    // Persist so loadMemberState() (which reads localStorage) returns
+    // server truth on this device from here on.
+    if (changed) {
+      try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (_) {}
+    }
+  } catch (e) {
+    // Never break the page on hydration — fall back to localStorage.
+    console.warn('ensureMemberStateHydrated failed (non-fatal):', e);
   }
 }
 
@@ -901,6 +1010,20 @@ function mountApp() {
     // because login.html requires a click to start a new OAuth flow.
     window.location.href = target.getAttribute('href') || '../login.html';
   });
+
+  /* Feedback — inject the modal once and open it on any
+     element with data-action="feedback" (the sidebar footer link).
+     Guarded so a second mountApp call doesn't double-bind. */
+  ensureFeedbackModal();
+  if (!window.__apFeedbackWired) {
+    window.__apFeedbackWired = true;
+    document.addEventListener('click', function (e) {
+      const t = e.target.closest('[data-action="feedback"]');
+      if (!t) return;
+      e.preventDefault();
+      openFeedbackModal();
+    });
+  }
 }
 
 if (document.readyState === 'loading') {
@@ -939,4 +1062,139 @@ function showToast(message) {
   el.classList.add('visible');
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => el.classList.remove('visible'), 2400);
+}
+
+/* ============================================================
+   Member feedback modal
+   ----------------------------------------------------------------
+   A "Send feedback" sidebar footer link (data-action="feedback")
+   opens this modal. On submit it invokes the submit-feedback Edge
+   Function, which emails the message straight to the team with the
+   member's address as reply-to. Injected entirely by JS so every
+   /app/* page that loads app.js gets it with no per-page markup.
+   ============================================================ */
+function ensureFeedbackModal() {
+  if (document.getElementById('ap-feedback-overlay')) return;
+
+  const style = document.createElement('style');
+  style.id = 'ap-feedback-styles';
+  style.textContent = `
+    .ap-fb-overlay{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(15,23,42,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
+    .ap-fb-overlay[hidden]{display:none;}
+    .ap-fb-modal{background:#fff;border-radius:14px;width:100%;max-width:460px;box-shadow:0 20px 50px rgba(15,23,42,.3);padding:1.5rem 1.5rem 1.25rem;position:relative;animation:apFbIn .16s ease-out;}
+    @keyframes apFbIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+    .ap-fb-modal h2{font-family:'Space Grotesk',sans-serif;font-size:1.2rem;margin:0 0 .35rem;color:#0f172a;}
+    .ap-fb-sub{font-size:.88rem;color:#64748b;margin:0 0 1rem;line-height:1.45;}
+    .ap-fb-modal textarea{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:.7rem .8rem;font:inherit;font-size:.95rem;resize:vertical;min-height:120px;color:#0f172a;}
+    .ap-fb-modal textarea:focus{outline:none;border-color:#155e75;box-shadow:0 0 0 3px rgba(21,94,117,.15);}
+    .ap-fb-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
+    .ap-fb-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem;}
+    .ap-fb-btn{border:none;border-radius:8px;padding:.6rem 1.1rem;font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;}
+    .ap-fb-cancel{background:#f1f5f9;color:#475569;}
+    .ap-fb-cancel:hover{background:#e2e8f0;}
+    .ap-fb-send{background:#155e75;color:#fff;}
+    .ap-fb-send:hover{background:#124e60;}
+    .ap-fb-send:disabled{opacity:.6;cursor:default;}
+    .ap-fb-status{font-size:.85rem;margin:.7rem 0 0;min-height:1.1em;color:#15803d;}
+    .ap-fb-status.err{color:#b91c1c;}
+    .ap-fb-close{position:absolute;top:.6rem;right:.7rem;background:none;border:none;font-size:1.5rem;line-height:1;color:#94a3b8;cursor:pointer;padding:.2rem .4rem;}
+    .ap-fb-close:hover{color:#475569;}
+  `;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'ap-fb-overlay';
+  overlay.id = 'ap-feedback-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'ap-fb-title');
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <div class="ap-fb-modal">
+      <button type="button" class="ap-fb-close" id="ap-fb-close" aria-label="Close">&times;</button>
+      <h2 id="ap-fb-title">Send feedback</h2>
+      <p class="ap-fb-sub">Questions, ideas, or something not working right? It goes straight to the team — we read every note.</p>
+      <form id="ap-fb-form" novalidate>
+        <textarea id="ap-fb-message" maxlength="5000" placeholder="What's on your mind?" required></textarea>
+        <input type="text" id="ap-fb-hp" class="ap-fb-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <div class="ap-fb-actions">
+          <button type="button" class="ap-fb-btn ap-fb-cancel" id="ap-fb-cancel">Cancel</button>
+          <button type="submit" class="ap-fb-btn ap-fb-send" id="ap-fb-send">Send feedback</button>
+        </div>
+        <p class="ap-fb-status" id="ap-fb-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('ap-fb-close').addEventListener('click', closeFeedbackModal);
+  document.getElementById('ap-fb-cancel').addEventListener('click', closeFeedbackModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFeedbackModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !overlay.hidden) closeFeedbackModal();
+  });
+  document.getElementById('ap-fb-form').addEventListener('submit', submitFeedback);
+}
+
+function openFeedbackModal() {
+  ensureFeedbackModal();
+  const overlay = document.getElementById('ap-feedback-overlay');
+  // Close the mobile drawer if it's open underneath.
+  const sidebar = document.getElementById('app-sidebar-el');
+  const scrim   = document.getElementById('app-scrim');
+  if (sidebar) sidebar.classList.remove('open');
+  if (scrim)   scrim.classList.remove('visible');
+  const status = document.getElementById('ap-fb-status');
+  if (status) { status.textContent = ''; status.classList.remove('err'); }
+  overlay.hidden = false;
+  const ta = document.getElementById('ap-fb-message');
+  if (ta) setTimeout(() => ta.focus(), 30);
+}
+
+function closeFeedbackModal() {
+  const overlay = document.getElementById('ap-feedback-overlay');
+  if (overlay) overlay.hidden = true;
+}
+
+async function submitFeedback(e) {
+  e.preventDefault();
+  const ta      = document.getElementById('ap-fb-message');
+  const hp      = document.getElementById('ap-fb-hp');
+  const sendBtn = document.getElementById('ap-fb-send');
+  const status  = document.getElementById('ap-fb-status');
+  const message = (ta.value || '').trim();
+
+  status.classList.remove('err');
+
+  // Honeypot filled (bot) → silently pretend success.
+  if (hp && hp.value) { closeFeedbackModal(); return; }
+
+  if (!message) {
+    status.textContent = 'Please write a message first.';
+    status.classList.add('err');
+    ta.focus();
+    return;
+  }
+
+  sendBtn.disabled = true;
+  const original = sendBtn.textContent;
+  sendBtn.textContent = 'Sending…';
+  status.textContent = '';
+
+  try {
+    if (typeof sb === 'undefined' || !sb.functions) throw new Error('client not ready');
+    const { data, error } = await sb.functions.invoke('submit-feedback', {
+      body: { message, page: window.location.pathname, _hp: '' },
+    });
+    if (error || !data || !data.ok) throw error || new Error('send failed');
+    ta.value = '';
+    closeFeedbackModal();
+    if (typeof showToast === 'function') showToast('Thanks — your feedback was sent');
+  } catch (ex) {
+    console.error('submitFeedback failed:', ex);
+    status.textContent = "Couldn't send just now. Please try again, or email mick@allpaddling.online.";
+    status.classList.add('err');
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = original;
+  }
 }
