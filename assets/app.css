@@ -426,6 +426,21 @@ body.app-body {
   font-size: 0.9rem; color: var(--text-2); font-weight: 500;
   cursor: pointer;
 }
+  .interval-targets {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: flex-end; gap: 0.1rem 0.5rem;
+  }
+  .interval-pct {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 600; color: var(--text-3);
+    white-space: nowrap;
+  }
+  /* Narrow screens: give the interval its own line for the targets so the
+     duration never wraps mid-word once the % sits beside the pace. */
+  @media (max-width: 560px) {
+    .interval { grid-template-columns: 44px 1fr; row-gap: 0.15rem; }
+    .interval-targets { grid-column: 2; justify-content: flex-start; }
+  }
 body:not(.show-paces) .interval-pace { display: none; }
 
 /* ---- Toast ---- */

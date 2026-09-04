@@ -44,8 +44,49 @@ function zonePaceRange(zone, ftpSec) {
   return { label: `${formatSeconds(slow)} – ${formatSeconds(fast)}` };
 }
 
+/* ---- "% of threshold" label for a zone ----
+   Derived from lo/hi so ZONES stays the single source of truth for both
+   the pace maths and the percentages Mick's members read on the scale. */
+function zonePctLabel(zone) {
+  const pc = n => `${Math.round(n * 100)}%`;
+  if (zone.lo <= 0)   return `slower than ${pc(zone.hi)}`;
+  if (zone.hi >= 999) return `faster than ${pc(zone.lo)}`;
+  return `${Math.round(zone.lo * 100)}\u2013${pc(zone.hi)}`;
+}
+
+/* Short form for tight spaces (scale segments, interval rows). */
+function zonePctShort(zone) {
+  const pc = n => `${Math.round(n * 100)}%`;
+  if (zone.lo <= 0)   return `< ${pc(zone.hi)}`;
+  if (zone.hi >= 999) return `> ${pc(zone.lo)}`;
+  return `${Math.round(zone.lo * 100)}\u2013${pc(zone.hi)}`;
+}
+
 function unitLabel(unit) {
   return unit === 'imperial' ? '/ mile' : '/ km';
+}
+
+/* ---- Training intensity scale ----
+   The visual 5-zone ramp: TZ1 -> TZ5 left to right, each segment carrying
+   its % of threshold and the pace that % works out to for this member.
+   Shared by the public pace calculator and the member Threshold page. */
+function renderIntensityScaleHtml(ftpSec, unit) {
+  const u = unitLabel(unit);
+  const segs = ZONES.map(z => `
+    <div class="tz-seg ${z.key}">
+      <div class="tz-seg-bar">${z.label}</div>
+      <div class="tz-seg-pct">${zonePctShort(z)}</div>
+      <div class="tz-seg-pace">${zonePaceRange(z, ftpSec).label}<br>${u}</div>
+    </div>`).join('');
+  return `
+    <div class="tz-scale">
+      <div class="tz-scale-track">${segs}</div>
+      <div class="tz-scale-axis">
+        <span>&larr; Easier</span>
+        <span class="mid">% of your threshold pace</span>
+        <span>Harder &rarr;</span>
+      </div>
+    </div>`;
 }
 
 /* ---- Focus-tag colour class ---- */
@@ -68,7 +109,10 @@ function renderIntervalHtml(iv, ftpSec, unit) {
     <div class="interval" data-zone="${iv.z}">
       <div class="interval-zone">TZ ${iv.z}</div>
       <div class="interval-desc">${iv.d}</div>
-      <div class="interval-pace">${range.label} ${u}</div>
+      <div class="interval-targets">
+        <div class="interval-pct">${zonePctShort(zone)}</div>
+        <div class="interval-pace">${range.label} ${u}</div>
+      </div>
     </div>
   `;
 }

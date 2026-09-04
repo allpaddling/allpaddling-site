@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css" />
+<link rel="stylesheet" href="assets/style.css?v=20260904-tzpct" />
 <style>
   .calc-shell {
     display: grid; grid-template-columns: 1fr 1.2fr; gap: 2.5rem;
@@ -78,6 +78,54 @@
     color: var(--text-2); margin-top: 1rem; transition: all .15s;
   }
   .calc-reset:hover { background: var(--surface-2); color: var(--text); }
+
+
+  /* ==== Training intensity scale (5-zone %-of-threshold ramp) ==== */
+  .tz-scale { margin-bottom: 1.5rem; }
+  .tz-scale-track {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 5px; align-items: end;
+  }
+  .tz-seg { min-width: 0; text-align: center; }
+  .tz-seg-bar {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px 6px 0 0; color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .tz-seg.tz1 .tz-seg-bar { background: var(--tz1); height: 34px; }
+  .tz-seg.tz2 .tz-seg-bar { background: var(--tz2); height: 42px; }
+  .tz-seg.tz3 .tz-seg-bar { background: var(--tz3); height: 50px; }
+  .tz-seg.tz4 .tz-seg-bar { background: var(--tz4); height: 58px; }
+  .tz-seg.tz5 .tz-seg-bar { background: var(--tz5); height: 66px; }
+  .tz-seg-pct {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; font-weight: 700;
+    padding: 0.4rem 0.1rem 0.1rem;
+  }
+  .tz-seg.tz1 .tz-seg-pct { color: var(--tz1); }
+  .tz-seg.tz2 .tz-seg-pct { color: var(--tz2); }
+  .tz-seg.tz3 .tz-seg-pct { color: var(--tz3); }
+  .tz-seg.tz4 .tz-seg-pct { color: var(--tz4); }
+  .tz-seg.tz5 .tz-seg-pct { color: var(--tz5); }
+  .tz-seg-pace { font-size: 0.7rem; color: var(--text-3); line-height: 1.35; padding: 0 0.1rem; }
+  .tz-scale-axis {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid var(--border);
+    font-size: 0.68rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-3);
+  }
+  .tz-scale-axis .mid { text-transform: none; letter-spacing: 0.02em; font-size: 0.72rem; }
+  /* Below this width the zone rows underneath carry the same numbers, so the
+     ramp would only duplicate them in a cramped 5-column grid. */
+  @media (max-width: 640px) { .tz-scale { display: none; } }
+
+  /* % of threshold under each zone's pace range */
+  .zone-pace .pct {
+    display: block; margin-top: 0.15rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 600; color: var(--text-3);
+  }
 
   /* Zones display */
   .zones-list { display: grid; gap: 0.65rem; }
@@ -223,6 +271,21 @@
     font-size: 0.85rem; font-weight: 600; color: var(--text-2);
     white-space: nowrap;
   }
+  .interval-targets {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: flex-end; gap: 0.1rem 0.5rem;
+  }
+  .interval-pct {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 600; color: var(--text-3);
+    white-space: nowrap;
+  }
+  /* Narrow screens: give the interval its own line for the targets so the
+     duration never wraps mid-word once the % sits beside the pace. */
+  @media (max-width: 560px) {
+    .interval { grid-template-columns: 44px 1fr; row-gap: 0.15rem; }
+    .interval-targets { grid-column: 2; justify-content: flex-start; }
+  }
   body:not(.show-paces) .interval-pace { display: none; }
 
   .session-repeat {
@@ -353,7 +416,9 @@
       <div>
         <div class="section-eyebrow">Your Training Zones</div>
         <h2 class="section-title" style="font-size: 1.4rem;">5-zone pace targets</h2>
-        <p style="color: var(--text-3); font-size: 0.95rem; margin-bottom: 1.5rem;">Target ranges update live as you change your threshold.</p>
+        <p style="color: var(--text-3); font-size: 0.95rem; margin-bottom: 1.5rem;">Every zone is a percentage of your threshold pace. Both the percentages and the paces update live as you change your threshold.</p>
+
+        <div id="intensity-scale"></div>
 
         <div class="zones-list" id="zones-list">
           <!-- Rendered by JS -->
@@ -441,7 +506,7 @@
   </div>
 </section>
 
-<script src="assets/program-data.js"></script>
+<script src="assets/program-data.js?v=20260904-tzpct"></script>
 <script>
 /* ============ Pace calculator logic ============
    ZONES, formatSeconds, zonePaceRange, focusClass, renderIntervalHtml,
@@ -470,11 +535,15 @@ function renderZones() {
           <div class="name">${z.name}</div>
           <div class="purpose">${z.purpose}</div>
         </div>
-        <div class="zone-pace">${range.label}<span class="per"> ${unitStr}</span></div>
+        <div class="zone-pace">${range.label}<span class="per"> ${unitStr}</span><span class="pct">${zonePctLabel(z)} of threshold</span></div>
       </div>
     `;
   }).join('');
   document.getElementById('zones-list').innerHTML = html;
+
+  // Visual intensity ramp above the zone list (shared renderer).
+  const scaleEl = document.getElementById('intensity-scale');
+  if (scaleEl) scaleEl.innerHTML = renderIntensityScaleHtml(ftp, state.unit);
 
   // Threshold summary
   document.getElementById('threshold-display').textContent = formatSeconds(ftp);

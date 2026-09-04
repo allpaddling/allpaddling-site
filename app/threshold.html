@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/style.css" />
-<link rel="stylesheet" href="../assets/app.css" />
+<link rel="stylesheet" href="../assets/app.css?v=20260904-tzpct" />
 <style>
   /* ==== Two-column layout: input on the left, zones panel on the right ==== */
   .threshold-grid {
@@ -27,6 +27,54 @@
      rule otherwise misses it). */
   .threshold-grid > .app-card { margin-top: 0; }
   .threshold-grid + .app-card { margin-top: 1.5rem; }
+
+
+  /* ==== Training intensity scale (5-zone %-of-threshold ramp) ==== */
+  .tz-scale { margin-bottom: 1.5rem; }
+  .tz-scale-track {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 5px; align-items: end;
+  }
+  .tz-seg { min-width: 0; text-align: center; }
+  .tz-seg-bar {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px 6px 0 0; color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .tz-seg.tz1 .tz-seg-bar { background: var(--tz1); height: 34px; }
+  .tz-seg.tz2 .tz-seg-bar { background: var(--tz2); height: 42px; }
+  .tz-seg.tz3 .tz-seg-bar { background: var(--tz3); height: 50px; }
+  .tz-seg.tz4 .tz-seg-bar { background: var(--tz4); height: 58px; }
+  .tz-seg.tz5 .tz-seg-bar { background: var(--tz5); height: 66px; }
+  .tz-seg-pct {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem; font-weight: 700;
+    padding: 0.4rem 0.1rem 0.1rem;
+  }
+  .tz-seg.tz1 .tz-seg-pct { color: var(--tz1); }
+  .tz-seg.tz2 .tz-seg-pct { color: var(--tz2); }
+  .tz-seg.tz3 .tz-seg-pct { color: var(--tz3); }
+  .tz-seg.tz4 .tz-seg-pct { color: var(--tz4); }
+  .tz-seg.tz5 .tz-seg-pct { color: var(--tz5); }
+  .tz-seg-pace { font-size: 0.7rem; color: var(--text-3); line-height: 1.35; padding: 0 0.1rem; }
+  .tz-scale-axis {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid var(--border);
+    font-size: 0.68rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-3);
+  }
+  .tz-scale-axis .mid { text-transform: none; letter-spacing: 0.02em; font-size: 0.72rem; }
+  /* Below this width the zone rows underneath carry the same numbers, so the
+     ramp would only duplicate them in a cramped 5-column grid. */
+  @media (max-width: 640px) { .tz-scale { display: none; } }
+
+  /* % of threshold under each zone's pace range */
+  .zone-pace .pct {
+    display: block; margin-top: 0.15rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem; font-weight: 600; color: var(--text-3);
+  }
 
   /* ==== Zones display (mirrors public pace-calculator visual conventions) ==== */
   .zones-list { display: grid; gap: 0.55rem; }
@@ -141,7 +189,8 @@
       <!-- ============ Derived training zones ============ -->
       <div class="app-card">
         <h2>Your training zones</h2>
-        <p class="card-sub">Computed from your threshold above. These are the pace targets every session in your plan refers to.</p>
+        <p class="card-sub">Computed from your threshold above. Each zone is a percentage of that threshold pace — these are the targets every session in your plan refers to.</p>
+        <div id="intensity-scale"></div>
         <div class="zones-list" id="zones-list"></div>
       </div>
 
@@ -172,7 +221,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../assets/program-data.js"></script>
+<script src="../assets/program-data.js?v=20260904-tzpct"></script>
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js?v=20260526-1"></script>
 <script src="../assets/published-plans.js?v=20260429-2"></script>
@@ -259,6 +308,8 @@
   function renderZones () {
     const ftpSec = hmsToSeconds();
     const u      = unitLabel(state.unit);
+    const scaleEl = document.getElementById('intensity-scale');
+    if (scaleEl) scaleEl.innerHTML = renderIntensityScaleHtml(ftpSec, state.unit);
     zonesEl.innerHTML = ZONES.map(zone => {
       const range = zonePaceRange(zone, ftpSec);
       return `
@@ -268,7 +319,7 @@
             <div class="name">${escapeHtml(zone.name)}</div>
             <div class="purpose">${escapeHtml(zone.purpose)}</div>
           </div>
-          <div class="zone-pace">${escapeHtml(range.label)}<span class="per">${escapeHtml(u)}</span></div>
+          <div class="zone-pace">${escapeHtml(range.label)}<span class="per">${escapeHtml(u)}</span><span class="pct">${escapeHtml(zonePctLabel(zone))} of threshold</span></div>
         </div>
       `;
     }).join('');
