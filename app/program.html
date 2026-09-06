@@ -163,7 +163,7 @@
 <script src="../assets/supabase-config.js"></script>
 <script src="../assets/admin.js?v=20260906-2"></script>
 <script src="../assets/published-plans.js?v=20260603-1"></script>
-<script src="../assets/app.js?v=20260906-2"></script>
+<script src="../assets/app.js?v=20260906-3"></script>
 <script>
 /* ============ Program page logic ============ */
 
@@ -228,6 +228,10 @@
   if (isPreview) {
     member.discipline = PREVIEW_DISC[previewPlanKey] || member.discipline;
   }
+  // Custom members have no Progressive discipline. Without this the
+  // title borrowed whatever discipline sat in the viewer's localStorage
+  // ("... · Prone" on a Custom plan), which reads as the wrong plan.
+  if (profile && profile.type === 'custom') member.discipline = 'Custom';
   const state  = loadMemberState();
 
   const programNum = member.currentProgram || 1;

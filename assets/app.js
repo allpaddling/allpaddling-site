@@ -811,6 +811,18 @@ async function patchSidebarWithRealName () {
         userId      = ctx.previewMember.authUserId || null;
         email       = (ctx.previewMember.email || '').toLowerCase() || null;
         billingName = (ctx.previewMember.name || '').trim() || null;
+
+        /* Patch the plan line too. It is rendered synchronously from the
+           coach's own localStorage, so a Custom member being previewed
+           was labelled with the COACH's discipline ("Progressive · Prone")
+           — confusing on a page that otherwise shows the member's data. */
+        const m = ctx.previewMember;
+        const planLabel = m.type === 'progressive'
+          ? 'Progressive · ' + (({prone:'Prone',sup:'SUP',oc:'OC',ski:'Ski'})[m.planKey] || m.planKey || '')
+          : 'Custom Plan';
+        document.querySelectorAll('.app-member-meta .plan').forEach(el => {
+          el.textContent = planLabel;
+        });
       }
     }
     if (!userId && !email) {
