@@ -4,7 +4,33 @@ Continuing AllPaddling project. The canonical project guide is `CLAUDE.md`; this
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-06-03 (Wed, pm) — Custom History survives Mick deleting past weeks
+## ⭐⭐⭐ LATEST — 2026-09-06 (Sun, pm) — Coach preview showed the coach's own plan
+
+Reported by Jake: Mick updated Daniel Lockwood's plan, and in the member preview "Current Program" looked right but **clicking into an individual session showed a completely different session**. Jake couldn't reproduce it — because he had copied the same Terrigal plan to his own Custom member row, so his own plan was byte-identical to Daniel's.
+
+### Root cause
+
+`app/session.html` called **`getCurrentMemberProfile()`** instead of `getEffectiveMemberProfile()`. The raw helper ignores the "Preview as member" flag, so while previewing, the page loaded the **signed-in coach's own plan** and indexed `?w=&s=` into it. Mick's own Custom plan is the September block, so he got a different session; Jake's is identical to Daniel's, so it looked fine.
+
+Same miss on `history.html`, `threshold.html`, `getting-started.html`. `onboarding.html` deliberately keeps the raw helper.
+
+Second, independent weakness found while investigating: the previewed member id lived in **sessionStorage only**, which is per-tab. A new tab, a bookmark or a restored tab lost it and dropped the coach onto their own plan with no banner.
+
+### Fixes
+
+- [`b8f4874`](https://github.com/allpaddling/allpaddling-site/commit/b8f4874f467c03c248caebbd19a1fb2a27915971) — preview id now also travels in the URL as `?viewAs=<memberId>`, seeded into sessionStorage on load so in-tab sidebar nav still works. `previewHref()` helper; `exitPreviewMode()` strips the param; new `getPreviewError()`. `renderPreviewBanner()` fails **loudly**: red "Preview unavailable" strip when the id no longer resolves, grey "Your own member area" strip whenever a coach is on a member page with no active preview (Mick is himself a Custom member, so his own older plan renders there). Also `await saveCustomPlan()` in the admin-edit autosave — it was un-awaited, so a failed write still flashed "All changes saved."
+- [`da1a953`](https://github.com/allpaddling/allpaddling-site/commit/da1a953750c89e0a489e3bac6bd83da1df24f461) — `getEffectiveMemberProfile()` on session / history / threshold / getting-started.
+- [`b9f6202`](https://github.com/allpaddling/allpaddling-site/commit/b9f62021fb8e5924523765acfc96cbfa1c39b9cd) — sidebar plan line and program title were rendered from the *viewer's* localStorage discipline, so a previewed Custom member was labelled "Progressive · Prone". Patched from the preview context.
+- Cache-buster `admin.js?v=20260906-1`, `app.js?v=20260906-3` on all 8 app pages.
+
+**Design rule: every `/app/*` member page must use `getEffectiveMemberProfile()`, never `getCurrentMemberProfile()`.** The raw helper fails silently — the page renders the coach's own data with nothing to indicate it.
+
+### Verification done
+
+- DB checked first: Daniel's draft and published `custom_plans` JSON were byte-identical (md5 `ffa75f0f…`), published 16:21 AEST — nothing was stuck pending publish. Same md5 as Lewis Betts and Jake, which is why Jake couldn't reproduce.
+- Live on allpaddling.online as coach: `session.html?viewAs=<Tom Pagett>&w=1&s=1` now renders Tom's 7 × (2/4/2) set, matching his DB row, instead of Jake's Terrigal session. `?viewAs=` works in a brand-new tab with empty sessionStorage. Grey "Your own member area" strip confirmed on `program.html` with no preview active.
+
+## ⭐⭐ 2026-06-03 (Wed, pm) — Custom History survives Mick deleting past weeks
 
 Mick's Custom block workflow: publish the next block (e.g. weeks 5–8), then ~a week later delete the prior weeks from the live plan so members stay focused forward. Problem reported by Jake: doing this **wiped those weeks from the member's History page**. Kanesa Seraphin was the live example — 6 completed sessions (with notes) showing as 0.
 
