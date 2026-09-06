@@ -873,11 +873,67 @@ async function patchSidebarWithRealName () {
    page. Defensive: if anything in getPreviewContext() throws or the
    flag id no longer resolves to a real member, the banner just
    silently doesn't render — preview mode is unset by the helper. */
+function mountTopStrip (id, bg, fg, borderColor, html) {
+  if (document.getElementById(id)) return null;
+  const el = document.createElement('div');
+  el.id = id;
+  el.setAttribute('role', 'status');
+  el.style.cssText = [
+    'background:' + bg,
+    'color:' + fg,
+    'border-bottom:2px solid ' + borderColor,
+    'padding:0.65rem 1rem',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'gap:0.85rem',
+    'font-size:0.9rem',
+    'font-weight:500',
+    'position:sticky',
+    'top:0',
+    'z-index:200',
+    'flex-wrap:wrap',
+  ].join(';');
+  el.innerHTML = html;
+  document.body.insertBefore(el, document.body.firstChild);
+  return el;
+}
+
 async function renderPreviewBanner () {
   if (typeof getPreviewContext !== 'function') return;
   try {
     const ctx = await getPreviewContext();
-    if (!ctx.isPreview || !ctx.previewMember) return;
+
+    if (!ctx.isPreview || !ctx.previewMember) {
+      /* A preview was asked for but couldn't be honoured — say so.
+         Previously this fell through silently and the page rendered
+         the signed-in coach's OWN plan with no banner, which looks
+         exactly like "the member's plan is out of date". */
+      const err = (typeof getPreviewError === 'function') ? getPreviewError() : null;
+      if (err === 'not-found') {
+        mountTopStrip('preview-banner-error', '#fee2e2', '#991b1b', '#ef4444',
+          '<span><strong>Preview unavailable</strong>' +
+          '<span style="opacity:0.8; margin-left:0.4rem;">That member no longer exists. You are seeing your own member area, not theirs.</span></span>' +
+          '<a href="admin-members.html" style="background:#991b1b; color:white; padding:0.3rem 0.8rem; border-radius:5px; text-decoration:none; font-size:0.85rem;">Pick a member &rarr;</a>');
+        return;
+      }
+
+      /* Not previewing at all. If the signed-in user is a coach, make
+         that unmistakable — Mick is also a Custom member, so his own
+         (older) plan renders here and is easy to mistake for the
+         member's. Members never see this strip. */
+      if (typeof isCurrentUserCoach === 'function') {
+        let isCoach = false;
+        try { isCoach = await isCurrentUserCoach(); } catch (_) { isCoach = false; }
+        if (isCoach) {
+          mountTopStrip('preview-banner-own', '#f1f5f9', '#334155', '#cbd5e1',
+            '<span><strong>Your own member area</strong>' +
+            '<span style="opacity:0.8; margin-left:0.4rem;">Not previewing anyone &mdash; this is your plan, not a member\'s.</span></span>' +
+            '<a href="admin-members.html" style="background:#334155; color:white; padding:0.3rem 0.8rem; border-radius:5px; text-decoration:none; font-size:0.85rem;">View as a member &rarr;</a>');
+        }
+      }
+      return;
+    }
 
     // Don't double-render if a banner already exists (e.g. on a
     // second mountApp call from a hot-reload edge case).

@@ -879,9 +879,31 @@ const ZONE_OPTIONS = [
         flag and bounces to admin-members.html.
    ============================================================ */
 
-const PREVIEW_FLAG_KEY = 'viewAsMemberId';
+const PREVIEW_FLAG_KEY  = 'viewAsMemberId';
+const PREVIEW_URL_PARAM = 'viewAs';
+
+/* Why the URL param exists (added 2026-09-06):
+   sessionStorage is per-TAB. If Mick opened a preview in a new tab,
+   restored a tab, or came back via a bookmark, the flag was gone and
+   the member pages silently rendered HIS OWN plan with no banner —
+   which reads as "the preview is showing an old program". Carrying the
+   member id in the URL makes a preview link survive new tabs, reloads
+   and tab restore. sessionStorage is still seeded from it on load so
+   in-tab sidebar navigation (Dashboard -> Current Program -> ...)
+   keeps working without every link needing the param. */
+function getPreviewMemberIdFromUrl () {
+  try {
+    const v = new URLSearchParams(location.search).get(PREVIEW_URL_PARAM);
+    return (v && v.trim()) ? v.trim() : null;
+  } catch (_) { return null; }
+}
 
 function getPreviewMemberIdRaw () {
+  const fromUrl = getPreviewMemberIdFromUrl();
+  if (fromUrl) {
+    setPreviewMode(fromUrl);   // seed the tab so in-tab nav keeps it
+    return fromUrl;
+  }
   try { return sessionStorage.getItem(PREVIEW_FLAG_KEY); }
   catch (_) { return null; }
 }
@@ -891,23 +913,51 @@ function setPreviewMode (memberId) {
   catch (_) { /* sessionStorage may be unavailable */ }
 }
 
+/* Build a member-page URL that carries the preview with it. */
+function previewHref (page, memberId) {
+  return page + '?' + PREVIEW_URL_PARAM + '=' + encodeURIComponent(memberId);
+}
+
 function exitPreviewMode () {
   try { sessionStorage.removeItem(PREVIEW_FLAG_KEY); }
   catch (_) { /* no-op */ }
+  // Also strip the param, otherwise a reload re-enters preview.
+  try {
+    const url = new URL(location.href);
+    if (url.searchParams.has(PREVIEW_URL_PARAM)) {
+      url.searchParams.delete(PREVIEW_URL_PARAM);
+      history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+  } catch (_) { /* no-op */ }
 }
+
+/* Set when a preview was ASKED FOR but could not be honoured, so the
+   page can say so out loud instead of quietly rendering the coach's
+   own data. Read by renderPreviewBanner() in app.js.
+     null            — nothing was requested, or it worked
+     'not-coach'     — flag present but the signed-in user isn't a coach
+     'not-found'     — member id doesn't match any member row */
+let __previewError = null;
+function getPreviewError () { return __previewError; }
 
 /* Resolve the previewed member's full record by id. Tries
    custom_members first, then progressive_members. Returns null
    if not previewing, not a coach, or member id doesn't match
    anything (in which case the stale flag is also cleared). */
 async function getPreviewContext () {
+  __previewError = null;
   const id = getPreviewMemberIdRaw();
   if (!id) return { isPreview: false, previewMember: null };
 
   // Coach gate — only coaches can preview-as-member. Non-coaches
   // get the flag silently ignored (defence-in-depth alongside RLS).
   const isCoach = await isCurrentUserCoach();
-  if (!isCoach) return { isPreview: false, previewMember: null };
+  if (!isCoach) {
+    // Don't leave a coach-only flag sitting in a member's tab.
+    exitPreviewMode();
+    __previewError = 'not-coach';
+    return { isPreview: false, previewMember: null };
+  }
 
   // Try custom_members first (Custom Plan customers).
   const { data: cm, error: cmErr } = await sb
@@ -942,8 +992,10 @@ async function getPreviewContext () {
     };
   }
 
-  // Stale flag — the member id no longer resolves. Clear it.
+  // Stale flag — the member id no longer resolves. Clear it and
+  // flag it so the page can warn rather than fall back silently.
   exitPreviewMode();
+  __previewError = 'not-found';
   return { isPreview: false, previewMember: null };
 }
 

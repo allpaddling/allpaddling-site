@@ -644,12 +644,18 @@
   if (viewAsMemberBtn) {
     if (planKey === 'custom' && member && member.id) {
       viewAsMemberBtn.addEventListener('click', () => {
+        // Belt: seed the per-tab flag. Braces: put the member id in the
+        // URL too, so the preview survives a new tab, a reload or a
+        // restored tab. Without the param a lost sessionStorage flag
+        // silently drops the coach back onto their OWN plan.
         if (typeof setPreviewMode === 'function') {
           setPreviewMode(member.id);
         } else {
           try { sessionStorage.setItem('viewAsMemberId', member.id); } catch (_) {}
         }
-        window.location.href = 'dashboard.html';
+        window.location.href = (typeof previewHref === 'function')
+          ? previewHref('dashboard.html', member.id)
+          : 'dashboard.html?viewAs=' + encodeURIComponent(member.id);
       });
     } else {
       // Hide the button for Progressive editing — there's no
@@ -1301,7 +1307,10 @@
       saveInFlight = true;
       try {
         if (planKey === 'custom') {
-          saveCustomPlan(memberId, plan);
+          // Must be awaited — without it flashSaved() fired before the
+          // write landed, so a failed save still showed "All changes
+          // saved" and the coach walked away thinking it was stored.
+          await saveCustomPlan(memberId, plan);
         } else {
           await saveProgressivePlan(planKey, plan);
         }

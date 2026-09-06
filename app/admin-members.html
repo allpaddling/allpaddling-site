@@ -1124,7 +1124,11 @@
     } else {
       try { sessionStorage.setItem('viewAsMemberId', memberId); } catch (_) {}
     }
-    window.location.href = 'dashboard.html';
+    // The id also rides in the URL so the preview survives a new tab,
+    // a reload or a restored tab — sessionStorage alone is per-tab.
+    window.location.href = (typeof previewHref === 'function')
+      ? previewHref('dashboard.html', memberId)
+      : 'dashboard.html?viewAs=' + encodeURIComponent(memberId);
   });
 
   renderTable();
