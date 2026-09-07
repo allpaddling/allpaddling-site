@@ -184,6 +184,24 @@ Deno.serve(async (req) => {
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
 
+      // Refunds. `charge.refunded` fires on the CHARGE (full or partial)
+      // and is the event that actually tells us money went back. The
+      // `refund.*` events cover a refund that later changes state — a
+      // pending bank refund that succeeds or fails days afterwards.
+      //
+      // Note: a refund does NOT cancel the subscription. Mirroring it
+      // here is a visibility feature only; stopping the billing is a
+      // separate, deliberate act.
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object as Stripe.Charge);
+        break;
+
+      case 'refund.created':
+      case 'refund.updated':
+      case 'charge.refund.updated':
+        await handleRefundChanged(event.data.object as Stripe.Refund);
+        break;
+
       default:
         console.log(`stripe-webhook: ignoring event type ${event.type}`);
     }
@@ -720,4 +738,134 @@ async function handleSubscriptionDeleted (sub: Stripe.Subscription): Promise<voi
   } catch (emailErr) {
     console.warn(`subscription-canceled email send failed for ${sub.id}:`, emailErr);
   }
+}
+
+
+// ============================================================
+// Refund handlers  (migration 029 — public.refunds)
+// ============================================================
+
+/**
+ * Resolve a Stripe customer id to the platform rows we want to hang
+ * the refund off. Best-effort by design: a refund must still be
+ * recorded even when we can't match it to a member (a customer whose
+ * subscription row was never created, or has since been deleted).
+ * Picks the most recently created subscription for that customer.
+ */
+async function resolveCustomerLinkage (
+  stripeCustomerId: string,
+): Promise<{ user_id: string | null; subscription_id: string | null }> {
+  if (!stripeCustomerId) return { user_id: null, subscription_id: null };
+
+  const { data, error } = await sb
+    .from('subscriptions')
+    .select('id, user_id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn(`refunds: subscription lookup failed for ${stripeCustomerId}: ${error.message}`);
+    return { user_id: null, subscription_id: null };
+  }
+  if (!data) {
+    console.warn(`refunds: no subscription row for customer ${stripeCustomerId} — recording refund unlinked`);
+    return { user_id: null, subscription_id: null };
+  }
+  return { user_id: data.user_id, subscription_id: data.id };
+}
+
+/**
+ * Upsert one Stripe refund into public.refunds.
+ *
+ * `stripeCustomerId` is passed in rather than read off the refund:
+ * refund.customer is null for Link and bank-debit charges, so the
+ * caller reads it off the parent charge instead.
+ *
+ * Keyed on stripe_refund_id so redelivery, the refund.updated
+ * follow-up, and the historical backfill all converge on one row.
+ */
+async function upsertRefund (refund: Stripe.Refund, stripeCustomerId: string): Promise<void> {
+  const link = await resolveCustomerLinkage(stripeCustomerId);
+
+  const { error } = await sb
+    .from('refunds')
+    .upsert({
+      stripe_refund_id:         refund.id,
+      stripe_charge_id:         typeof refund.charge === 'string' ? refund.charge : refund.charge?.id ?? null,
+      stripe_payment_intent_id: typeof refund.payment_intent === 'string'
+                                  ? refund.payment_intent
+                                  : refund.payment_intent?.id ?? null,
+      stripe_customer_id:       stripeCustomerId,
+      user_id:                  link.user_id,
+      subscription_id:          link.subscription_id,
+      amount_cents:             refund.amount,
+      currency:                 (refund.currency ?? 'aud').toLowerCase(),
+      reason:                   refund.reason ?? null,
+      status:                   refund.status ?? 'succeeded',
+      refunded_at:              new Date(refund.created * 1000).toISOString(),
+    }, { onConflict: 'stripe_refund_id' });
+
+  if (error) throw new Error(`refunds upsert failed for ${refund.id}: ${error.message}`);
+
+  console.log(
+    `refunds: ${refund.id} ${refund.status} ${refund.amount / 100} ${refund.currency} ` +
+    `customer=${stripeCustomerId} user=${link.user_id ?? 'unlinked'}`,
+  );
+}
+
+/**
+ * charge.refunded — the charge was refunded in full or in part.
+ *
+ * The `refunds` sub-list on the charge is not reliably expanded on the
+ * event payload, so we list them from the API. Every refund on the
+ * charge is upserted, which makes a second partial refund land as its
+ * own row rather than overwriting the first.
+ */
+async function handleChargeRefunded (charge: Stripe.Charge): Promise<void> {
+  const customerId = typeof charge.customer === 'string'
+    ? charge.customer
+    : charge.customer?.id ?? '';
+
+  if (!customerId) {
+    // Nothing to join on and the table requires it. Log loudly and
+    // return 200 — a Stripe retry would not produce a customer.
+    console.warn(`charge.refunded: charge ${charge.id} has no customer — skipping`);
+    return;
+  }
+
+  const refunds = await stripe.refunds.list({ charge: charge.id, limit: 100 });
+  for (const refund of refunds.data) {
+    await upsertRefund(refund, customerId);
+  }
+}
+
+/**
+ * refund.created / refund.updated / charge.refund.updated — a refund
+ * changed state after the fact (a pending bank refund settling or
+ * failing). Re-reads the charge to get the customer, since the refund
+ * object's own customer field is unreliable.
+ */
+async function handleRefundChanged (refund: Stripe.Refund): Promise<void> {
+  let customerId = typeof refund.customer === 'string'
+    ? refund.customer
+    : refund.customer?.id ?? '';
+
+  if (!customerId) {
+    const chargeId = typeof refund.charge === 'string' ? refund.charge : refund.charge?.id ?? '';
+    if (!chargeId) {
+      console.warn(`refund ${refund.id}: no customer and no charge — skipping`);
+      return;
+    }
+    const charge = await stripe.charges.retrieve(chargeId);
+    customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id ?? '';
+  }
+
+  if (!customerId) {
+    console.warn(`refund ${refund.id}: could not resolve a customer — skipping`);
+    return;
+  }
+
+  await upsertRefund(refund, customerId);
 }

@@ -243,6 +243,20 @@
   .pay-badge.canceled   { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
   .pay-badge.unknown    { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
 
+  /* Refund badge — surfaces "has this member been refunded?", which is a
+     separate axis from subscription status. A refund does NOT cancel a
+     subscription in Stripe, so a member can be Refunded AND still Paid;
+     the two pills sit side by side on purpose rather than one overriding
+     the other. Violet keeps it distinct from the green/amber/red/gray of
+     the payment pill. Source: public.refunds (migration 029), populated
+     by the stripe-webhook on charge.refunded. */
+  .refund-badge {
+    display: inline-block; margin-top: 0.2rem; margin-left: 0.3rem;
+    padding: 0.1rem 0.45rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em;
+    background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe;
+  }
+
   /* Elite Team badge — complimentary members, coach-visible only */
   .elite-badge {
     display: inline-block; margin-top: 0.2rem; margin-left: 0.3rem;
@@ -530,7 +544,7 @@
   // custom_plans keys on custom_members.id (not auth.users) — used to surface
   // each Custom member's plan status (Published / Draft / Awaiting) directly
   // in the row so Mick can see at a glance who's still waiting on his work.
-  const [, , profilesRes, subsRes, coachesRes, customPlansRes] = await Promise.all([
+  const [, , profilesRes, subsRes, coachesRes, customPlansRes, refundsRes] = await Promise.all([
     loadProgressiveMembers(),
     loadCustomData(),
     sb.from('member_profiles')
@@ -539,11 +553,16 @@
       .select('user_id, status, current_period_end, cancel_at, cancel_unlocks_at, cancel_at_period_end, pause_resumes_at'),
     sb.from('coaches').select('email'),
     sb.from('custom_plans').select('member_id, published_at, last_edited'),
+    // Refunds (migration 029). Coach-readable via the refunds_coach_select
+    // RLS policy. A member can have more than one row (partial refunds, or
+    // several months refunded at once), so these are grouped, not indexed.
+    sb.from('refunds').select('user_id, amount_cents, currency, refunded_at, status'),
   ]);
   if (profilesRes.error)    console.warn('admin-members: member_profiles load failed', profilesRes.error);
   if (subsRes.error)        console.warn('admin-members: subscriptions load failed', subsRes.error);
   if (coachesRes.error)     console.warn('admin-members: coaches load failed', coachesRes.error);
   if (customPlansRes.error) console.warn('admin-members: custom_plans load failed', customPlansRes.error);
+  if (refundsRes.error)     console.warn('admin-members: refunds load failed', refundsRes.error);
 
   // Coaches (Mick + Jake) are seeded as Progressive members so they can
   // preview the member-side UI. Those progressive rows are staff/test rows
@@ -569,6 +588,14 @@
   // Index custom_plans rows by their custom_members.id (member_id col).
   const planByCustomMember = Object.create(null);
   for (const cp of (customPlansRes.data || [])) planByCustomMember[cp.member_id] = cp;
+  // Group refunds by user_id — a member can have several. Only 'succeeded'
+  // rows count toward the badge; a pending or failed refund hasn't actually
+  // returned the money and would mislead Mick if it showed as refunded.
+  const refundsByUser = Object.create(null);
+  for (const r of (refundsRes.data || [])) {
+    if (!r.user_id || r.status !== 'succeeded') continue;
+    (refundsByUser[r.user_id] || (refundsByUser[r.user_id] = [])).push(r);
+  }
 
   const PROGRESSIVE_LABELS = { prone: 'Prone', sup: 'SUP', oc: 'OC', ski: 'Ski' };
 
@@ -636,6 +663,27 @@
     return null;
   }
 
+  // Refund summary for the badge. Returns null when the member has no
+  // succeeded refunds. Amounts are the AUD settlement figures stored in
+  // public.refunds — deliberately NOT the member's presentment currency,
+  // which is what Mick reconciles against in Stripe.
+  function deriveRefundStatus (rows) {
+    if (!rows || !rows.length) return null;
+    const totalCents = rows.reduce((sum, r) => sum + (r.amount_cents || 0), 0);
+    const latest = rows
+      .map(r => r.refunded_at)
+      .filter(Boolean)
+      .sort()
+      .pop() || null;
+    return {
+      count: rows.length,
+      totalCents,
+      latest,
+      label: 'Refunded $' + (totalCents / 100).toFixed(2).replace(/\.00$/, '')
+             + (rows.length > 1 ? ` (${rows.length})` : ''),
+    };
+  }
+
   // Elite Team — complimentary members. Badge shown in admin portal only.
   const ELITE_TEAM_EMAILS = new Set([
     'charlie.verco@gmail.com',
@@ -686,6 +734,7 @@
       planStatus:    planStatus,  // 'published' | 'draft' | 'awaiting' | null
       publishedAt:   publishedAt, // ISO string | null (Custom only)
       paymentStatus: derivePaymentStatus(sub),  // { state, label } | null
+      refundStatus:  deriveRefundStatus(userId ? refundsByUser[userId] : null), // { count, totalCents, latest, label } | null
       isElite:       ELITE_TEAM_EMAILS.has((m.email || '').toLowerCase()),
       isCoach:       isCoachEmail(m.email),
     };
@@ -985,6 +1034,20 @@
         payBadge = `<span class="pay-badge ${ps.state}" title="${escapeHtml(title)}">${escapeHtml(ps.label)}</span>`;
       }
 
+      // Refund badge. Independent of the payment pill above: refunding a
+      // charge in Stripe does not touch the subscription, so a member can
+      // legitimately show "Refunded $140" next to "Paid → 1 Oct" — which is
+      // exactly the state Mick needs to notice and act on.
+      let refundBadge = '';
+      if (m.refundStatus) {
+        const rs = m.refundStatus;
+        const when = rs.latest ? fmtShortDate(rs.latest) : '';
+        const title = rs.count > 1
+          ? `${rs.count} refunds totalling $${(rs.totalCents / 100).toFixed(2)} AUD — most recent ${when}`
+          : `Refunded $${(rs.totalCents / 100).toFixed(2)} AUD on ${when}`;
+        refundBadge = `<span class="refund-badge" title="${escapeHtml(title)}">${escapeHtml(rs.label)}</span>`;
+      }
+
       const eliteBadge = m.isElite
         ? `<span class="elite-badge" title="Elite Team — complimentary access">Elite Team</span>`
         : '';
@@ -1057,7 +1120,7 @@
                 <div class="name">${escapeHtml(m.name)}</div>
                 <div class="email">${escapeHtml(m.email)}</div>
                 <div style="margin-top:0.2rem;">
-                  ${onboardingBadge}${planBadge}${payBadge}${eliteBadge}${coachBadge}
+                  ${onboardingBadge}${planBadge}${payBadge}${refundBadge}${eliteBadge}${coachBadge}
                 </div>
               </div>
             </div>
