@@ -242,6 +242,7 @@
   .pay-badge.failed     { background: #fee2e2; color: #991b1b; }
   .pay-badge.canceled   { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
   .pay-badge.unknown    { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+  .pay-badge.complimentary { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
 
   /* Refund badge — surfaces "has this member been refunded?", which is a
      separate axis from subscription status. A refund does NOT cancel a
@@ -1019,8 +1020,16 @@
       // next block. The tooltip carries the more descriptive copy
       // ("Subscription renews on …", "Payment failed — needs attention",
       // etc.) so the pill itself can stay compact.
+      // Coaches get complimentary, permanent access — their entitlement does
+      // not come from Stripe (see is_coach() / migration 030). Showing them a
+      // "Cancelled" pill because their own subscription was closed is simply
+      // wrong, so coach rows get a neutral Complimentary pill instead. The
+      // refund pill below still renders for them: if money went back to a
+      // coach, that's a fact worth seeing.
       let payBadge = '';
-      if (m.paymentStatus) {
+      if (m.isCoach) {
+        payBadge = `<span class="pay-badge complimentary" title="Coach — complimentary permanent access, not billed through Stripe">Complimentary</span>`;
+      } else if (m.paymentStatus) {
         const ps = m.paymentStatus;
         const titles = {
           active:     'Subscription active — paid through the date shown',
