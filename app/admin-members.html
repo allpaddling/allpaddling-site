@@ -809,13 +809,22 @@
   const recentSubEl = document.querySelector('#stat-row .stat-tile:last-child .breakdown');
   if (recentSubEl && recentSubBits.length) recentSubEl.innerHTML = recentSubBits.join('');
 
-  // Tab counts — active excludes fully-cancelled subscriptions
-  const cancelledCount  = allMembers.filter(m => m.subStatus === 'canceled').length;
-  const activeCount     = allMembers.filter(m => m.subStatus !== 'canceled').length;
-  const payingCount     = allMembers.filter(m => m.subStatus !== 'canceled' && !m.isElite && !m.isCoach).length;
-  const activeProgCount = allMembers.filter(m => m.type === 'progressive' && m.subStatus !== 'canceled').length;
-  const activeCustCount = allMembers.filter(m => m.type === 'custom' && m.subStatus !== 'canceled').length;
-  const activeAwaitCount = allMembers.filter(m => m.type === 'custom' && m.planStatus === 'awaiting' && m.subStatus !== 'canceled').length;
+  // Tab counts — active excludes fully-cancelled subscriptions.
+  //
+  // Coaches are never counted as cancelled. Their access is complimentary
+  // and permanent and does not come from Stripe (is_coach() / migration
+  // 030), so the state of a coach's own subscription row says nothing
+  // about whether they're an active member. Mick is both a coach and a
+  // real signed-up member; when his subscription was closed he dropped
+  // into the Cancelled tab, which is simply the wrong answer.
+  const isCancelledMember = (m) => m.subStatus === 'canceled' && !m.isCoach;
+  const isActiveMember    = (m) => !isCancelledMember(m);
+  const cancelledCount  = allMembers.filter(isCancelledMember).length;
+  const activeCount     = allMembers.filter(isActiveMember).length;
+  const payingCount     = allMembers.filter(m => isActiveMember(m) && !m.isElite && !m.isCoach).length;
+  const activeProgCount = allMembers.filter(m => m.type === 'progressive' && isActiveMember(m)).length;
+  const activeCustCount = allMembers.filter(m => m.type === 'custom' && isActiveMember(m)).length;
+  const activeAwaitCount = allMembers.filter(m => m.type === 'custom' && m.planStatus === 'awaiting' && isActiveMember(m)).length;
   document.getElementById('count-active').textContent      = activeCount;
   document.getElementById('count-paying').textContent      = payingCount;
   document.getElementById('count-progressive').textContent = activeProgCount;
@@ -932,7 +941,9 @@
 
   function renderTable () {
     const q = searchEl.value.trim().toLowerCase();
-    const isCancelled = (m) => m.subStatus === 'canceled';
+    // Same coach carve-out as the tab counts above — a coach never lands
+    // in the Cancelled tab on the strength of their own Stripe row.
+    const isCancelled = (m) => m.subStatus === 'canceled' && !m.isCoach;
     const filtered = allMembers.filter(m => {
       // 'cancelled' tab: only fully-cancelled subscriptions.
       if (activeFilter === 'cancelled') {
