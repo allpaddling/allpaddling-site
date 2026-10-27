@@ -225,7 +225,8 @@
                               cadence via the trial_end trick — they're
                               still paid through period_end)
        * 'cancelling' — amber: cancel_at_period_end is true, ends DD MMM
-       * 'paused'     — amber: subscription paused, resumes DD MMM
+       * 'paused'     — amber: subscription paused (is_paused), resumes DD MMM
+                              or "no resume date" for open-ended pauses
        * 'failed'     — red:   status is past_due or unpaid
        * 'canceled'   — gray:  subscription fully cancelled
        * 'unknown'    — gray:  active/trialing but no period_end (data gap)
@@ -551,7 +552,7 @@
     sb.from('member_profiles')
       .select('user_id, preferred_name, family_name, completed_onboarding_at, goal_race_name, goal_race_date, weekly_training_hours, ability_level'),
     sb.from('subscriptions')
-      .select('user_id, status, current_period_end, cancel_at, cancel_unlocks_at, cancel_at_period_end, pause_resumes_at'),
+      .select('user_id, status, current_period_end, cancel_at, cancel_unlocks_at, cancel_at_period_end, pause_resumes_at, is_paused, paid_through'),
     sb.from('coaches').select('email'),
     sb.from('custom_plans').select('member_id, published_at, last_edited'),
     // Refunds (migration 029). Coach-readable via the refunds_coach_select
@@ -635,15 +636,33 @@
   // (past_due / unpaid) override everything else so Mick can't miss them.
   function derivePaymentStatus (sub) {
     if (!sub) return null;
-    const periodEnd = sub.current_period_end;
+    // paid_through (migration 031) is the end of the last period actually
+    // paid for. Prefer it over current_period_end, which Stripe keeps
+    // advancing even while a paused subscription is creating uncharged
+    // draft invoices — that's what made paused members read "Paid → next
+    // month" before 2026-10-27.
+    const periodEnd = sub.paid_through || sub.current_period_end;
     if (sub.status === 'past_due' || sub.status === 'unpaid') {
       return { state: 'failed', label: 'Payment failed' };
     }
     if (sub.status === 'canceled') {
       return { state: 'canceled', label: 'Cancelled' };
     }
-    if (sub.pause_resumes_at) {
-      return { state: 'paused', label: 'Paused → ' + fmtShortDate(sub.pause_resumes_at) };
+    // is_paused covers pauses with AND without a resume date. Checking only
+    // pause_resumes_at missed open-ended pauses (e.g. set in the Stripe
+    // dashboard), which then fell through to "Paid →" below.
+    if (sub.is_paused || sub.pause_resumes_at) {
+      const base = sub.pause_resumes_at
+        ? 'Paused → ' + fmtShortDate(sub.pause_resumes_at)
+        : 'Paused · no resume date';
+      return { state: 'paused', label: sub.cancel_at ? base + ' · cancels ' + fmtShortDate(sub.cancel_at) : base };
+    }
+    // Safety net: not paused, not failed, but nothing has been paid for the
+    // current period (e.g. an invoice left in draft). Flag it rather than
+    // implying the member is paid up. One day of grace covers the gap
+    // between a renewal invoice being created and charged.
+    if (sub.paid_through && Date.parse(sub.paid_through) < Date.now() - 24 * 3600 * 1000) {
+      return { state: 'failed', label: 'Unpaid since ' + fmtShortDate(sub.paid_through) };
     }
     if (sub.cancel_at_period_end && periodEnd) {
       return { state: 'cancelling', label: 'Cancels ' + fmtShortDate(periodEnd) };
@@ -1045,7 +1064,7 @@
         const titles = {
           active:     'Subscription active — paid through the date shown',
           cancelling: 'Cancels at end of current billing period',
-          paused:     'Subscription paused — resumes on the date shown',
+          paused:     'Subscription paused — not being billed. Resumes on the date shown, or when resumed manually if there is no date.',
           failed:     'Payment failed — needs attention before publishing',
           canceled:   'Subscription cancelled',
           unknown:    'Active subscription but renewal date is missing in our records',

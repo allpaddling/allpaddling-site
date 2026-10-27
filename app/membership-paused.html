@@ -179,7 +179,7 @@
   // Look up subscription state.
   const { data: subRow } = await sb
     .from('subscriptions')
-    .select('status, stripe_subscription_id, current_period_end, canceled_at, pause_resumes_at, cancel_at_period_end, stripe_price_id, progressive_member_id, custom_member_id')
+    .select('status, stripe_subscription_id, current_period_end, canceled_at, pause_resumes_at, cancel_at_period_end, stripe_price_id, progressive_member_id, custom_member_id, is_paused, paid_through')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -206,7 +206,8 @@
   // ---- State render ----
   const status = subRow.status;
   const isCanceled  = status === 'canceled' || status === 'incomplete_expired';
-  const isPaused    = status === 'paused';
+  // is_paused (migration 031): Stripe pause_collection leaves status='active'.
+  const isPaused    = !isCanceled && (status === 'paused' || subRow.is_paused === true);
   const isUnpaid    = status === 'unpaid';
   const isPastDue   = status === 'past_due';
 
@@ -218,9 +219,10 @@
 
   if (isPaused) {
     // Headline + body already match this state in the HTML — no change needed.
-    if (subRow.current_period_end) {
+    const pausedSince = subRow.paid_through || subRow.current_period_end;
+    if (pausedSince) {
       document.getElementById('kv-paused-row').style.display = 'flex';
-      document.getElementById('kv-paused').textContent = fmtDate(subRow.current_period_end);
+      document.getElementById('kv-paused').textContent = fmtDate(pausedSince);
     }
     if (subRow.pause_resumes_at) {
       document.getElementById('kv-resume-row').style.display = 'flex';

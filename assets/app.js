@@ -749,19 +749,26 @@ async function enforceMemberGates () {
     // Active with pause_collection scheduled → allow until period ends.
     // Status='past_due'            → lock (payment failed; no grace period).
     // Status='paused'              → lock (Stripe activated the pause).
+    // is_paused (pause_collection, with or without a resume date)
+    //                               → allow until paid_through, then lock.
+    //   Stripe leaves these at status='active', so checking status alone
+    //   never locked a paused member (2026-10-27 incident, migration 031).
     // Status='canceled'            → lock (sub deleted; access ended).
     // Status='unpaid' / 'incomplete_expired' → lock (defensive).
     // No subscriptions row found = legacy member (manually-added by Mick) → fall through.
     const { data: subRow } = await sb
       .from('subscriptions')
-      .select('status')
+      .select('status, is_paused, paid_through, current_period_end')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (subRow) {
       const blockedStatuses = ['past_due', 'paused', 'canceled', 'unpaid', 'incomplete_expired'];
-      if (blockedStatuses.includes(subRow.status)) {
+      const paidUntil = subRow.paid_through || subRow.current_period_end;
+      const pausedAndLapsed = subRow.is_paused === true
+        && (!paidUntil || Date.parse(paidUntil) <= Date.now());
+      if (blockedStatuses.includes(subRow.status) || pausedAndLapsed) {
         location.href = '/app/membership-paused.html';
         return;
       }

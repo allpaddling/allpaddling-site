@@ -347,7 +347,7 @@
     loadProgressiveMembers(),
     loadCustomData(),
     sb.from('member_profiles').select('user_id, completed_onboarding_at'),
-    sb.from('subscriptions').select('user_id, status, cancel_at_period_end, pause_resumes_at, custom_member_id, progressive_member_id'),
+    sb.from('subscriptions').select('user_id, status, cancel_at_period_end, pause_resumes_at, is_paused, custom_member_id, progressive_member_id'),
     sb.from('coaches').select('email'),
     sb.from('custom_plans').select('member_id, published_at'),
   ]);
@@ -449,10 +449,13 @@
       : `<span>No Custom members yet</span>`;
 
   // Tile 3: Paused memberships
-  const pausedSubs = subs.filter(s => s.status === 'paused');
+  // Stripe's pause_collection leaves status='active', so status==='paused'
+  // alone always counted 0. is_paused (migration 031) is the real signal.
+  const isPausedSub = s => s.status !== 'canceled' && (s.status === 'paused' || s.is_paused === true);
+  const pausedSubs = subs.filter(isPausedSub);
   document.getElementById('t-paused').textContent = pausedSubs.length;
   document.getElementById('t-paused-sub').innerHTML = pausedSubs.length > 0
-    ? `<span>Access suspended until resume</span>`
+    ? `<span>Not being billed — don't publish new programs</span>`
     : `<span>No paused memberships</span>`;
 
   // Tile 4: Cancelling at period end (cancel_at_period_end = true, still active)
@@ -472,7 +475,7 @@
       ? subByCustomId.get(m.id)
       : subByProgressiveId.get(m.id);
     if (!sub) return '';
-    if (sub.status === 'paused') return '<span class="pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db;">Paused</span>';
+    if (isPausedSub(sub)) return '<span class="pill" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db;">Paused</span>';
     if (sub.cancel_at_period_end) return '<span class="pill" style="background:#fef3c7;color:#92400e;">Cancelling</span>';
     if (sub.status === 'past_due') return '<span class="pill" style="background:#fee2e2;color:#991b1b;">Past due</span>';
     return '';

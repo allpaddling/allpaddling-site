@@ -321,7 +321,7 @@
   // member's subscription row, not their own (or no row at all).
   const { data: subRow } = await sb
     .from('subscriptions')
-    .select('id, stripe_subscription_id, status, current_period_end, canceled_at, cancel_at_period_end, pause_resumes_at')
+    .select('id, stripe_subscription_id, status, current_period_end, canceled_at, cancel_at_period_end, pause_resumes_at, is_paused, paid_through')
     .eq('user_id', effectiveUserId || userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -337,20 +337,27 @@
     uiState = 'canceled';
   } else if (subRow.status === 'past_due' || subRow.status === 'unpaid') {
     uiState = 'past_due';
-  } else if (subRow.status === 'paused') {
+  } else if (subRow.status === 'paused' || (subRow.is_paused && !isWithinPaidPeriod(subRow))) {
+    // is_paused (migration 031) covers pauses with no resume date, which
+    // Stripe leaves at status='active'. Once the paid period is used up the
+    // member is genuinely paused; before that the pause is just scheduled.
     uiState = 'paused';
   } else if (subRow.cancel_at_period_end) {
     uiState = 'cancel_scheduled';
-  } else if (subRow.pause_resumes_at || (subRow.status === 'active' && hasPauseScheduled(subRow))) {
+  } else if (subRow.is_paused || subRow.pause_resumes_at || (subRow.status === 'active' && hasPauseScheduled(subRow))) {
     uiState = 'pause_scheduled';
   } else {
     uiState = 'active';
   }
 
-  // We can't read pause_collection.behavior from the subscriptions row (we only mirror resumes_at).
-  // For now, infer "pause scheduled" from non-null pause_resumes_at, OR we accept a small UI lag.
+  // is_paused is the primary signal now (migration 031); pause_resumes_at
+  // is kept as a fallback for rows the webhook hasn't touched since.
   function hasPauseScheduled (row) {
-    return !!row.pause_resumes_at;
+    return !!row.is_paused || !!row.pause_resumes_at;
+  }
+  function isWithinPaidPeriod (row) {
+    const until = row.paid_through || row.current_period_end;
+    return !!until && Date.parse(until) > Date.now();
   }
 
   // ---- Render ----
@@ -429,7 +436,7 @@
       banner.innerHTML = `Your membership is paused. You won't be charged, and the program is locked until you resume. Auto-resume is set for ${resumeStr} — you can resume earlier any time.`;
       document.getElementById('row-next-billing').style.display = 'none';
       document.getElementById('row-paused-since').style.display = 'grid';
-      document.getElementById('sub-paused-since').textContent = fmtDate(row.current_period_end);
+      document.getElementById('sub-paused-since').textContent = fmtDate(row.paid_through || row.current_period_end);
       if (row.pause_resumes_at) {
         document.getElementById('row-pause-resumes').style.display = 'grid';
         document.getElementById('sub-pause-resumes').textContent = fmtDate(row.pause_resumes_at);
@@ -628,9 +635,9 @@
       if (!row) return false;
       switch (action) {
         case 'pause':
-          return payload?.resumes_at ? row.pause_resumes_at !== null : true;
+          return row.is_paused === true;
         case 'resume':
-          return row.pause_resumes_at === null;
+          return row.is_paused === false;
         case 'cancel':
           return row.cancel_at_period_end === true;
         case 'undo_cancel':
@@ -645,7 +652,7 @@
       await new Promise((r) => setTimeout(r, 600));
       const { data: row } = await sb
         .from('subscriptions')
-        .select('cancel_at_period_end, pause_resumes_at')
+        .select('cancel_at_period_end, pause_resumes_at, is_paused')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)

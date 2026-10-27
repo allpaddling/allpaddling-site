@@ -489,7 +489,7 @@ async function handleInvoicePaid (invoice: Stripe.Invoice): Promise<void> {
   // (we only want to set first_paid_at + cancel_unlocks_at once).
   const { data: existing, error: lookupErr } = await sb
     .from('subscriptions')
-    .select('first_paid_at')
+    .select('first_paid_at, paid_through')
     .eq('stripe_subscription_id', subscriptionId)
     .maybeSingle();
   if (lookupErr) throw new Error(`invoice.paid lookup: ${lookupErr.message}`);
@@ -510,6 +510,18 @@ async function handleInvoicePaid (invoice: Stripe.Invoice): Promise<void> {
     current_period_start:  periodStart ? new Date(periodStart * 1000).toISOString() : null,
     current_period_end:    periodEnd   ? new Date(periodEnd   * 1000).toISOString() : null,
   };
+
+  // paid_through — the honest "paid until" date (migration 031). Only a
+  // PAID invoice moves it, and it never moves backwards (replays / out-of-
+  // order deliveries). current_period_end can't be used for this: Stripe
+  // keeps advancing it while pause_collection is creating draft invoices
+  // that are never charged (2026-10-27 incident).
+  if (periodEnd) {
+    const prevPaidThrough = existing.paid_through ? Date.parse(existing.paid_through) : 0;
+    if (periodEnd * 1000 > prevPaidThrough) {
+      updates.paid_through = new Date(periodEnd * 1000).toISOString();
+    }
+  }
 
   // First-time payment? Set the lock window.
   if (!existing.first_paid_at) {
@@ -655,6 +667,12 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
     pause_resumes_at:     sub.pause_collection?.resumes_at
                             ? new Date(sub.pause_collection.resumes_at * 1000).toISOString()
                             : null,
+    // is_paused (migration 031) — the source of truth for "is this member
+    // paused". pause_resumes_at alone can't express an open-ended pause
+    // (resumes_at = null), which is how pauses set directly in the Stripe
+    // dashboard usually look. Those members showed as paid/active in the
+    // platform until 2026-10-27.
+    is_paused:            !!sub.pause_collection,
   };
   if (!isDowngrade) {
     updates.status = sub.status;
@@ -672,7 +690,11 @@ async function handleSubscriptionUpdated (sub: Stripe.Subscription): Promise<voi
       ? `status kept as ${existing.status} (refused downgrade to ${sub.status})`
       : sub.status) +
     (sub.cancel_at_period_end ? ' [cancel_at_period_end=true]' : '') +
-    (sub.pause_collection?.resumes_at ? ` [pause_resumes_at=${new Date(sub.pause_collection.resumes_at * 1000).toISOString()}]` : '')
+    (sub.pause_collection
+      ? (sub.pause_collection.resumes_at
+          ? ` [paused, resumes ${new Date(sub.pause_collection.resumes_at * 1000).toISOString()}]`
+          : ' [paused, no resume date]')
+      : '')
   );
 
   // Auto-resume detection: fire subscription-resumed email when Stripe
