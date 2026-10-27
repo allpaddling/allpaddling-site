@@ -4,7 +4,30 @@ Continuing AllPaddling project. The canonical project guide is `CLAUDE.md`; this
 
 ---
 
-## ⭐⭐⭐ LATEST — 2026-09-06 (Sun, pm) — Coach preview showed the coach's own plan
+## ⭐⭐⭐ LATEST — 2026-10-27 (Tue) — Paused members showed as paid/active
+
+Reported by Jake: Ben Schlesier and Brad Morales-McGibben hadn't paid since August but the platform still showed them active, so Mick kept publishing their programs. George Loren's pause (until Jan) *did* show.
+
+### Root cause
+
+We only mirrored Stripe `pause_collection.resumes_at` into `subscriptions.pause_resumes_at`. A pause with **no resume date** (how pauses set directly in the Stripe dashboard look) stored NULL — identical to "not paused". Stripe keeps such subs at `status='active'` and keeps rolling `current_period_end` forward while invoices sit in **draft** (`keep_as_draft`), so: members list said "Paid → next month", Overview "Paused" tile checked `status='paused'` (never set by pause_collection → always 0), and neither `enforceMemberGates()` nor `current_member_plan_blocked()` ever locked a paused member.
+
+Affected on the day: 7 paused subs (Ian Ferrell, Brad, Ben, George Loren, Cole Klick, Robb Eichelberger, Matt Hounsome); ~A$1,400 of draft invoices never charged. Mick separately set cancel dates on Brad (1 Nov) and Ben (6 Nov) in Stripe.
+
+### Fixes (commit `96405a1`)
+
+- **Migration 031** (applied): `subscriptions.is_paused` (true whenever pause_collection is set) + `paid_through` (end of last period covered by a PAID invoice; monotonic). Backfilled from live Stripe.
+- **Migration 032** (applied): `current_member_plan_blocked()` also blocks when `is_paused` and `paid_through <= now()`.
+- **stripe-webhook v32** (deployed, `verify_jwt: false` verified, live event processed OK): sets `is_paused` on `customer.subscription.updated`, `paid_through` on `invoice.paid`. ⚠️ The deployed bundle's `_shared/email.ts` is a one-line shim re-exporting the file from GitHub commit `3bd4e2c` (byte-identical to what was live) — the next normal `supabase functions deploy stripe-webhook --no-verify-jwt` from this folder replaces it with the real file. No action needed.
+- **Frontend**: admin-members badge ("Paused · no resume date", "Paused → 3 Jan", "· cancels 6 Nov"; "Paid →" uses `paid_through`; red "Unpaid since …" safety net), admin-overview tile/badge, app.js gate, settings, membership-paused all read `is_paused`. Cache-buster `app.js?v=20261027-1` on all 8 member pages.
+
+### Rule going forward
+
+Use `is_paused` — never `pause_resumes_at` or `status='paused'` alone — to decide whether a member is paused. Use `paid_through`, not `current_period_end`, for "paid until".
+
+---
+
+## ⭐⭐⭐ PREVIOUS — 2026-09-06 (Sun, pm) — Coach preview showed the coach's own plan
 
 Reported by Jake: Mick updated Daniel Lockwood's plan, and in the member preview "Current Program" looked right but **clicking into an individual session showed a completely different session**. Jake couldn't reproduce it — because he had copied the same Terrigal plan to his own Custom member row, so his own plan was byte-identical to Daniel's.
 
