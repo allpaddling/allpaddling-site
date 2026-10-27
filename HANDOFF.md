@@ -21,6 +21,12 @@ Affected on the day: 7 paused subs (Ian Ferrell, Brad, Ben, George Loren, Cole K
 - **stripe-webhook v32** (deployed, `verify_jwt: false` verified, live event processed OK): sets `is_paused` on `customer.subscription.updated`, `paid_through` on `invoice.paid`. ⚠️ The deployed bundle's `_shared/email.ts` is a one-line shim re-exporting the file from GitHub commit `3bd4e2c` (byte-identical to what was live) — the next normal `supabase functions deploy stripe-webhook --no-verify-jwt` from this folder replaces it with the real file. No action needed.
 - **Frontend**: admin-members badge ("Paused · no resume date", "Paused → 3 Jan", "· cancels 6 Nov"; "Paid →" uses `paid_through`; red "Unpaid since …" safety net), admin-overview tile/badge, app.js gate, settings, membership-paused all read `is_paused`. Cache-buster `app.js?v=20261027-1` on all 8 member pages.
 
+### Follow-up same day — write-off + pause behaviour
+
+- Jake/Mick decided not to charge paused members. All 10 draft invoices (A$1,400) were **voided** (subscription drafts can't be deleted; each was finalized with `auto_advance:false` and voided immediately — PaymentIntents cancelled `void_invoice`, no charges). Done via a one-off Edge Function `oneoff-writeoff-paused`, now a 410 stub (safe to delete).
+- All 7 current pauses switched from `keep_as_draft` to **`behavior: 'void'`** (resume dates kept).
+- `manage-subscription` (v6) and `coach-manage-subscription` (v2) now pause with `void`. ⚠️ `manage-subscription`'s deployed `_shared/email.ts` is the same GitHub-pinned shim as stripe-webhook; a normal redeploy from this folder replaces it.
+
 ### Rule going forward
 
 Use `is_paused` — never `pause_resumes_at` or `status='paused'` alone — to decide whether a member is paused. Use `paid_through`, not `current_period_end`, for "paid until".

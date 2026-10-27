@@ -169,12 +169,14 @@ Deno.serve(async (req) => {
   try {
     switch (body.action) {
       case 'pause': {
-        // pause_collection with behavior:keep_as_draft means Stripe
-        // will skip future invoices entirely (no charge, no draft
-        // accumulation) until pause is removed.
+        // pause_collection with behavior:void — Stripe still creates each
+        // cycle's invoice but voids it immediately: no charge, no draft
+        // accumulation, until pause is removed. (Was keep_as_draft until
+        // 2026-10-27, which piled up uncharged drafts and made paused
+        // members look like they owed money.)
         const params: Stripe.SubscriptionUpdateParams = {
           pause_collection: {
-            behavior: 'keep_as_draft',
+            behavior: 'void',
           },
         };
         if (body.resumes_at) {
@@ -241,7 +243,7 @@ Deno.serve(async (req) => {
         // Must already be paused — Stripe will reject otherwise.
         await stripe.subscriptions.update(subscriptionId, {
           pause_collection: {
-            behavior: 'keep_as_draft',
+            behavior: 'void',
             resumes_at: ts,
           },
         });

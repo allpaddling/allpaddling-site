@@ -275,7 +275,9 @@ Deno.serve(async (req) => {
 
       case 'pause': {
         const params: Stripe.SubscriptionUpdateParams = {
-          pause_collection: { behavior: 'keep_as_draft' },
+          // void (not keep_as_draft): each paused cycle's invoice is voided
+          // instead of piling up as an uncharged draft. Changed 2026-10-27.
+          pause_collection: { behavior: 'void' },
         };
         if (resumes_at) {
           const ts = parseIsoToUnix(resumes_at);
