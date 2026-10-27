@@ -462,7 +462,8 @@
     <div class="filter-bar">
       <div class="filter-tabs" role="tablist" aria-label="Filter by plan type">
         <button type="button" class="filter-tab active" data-filter="active" role="tab" aria-selected="true">Active <span class="count" id="count-active">0</span></button>
-        <button type="button" class="filter-tab" data-filter="paying" role="tab" aria-selected="false" title="Active members excluding Elite Team and coaches — your paying customers">Paying <span class="count" id="count-paying">0</span></button>
+        <button type="button" class="filter-tab" data-filter="paying" role="tab" aria-selected="false" title="Active members excluding Elite Team, coaches and paused members — your paying customers">Paying <span class="count" id="count-paying">0</span></button>
+        <button type="button" class="filter-tab" data-filter="paused" role="tab" aria-selected="false" title="Billing paused in Stripe — not being charged, so don't publish new programs">Paused <span class="count" id="count-paused">0</span></button>
         <button type="button" class="filter-tab" data-filter="progressive" role="tab" aria-selected="false">Progressive <span class="count" id="count-progressive">0</span></button>
         <button type="button" class="filter-tab" data-filter="custom" role="tab" aria-selected="false">Custom <span class="count" id="count-custom">0</span></button>
         <button type="button" class="filter-tab" data-filter="awaiting-plan" role="tab" aria-selected="false" title="Custom members whose plan hasn't been published yet">Awaiting plan <span class="count" id="count-awaiting">0</span></button>
@@ -838,14 +839,19 @@
   // into the Cancelled tab, which is simply the wrong answer.
   const isCancelledMember = (m) => m.subStatus === 'canceled' && !m.isCoach;
   const isActiveMember    = (m) => !isCancelledMember(m);
+  // Paused = Stripe pause_collection set (is_paused, migration 031). Shares
+  // the badge logic so the tab and the row pill can never disagree.
+  const isPausedMember    = (m) => isActiveMember(m) && !m.isCoach && m.paymentStatus?.state === 'paused';
+  const pausedCount     = allMembers.filter(isPausedMember).length;
   const cancelledCount  = allMembers.filter(isCancelledMember).length;
   const activeCount     = allMembers.filter(isActiveMember).length;
-  const payingCount     = allMembers.filter(m => isActiveMember(m) && !m.isElite && !m.isCoach).length;
+  const payingCount     = allMembers.filter(m => isActiveMember(m) && !m.isElite && !m.isCoach && !isPausedMember(m)).length;
   const activeProgCount = allMembers.filter(m => m.type === 'progressive' && isActiveMember(m)).length;
   const activeCustCount = allMembers.filter(m => m.type === 'custom' && isActiveMember(m)).length;
   const activeAwaitCount = allMembers.filter(m => m.type === 'custom' && m.planStatus === 'awaiting' && isActiveMember(m)).length;
   document.getElementById('count-active').textContent      = activeCount;
   document.getElementById('count-paying').textContent      = payingCount;
+  document.getElementById('count-paused').textContent      = pausedCount;
   document.getElementById('count-progressive').textContent = activeProgCount;
   document.getElementById('count-custom').textContent      = activeCustCount;
   document.getElementById('count-awaiting').textContent    = activeAwaitCount;
@@ -968,8 +974,11 @@
       if (activeFilter === 'cancelled') {
         if (!isCancelled(m)) return false;
       } else if (activeFilter === 'paying') {
-        // Paying customers only — excludes Elite Team and coaches.
-        if (isCancelled(m) || m.isElite || m.isCoach) return false;
+        // Paying customers only — excludes Elite Team, coaches and paused.
+        if (isCancelled(m) || m.isElite || m.isCoach || isPausedMember(m)) return false;
+      } else if (activeFilter === 'paused') {
+        // Billing paused (with or without a resume date).
+        if (!isPausedMember(m)) return false;
       } else if (activeFilter === 'awaiting-plan') {
         // Actionable queue for Mick — Custom members with no published plan,
         // excluding cancelled (they're not receiving service anyway).
