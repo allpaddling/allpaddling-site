@@ -380,7 +380,7 @@
     document.getElementById('hero-title').textContent =
       `Welcome aboard${firstName && firstName !== 'there' ? ', ' + firstName : ''}.`;
     document.getElementById('hero-sub').textContent =
-      `Your ${member.discipline} plan is being prepared. We'll email you the moment it's live — usually within a day or two.`;
+      `Your program is being prepared. We'll email you the moment it's live — usually within a day or two.`;
     const thresholdCta = hasThreshold
       ? '<a href="threshold.html" class="btn btn-ghost">Review your threshold pace</a>'
       : '<a href="threshold.html" class="btn">Set your threshold pace</a>';
@@ -389,7 +389,7 @@
       : `<p class="structure">In the meantime, set your <strong>threshold pace</strong> so your training zones are ready the moment the plan goes live.</p>`;
     document.getElementById('up-next-card').innerHTML = `
       <span class="eyebrow">Welcome aboard</span>
-      <h2>Your ${member.discipline} plan is being prepared.</h2>
+      <h2>Your program is being prepared.</h2>
       <p class="structure">Mick is putting your first 4-week block together — usually live within a day or two. We'll email you the moment it's ready, so there's no need to keep checking back.</p>
       ${thresholdLine}
       <div class="cta-row">
